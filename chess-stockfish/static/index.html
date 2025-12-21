@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mac Stockfish 체스</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/chess.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="color-selection-modal" class="modal">
+    <div class="modal-content">
+      <h2>게임 설정</h2>
+      <div class="game-settings">
+        <label class="setting-label">
+          Elo Rating: <span id="modal-elo-value">800</span>
+          <input type="range" id="modal-elo" min="400" max="2850" step="50" value="800">
+        </label>
+        <label class="setting-label">
+          Depth: <span id="modal-depth-value">5</span>
+          <input type="range" id="modal-depth" min="1" max="24" value="5">
+        </label>
+      </div>
+      <h3>진영을 선택하세요</h3>
+      <div class="color-buttons">
+        <button id="select-white" class="color-btn white-btn">
+          <span class="piece-icon">♔</span>
+          <span>백 (White)</span>
+        </button>
+        <button id="select-black" class="color-btn black-btn">
+          <span class="piece-icon">♚</span>
+          <span>흑 (Black)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-over-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="game-over-title">게임 종료</h2>
+      <p id="game-over-message"></p>
+      <div class="modal-buttons">
+        <button id="rematch-btn" class="action">재대결</button>
+        <button id="review-btn" class="action">리뷰</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">chess<span>.stockfish</span></div>
+      <div class="controls">
+        <button id="new-game" class="action">새 게임</button>
+        <button id="undo" class="action">되돌리기</button>
+        <button id="resign" class="action resign">기권</button>
+        <button id="flip" class="action">보드 뒤집기</button>
+      </div>
+      <div class="status" id="status-text">당신의 차례입니다.</div>
+    </header>
+
+    <main class="content">
+      <section class="board-panel">
+        <div class="player-card" id="player-black">
+          <div class="avatar bot">SF</div>
+          <div style="flex: 1;">
+            <div class="name">Stockfish</div>
+            <div class="meta">macOS native • Elo <span id="elo-display">800</span></div>
+          </div>
+          <div class="color-indicator black-color">흑 (Black)</div>
+          <div class="captured-pieces" id="captured-white"></div>
+        </div>
+
+        <div class="board" id="board"></div>
+
+        <div class="player-card" id="player-white">
+          <div class="avatar human">YOU</div>
+          <div style="flex: 1;">
+            <div class="name">You</div>
+          </div>
+          <div class="color-indicator white-color">백 (White)</div>
+          <div class="captured-pieces" id="captured-black"></div>
+        </div>
+
+        <div class="board-footer">
+          <div class="difficulty-display">
+            <span>Elo: <strong id="elo-value">-</strong></span>
+            <span>Depth: <strong id="depth-value">-</strong></span>
+          </div>
+          <button id="hint" class="ghost">힌트</button>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="section">
+          <h2>엔진 평가</h2>
+          <div class="eval-bar">
+            <div class="eval-fill" id="eval-fill"></div>
+            <div class="eval-score" id="eval-score">0.0</div>
+          </div>
+          <div class="info-grid">
+            <div>Depth</div><div id="info-depth">-</div>
+            <div>nps</div><div id="info-nps">-</div>
+            <div>PV</div><div id="info-pv">-</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>기보</h2>
+          <ol id="move-list" class="move-list"></ol>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

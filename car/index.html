@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>5레인 탑다운 자동차 회피 게임</title>
+    <style>
+      :root {
+        --bg: #0b0f16;
+        --panel: #0f1724;
+        --road: #1e2636;
+        --lane: #e9edf5;
+        --player: #35d07f;
+        --obstacle: #ff5a52;
+        --hud: #e9edf5;
+        --accent: #7aa2ff;
+        --debug: #ffd166;
+        --overlay: rgba(0, 0, 0, 0.5);
+        --btn-bg: #1f2a44;
+        --btn-bg-hover: #2b3b62;
+        --btn-text: #ffffff;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--hud);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, sans-serif;
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      #root {
+        position: relative; width: 100vw; height: 100vh; display: grid; place-items: center;
+        overflow: hidden; background: radial-gradient(1200px 800px at 50% 20%, #0e1524, #0b0f16 70%);
+      }
+      /* Letterboxed canvas area computed from JS for best control */
+      .stage-wrap { position: relative; }
+      canvas { display: block; background: var(--panel); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+
+      .hud {
+        position: absolute; top: 12px; left: 16px; display: flex; flex-direction: column; gap: 4px; pointer-events: none;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      }
+      .hud .line { font-weight: 700; letter-spacing: 0.3px; }
+      .hud .hearts { color: #ff5a52; font-size: 18px; letter-spacing: 2px; }
+      .icons { position: absolute; top: 12px; right: 16px; display: flex; gap: 10px; }
+      .icon { background: rgba(0,0,0,0.35); padding: 6px 10px; border-radius: 999px; font-size: 14px; }
+
+      .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: var(--overlay); }
+      .overlay.show { display: flex; }
+      .card { background: var(--panel); border: 1px solid #27314a; padding: 20px; border-radius: 12px; width: min(92vw, 440px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+      .card h1, .card h2 { margin: 0 0 10px; }
+      .card p  { margin: 4px 0; line-height: 1.5; color: #c8d2e6; }
+      .row { display: flex; gap: 8px; margin-top: 12px; }
+      button { appearance: none; border: 0; border-radius: 8px; padding: 10px 14px; background: var(--btn-bg); color: var(--btn-text); font-weight: 700; cursor: pointer; }
+      button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      button:hover { background: var(--btn-bg-hover); }
+
+      .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="stage-wrap">
+        <canvas id="game" aria-label="자동차 회피 게임 캔버스" aria-describedby="controls-desc"></canvas>
+
+        <div class="hud" aria-live="polite">
+          <div class="line hearts" id="livesLine" aria-label="목숨">❤️❤️❤️</div>
+          <div class="line" id="scoreLine">점수: 0</div>
+          <div class="line" id="bestLine">최고점수: 0</div>
+        </div>
+        <div class="icons">
+          <div class="icon" id="pauseIcon" title="일시정지 상태">⏸</div>
+          <div class="icon" id="muteIcon" title="음소거 상태">🔊</div>
+        </div>
+
+        <div class="overlay" id="startOverlay">
+          <div class="card">
+            <h1>5레인 자동차 회피</h1>
+            <p>좌우로 조향하며 장애물을 피하세요!</p>
+            <p><strong>조작</strong> — ←/→ 또는 A/D, ↑/↓ 또는 W/S(앞/뒤), Space=일시정지, R=재시작, H=히트박스, M=음소거</p>
+            <div class="row">
+              <button id="startBtn" autofocus>게임 시작</button>
+              <button id="muteBtn">음소거 전환(M)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="pauseOverlay">
+          <div class="card">
+            <h2>일시정지</h2>
+            <p>Space로 재개하거나, R로 재시작할 수 있습니다.</p>
+            <div class="row">
+              <button id="resumeBtn">재개(Space)</button>
+              <button id="restartBtn1">재시작(R)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="gameOverOverlay">
+          <div class="card">
+            <h2>게임 오버</h2>
+            <p id="finalScore">점수: 0</p>
+            <p id="bestScore">최고점수: 0</p>
+            <div class="row">
+              <button id="restartBtn2">다시 시작(R)</button>
+              <button id="goStartBtn">처음 화면</button>
+            </div>
+          </div>
+        </div>
+
+        <p id="controls-desc" class="sr-only">
+          키보드: 왼쪽/오른쪽(또는 A/D) 조향(부드러운 좌우 이동), 위/아래(또는 W/S) 앞/뒤 이동. 스페이스=일시정지/재개, R=재시작, H=히트박스, M=음소거.
+          터치/모바일: 좌/우 탭으로 레인 이동, 상/하 스와이프로 앞/뒤 이동.
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // ===== 상수/설정 (car namespace) =====
+      const CFG = {
+        DESIGN_W: 960,
+        DESIGN_H: 540,
+        LANE_COUNT: 5,
+        ROAD_PADDING_X: 0.18,   // 좌우 여백 (비율)
+        PLAYER_W_RATE: 0.5,     // 차 너비 = 레인폭 * rate (레인의 절반 크기)
+        PLAYER_H_RATE: 1.6,     // 차 높이 = 너비 * rate
+        HORIZ_SPEED: 900,       // 좌우 이동 속도(px/s) - 키 누름 동안 부드럽게 이동
+        VERT_SPEED: 600,        // 상하 이동 속도(px/s) - 타겟 Y로 부드럽게
+        LANE_SNAP_EPS: 1.5,     // 레인 센터 스냅 허용 오차(px)
+        BASE_SPEED: 260,        // 시작 속도(px/s)
+        MAX_SPEED: 680,         // 최대 속도(px/s)
+        RAMP_TIME: 80,          // 최대 속도까지 도달하는 시간(초) — 가속도 완화
+        BASE_SPAWN: 0.95,       // 시작 스폰 간격(s)
+        MIN_SPAWN: 0.35,        // 최소 스폰 간격(s)
+        SCORE_PER_SEC: 10,
+        NEAR_MISS_BONUS: 25,
+        NEAR_MISS_THRESHOLD: 26,// 플레이어 상단에서 이 거리 내 스치면 보너스
+        POOL_SIZE: 36,
+        STORAGE_KEY: 'car3lane_highscore_v1',
+        HIT_INVULN: 1.0,       // 피격 후 무적 시간(s)
+        OBST_STEER_MAX: 180,    // 장애물 좌우 최대 조향 속도(px/s)
+        OBST_WANDER_MIN: 0.5,   // 방향 재결정 최소 간격(s)
+        OBST_WANDER_MAX: 1.2    // 방향 재결정 최대 간격(s)
+      };
+
+      // ===== 유틸: RNG (시드 고정) =====
+      function mulberry32(seed) { // 간단하고 빠른 RNG
+        let t = seed >>> 0;
+        return function() {
+          t += 0x6D2B79F5;
+          let r = Math.imul(t ^ (t >>> 15), 1 | t);
+          r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+          return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      function seededFromQuery(defaultSeed = Date.now() & 0xffffffff) {
+        const url = new URL(window.location.href);
+        const s = url.searchParams.get('seed');
+        const n = s != null ? (parseInt(s, 10) || 0) : defaultSeed;
+        return mulberry32(n);
+      }
+
+      // ===== 유틸: 수학/충돌 =====
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      function aabb(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+      }
+
+      // ===== 오디오 유틸 (WebAudio) =====
+      class AudioMgr {
+        constructor() { this.ctx = null; this.muted = false; }
+        ensureCtx() {
+          if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+        }
+        setMuted(v) { this.muted = !!v; }
+        playNear() {
+          if (this.muted) return; this.ensureCtx();
+          const t = this.ctx.currentTime;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'sine'; o.frequency.setValueAtTime(880, t);
+          o.frequency.exponentialRampToValueAtTime(1320, t + 0.08);
+          g.gain.setValueAtTime(0.001, t);
+          g.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+          o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + 0.18);
+        }
+        playCrash() {
+          if (this.muted) return; this.ensureCtx();
+          const t = this.ctx.currentTime;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(180, t);
+          o.frequency.exponentialRampToValueAtTime(80, t + 0.22);
+          g.gain.setValueAtTime(0.001, t);
+          g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+          o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + 0.3);
+        }
+      }
+
+      // ===== 입력 =====
+      class Input {
+        constructor(targetEl) {
+          this.left = false; this.right = false; this.up = false; this.down = false;
+          this.onAction = null; // x: -1/1
+          this.onActionY = null; // y: -1/1
+          this.onPause = null; this.onRestart = null; this.onToggleDebug = null; this.onToggleMute = null;
+          this._bindKeyboard(); this._bindTouch(targetEl);
+        }
+        _bindKeyboard() {
+          window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const k = e.key.toLowerCase();
+            // 키보드: 좌우는 레인 변경 대신 "누르고 있는 동안" 부드러운 이동에 사용
+            if (k === 'arrowleft' || k === 'a') { this.left = true; e.preventDefault(); }
+            else if (k === 'arrowright' || k === 'd') { this.right = true; e.preventDefault(); }
+            else if (k === 'arrowup' || k === 'w') { this.up = true; this.onActionY && this.onActionY(-1); e.preventDefault(); }
+            else if (k === 'arrowdown' || k === 's') { this.down = true; this.onActionY && this.onActionY(1); e.preventDefault(); }
+            else if (k === ' ' ) { this.onPause && this.onPause(); e.preventDefault(); }
+            else if (k === 'r') { this.onRestart && this.onRestart(); e.preventDefault(); }
+            else if (k === 'h') { this.onToggleDebug && this.onToggleDebug(); e.preventDefault(); }
+            else if (k === 'm') { this.onToggleMute && this.onToggleMute(); e.preventDefault(); }
+          }, { passive: false });
+          window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'arrowleft' || k === 'a') this.left = false;
+            else if (k === 'arrowright' || k === 'd') this.right = false;
+            else if (k === 'arrowup' || k === 'w') this.up = false;
+            else if (k === 'arrowdown' || k === 's') this.down = false;
+          });
+        }
+        _bindTouch(el) {
+          let startX = 0, startY = 0, activeId = null;
+          const threshold = 24;
+          el.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse') return; activeId = e.pointerId; startX = e.clientX; startY = e.clientY;
+          });
+          el.addEventListener('pointerup', (e) => {
+            if (e.pointerType === 'mouse') return; if (e.pointerId !== activeId) return; const dx = e.clientX - startX; const dy = e.clientY - startY; activeId = null;
+            if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) {
+              const rect = el.getBoundingClientRect(); const mid = rect.left + rect.width/2;
+              if (e.clientX < mid) this.onAction && this.onAction(-1); else this.onAction && this.onAction(1);
+              return;
+            }
+            if (Math.abs(dy) > Math.abs(dx)) { this.onActionY && this.onActionY(dy < 0 ? -1 : 1); }
+            else { this.onAction && this.onAction(dx < 0 ? -1 : 1); }
+          });
+          // Prevent double-tap zoom on iOS
+          let lastTouch = 0;
+          el.addEventListener('touchend', (e) => {
+            const now = Date.now(); if (now - lastTouch < 300) e.preventDefault(); lastTouch = now;
+          }, { passive: false });
+        }
+      }
+
+      // ===== 플레이어 / 장애물 =====
+      class Player {
+        constructor() { this.lane = 2; this.laneTarget = 2; this.x = 0; this.y = 0; this.yTarget = 0; this.w = 0; this.h = 0; }
+        setSize(w, h) { this.w = w; this.h = h; }
+        setLane(laneIndex, laneCenters) {
+          this.lane = clamp(laneIndex, 0, laneCenters.length - 1);
+          this.laneTarget = this.lane;
+          this.x = laneCenters[this.lane] - this.w/2; // 즉시 배치(리사이즈/시작용)
+        }
+        move(dx, laneCenters) { // (터치 전용) 레인 변경
+          this.laneTarget = clamp(this.laneTarget + dx, 0, laneCenters.length - 1);
+        }
+        addX(dx, roadX, roadW) { // 좌우 연속 이동(키보드)
+          const minX = roadX;
+          const maxX = roadX + roadW - this.w;
+          this.x = clamp(this.x + dx, minX, maxX);
+        }
+        setBottomY(designH, margin=16) { this.y = designH - this.h - margin; this.yTarget = this.y; }
+        setTargetY(y, designH, margin=16) { const minY = margin; const maxY = designH - this.h - margin; this.yTarget = clamp(y, minY, maxY); }
+        addTargetY(dy, designH, margin=16) { this.setTargetY(this.yTarget + dy, designH, margin); }
+        moveY(dir, designH, margin=16) { const step = this.h * 0.9; this.addTargetY(dir * step, designH, margin); }
+        update(dt, laneCenters, designH) {
+          // X: 연속 이동은 step()에서 처리 (여기서는 레인 스냅 없음)
+          if (this.lane !== this.laneTarget) {
+            // 터치로 레인 변경된 경우에만 부드럽게 센터로 이동
+            const targetX = laneCenters[this.laneTarget] - this.w/2;
+            const dx = targetX - this.x;
+            const maxStepX = CFG.HORIZ_SPEED * dt;
+            if (Math.abs(dx) <= maxStepX) { this.x = targetX; this.lane = this.laneTarget; }
+            else { this.x += Math.sign(dx) * maxStepX; }
+          }
+
+          // Y: 타겟 Y로 이동
+          const dy = this.yTarget - this.y;
+          const maxStepY = CFG.VERT_SPEED * dt;
+          if (Math.abs(dy) <= maxStepY) this.y = this.yTarget; else this.y += Math.sign(dy) * maxStepY;
+        }
+        rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+        draw(ctx) {
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--player');
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+          // 간단한 창/디테일
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.fillRect(this.x + this.w*0.2, this.y + this.h*0.15, this.w*0.6, this.h*0.2);
+          ctx.fillRect(this.x + this.w*0.25, this.y + this.h*0.65, this.w*0.5, this.h*0.2);
+        }
+      }
+
+      class Obstacle { // 풀링 객체
+        constructor() {
+          this.active = false; this.lane = 0; this.x = 0; this.y = -100; this.w = 0; this.h = 0; this.speed = 0; this.nearGiven = false;
+          this.vx = 0; this.minX = 0; this.maxX = 0; this._wander = 0; this._rng = null;
+        }
+        spawn(lane, x, y, w, h, speed, minX, maxX, rng) {
+          this.active = true; this.lane = lane; this.x = x; this.y = y; this.w = w; this.h = h; this.speed = speed; this.nearGiven = false;
+          this.minX = minX; this.maxX = Math.max(minX, maxX); this._rng = rng;
+          // 초기 좌우 속도 랜덤 설정
+          const s = CFG.OBST_STEER_MAX * (0.4 + this._rng() * 0.6);
+          this.vx = (this._rng() < 0.5 ? -1 : 1) * s;
+          this._wander = CFG.OBST_WANDER_MIN + this._rng() * (CFG.OBST_WANDER_MAX - CFG.OBST_WANDER_MIN);
+        }
+        update(dt) {
+          if (!this.active) return;
+          // 수직 이동
+          this.y += this.speed * dt;
+          // 좌우 방황(차선 내부에서 매끄럽게)
+          this._wander -= dt;
+          if (this._wander <= 0 && this._rng) {
+            const s = CFG.OBST_STEER_MAX * (0.4 + this._rng() * 0.6);
+            this.vx = (this._rng() * 2 - 1) * s; // -s..+s
+            this._wander = CFG.OBST_WANDER_MIN + this._rng() * (CFG.OBST_WANDER_MAX - CFG.OBST_WANDER_MIN);
+          }
+          // 이동 및 경계 처리(반사)
+          this.x += this.vx * dt;
+          if (this.x < this.minX) { this.x = this.minX; this.vx = Math.abs(this.vx); }
+          else if (this.x > this.maxX) { this.x = this.maxX; this.vx = -Math.abs(this.vx); }
+        }
+        offscreen(H) { return this.y > H + 10; }
+        kill() { this.active = false; }
+        rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+        draw(ctx) {
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--obstacle');
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+        }
+      }
+
+      class Spawner {
+        constructor(rng) { this.rng = rng; this.cool = 0; this.elapsed = 0; }
+        update(dt, elapsedTotal) {
+          this.elapsed = elapsedTotal; this.cool -= dt; if (this.cool < 0) this.cool = 0;
+        }
+        nextInterval() { // 시간 경과에 따라 스폰 빨라짐
+          const t = Math.min(1, this.elapsed / CFG.RAMP_TIME); // 더 천천히 빨라짐
+          const rate = CFG.BASE_SPAWN + (CFG.MIN_SPAWN - CFG.BASE_SPAWN) * t; // lerp
+          return clamp(rate, CFG.MIN_SPAWN, CFG.BASE_SPAWN);
+        }
+        shouldSpawn() { return this.cool === 0; }
+        // 현재 장애물들이 플레이어 y에서 덮는 시간 구간(미래 기준)을 레인별로 계산
+        _laneCoverageIntervals(obstacles, pr) {
+          const lanes = Array(CFG.LANE_COUNT).fill(null);
+          for (let i = 0; i < obstacles.length; i++) {
+            const o = obstacles[i]; if (!o.active) continue; const v = o.speed; if (v <= 0.001) continue;
+            const tEnter = (pr.y - (o.y + o.h)) / v; // bottom -> player top
+            const tExit  = (pr.y + pr.h - o.y) / v;   // top -> player bottom
+            if (tExit <= 0) continue; // 이미 지나감
+            const itv = { s: Math.max(0, tEnter), e: tExit };
+            // 가장 이른 시작을 유지
+            const cur = lanes[o.lane];
+            if (!cur || itv.s < cur.s) lanes[o.lane] = itv;
+          }
+          return lanes;
+        }
+        spawn(obstacles, laneCenters, size, speed, pr) {
+          // 안전성 보장: 같은 시간대에 모든 레인이 동시에 막히는 상황 금지
+          const coverage = this._laneCoverageIntervals(obstacles, pr);
+          // 새 장애물의 커버 구간(스폰 지점: -size.h - 4)
+          const y0 = -size.h - 4;
+          const newInterval = { s: (pr.y - (y0 + size.h)) / speed, e: (pr.y + pr.h - y0) / speed };
+          const overlaps = (a, b) => a && b && a.s <= b.e && b.s <= a.e;
+          
+          // 완전 균등 무작위: 레인을 랜덤 샘플링하며 안전 조건만 확인
+          const maxTries = CFG.LANE_COUNT * 3;
+          for (let tries = 0; tries < maxTries; tries++) {
+            const lane = Math.floor(this.rng() * CFG.LANE_COUNT);
+            // 이 시간대에 막히는 레인 수 계산 (후보 레인 포함)
+            let blocked = 0;
+            for (let k = 0; k < CFG.LANE_COUNT; k++) {
+              if (k === lane) { blocked++; continue; }
+              if (overlaps(newInterval, coverage[k])) blocked++;
+            }
+            if (blocked < CFG.LANE_COUNT) {
+              // 사용 가능 풀에서 하나 취득
+              for (let i = 0; i < obstacles.length; i++) {
+                const o = obstacles[i]; if (!o.active) {
+                  const x = laneCenters[lane] - size.w/2; const y = y0;
+                  // 차선 내부에서만 좌우 움직이도록 경계 설정
+                  const laneLeft = laneCenters[lane] - laneW/2;
+                  const minX = laneLeft + 4;
+                  const maxX = laneLeft + laneW - size.w - 4;
+                  o.spawn(lane, x, y, size.w, size.h, speed, minX, maxX, this.rng);
+                  this.cool = this.nextInterval();
+                  return o;
+                }
+              }
+              // 풀 부족
+              this.cool = this.nextInterval();
+              return null;
+            }
+          }
+          // 연속 실패 시 약간 지연 후 재도전
+          this.cool = Math.min(0.12, this.nextInterval());
+          return null;
+        }
+      }
+
+      class GameLoop {
+        constructor(updateDraw) { this._raf = 0; this._last = 0; this._running = false; this.updateDraw = updateDraw; }
+        start() { if (this._running) return; this._running = true; this._last = performance.now(); const tick = (t)=>{ if (!this._running) return; const dt = Math.min(0.05, (t - this._last)/1000); this._last = t; this.updateDraw(dt); this._raf = requestAnimationFrame(tick); }; this._raf = requestAnimationFrame(tick); }
+        stop() { if (!this._running) return; this._running = false; cancelAnimationFrame(this._raf); }
+        isRunning() { return this._running; }
+      }
+
+      // ===== UI/상태 =====
+      const $ = (q) => document.querySelector(q);
+      const canvas = $('#game');
+      const ctx = canvas.getContext('2d');
+      const scoreLine = $('#scoreLine');
+      const bestLine = $('#bestLine');
+      const livesLine = $('#livesLine');
+      const pauseIcon = $('#pauseIcon');
+      const muteIcon = $('#muteIcon');
+      const startOverlay = $('#startOverlay');
+      const pauseOverlay = $('#pauseOverlay');
+      const gameOverOverlay = $('#gameOverOverlay');
+      const startBtn = $('#startBtn');
+      const resumeBtn = $('#resumeBtn');
+      const restartBtn1 = $('#restartBtn1');
+      const restartBtn2 = $('#restartBtn2');
+      const goStartBtn = $('#goStartBtn');
+      const muteBtn = $('#muteBtn');
+
+      const audio = new AudioMgr();
+      const rng = seededFromQuery();
+      const spawner = new Spawner(rng);
+      const player = new Player();
+      const obstacles = Array.from({ length: CFG.POOL_SIZE }, () => new Obstacle());
+      const loop = new GameLoop(step);
+      const input = new Input(canvas);
+
+      // 동적 값(디자인 좌표계 기준)
+      let S = 1; // draw scale (CSS px -> design unit)
+      let DPR = Math.max(1, window.devicePixelRatio || 1);
+      let W = CFG.DESIGN_W, H = CFG.DESIGN_H; // 디자인 크기
+      let roadX = 0, roadW = 0, laneW = 0, laneCenters = [];
+      let speed = CFG.BASE_SPEED; // px/s
+      let elapsed = 0; // 총 경과
+      let score = 0;
+      let best = parseInt(localStorage.getItem(CFG.STORAGE_KEY) || '0', 10) || 0;
+      let state = 'idle'; // idle|running|paused|gameover
+      let debug = false;
+      let stripeOffset = 0;
+      let lives = 3;
+      let hitCooldown = 0; // 무적 타이머
+
+      // ===== 반응형 리사이즈 & 글로발 그리기 준비 =====
+      function resize() {
+        // 가시 영역에 맞춰 16:9 캔버스 크기 산출 (contain)
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const targetW = Math.min(vw, Math.floor(vh * 16/9));
+        const targetH = Math.floor(targetW * 9/16);
+        // CSS 크기
+        canvas.style.width = targetW + 'px';
+        canvas.style.height = targetH + 'px';
+        // 실제 픽셀 크기
+        DPR = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(targetW * DPR);
+        canvas.height = Math.floor(targetH * DPR);
+        // 디자인 좌표계로 스케일 (960x540 기준)
+        W = CFG.DESIGN_W; H = CFG.DESIGN_H;
+        S = targetW / W;
+        // 도로/레인 배치 계산
+        roadW = W * (1 - CFG.ROAD_PADDING_X * 2);
+        roadX = (W - roadW) / 2;
+        laneW = roadW / CFG.LANE_COUNT;
+        laneCenters = new Array(CFG.LANE_COUNT).fill(0).map((_, i) => roadX + i * laneW + laneW/2);
+        // 라벨/아이콘 위치(부모: stage-wrap)
+        const wrap = canvas.parentElement;
+        wrap.style.width = targetW + 'px';
+        wrap.style.height = targetH + 'px';
+        // 플레이어 배치 갱신
+        const pw = laneW * CFG.PLAYER_W_RATE; const ph = pw * CFG.PLAYER_H_RATE;
+        player.setSize(pw, ph);
+        // 레인은 유지하되 현재/타겟 모두 센터에 맞춤 (리사이즈 시 튀는 것 방지)
+        player.setLane(player.lane, laneCenters);
+        player.setBottomY(H);
+      }
+      window.addEventListener('resize', resize);
+
+      // ===== 게임 상태 제어 =====
+      function showOverlay(ov, show) { ov.classList.toggle('show', !!show); }
+      function updateHUD() {
+        scoreLine.textContent = `점수: ${Math.floor(score)}`;
+        bestLine.textContent = `최고점수: ${best}`;
+        const hearts = '❤️'.repeat(Math.max(0, lives));
+        livesLine.textContent = hearts;
+        pauseIcon.style.display = state === 'paused' ? 'block' : 'none';
+        muteIcon.textContent = audio.muted ? '🔇' : '🔊';
+      }
+      function startGame() {
+        // 초기화
+        score = 0; elapsed = 0; speed = CFG.BASE_SPEED; stripeOffset = 0;
+        lives = 3; hitCooldown = 0;
+        obstacles.forEach(o => o.kill());
+        player.setLane(Math.floor(CFG.LANE_COUNT/2), laneCenters);
+        state = 'running';
+        showOverlay(startOverlay, false); showOverlay(pauseOverlay, false); showOverlay(gameOverOverlay, false);
+        updateHUD();
+        loop.start();
+      }
+      function gameOver() {
+        state = 'gameover';
+        loop.stop();
+        audio.playCrash();
+        const s = Math.floor(score);
+        if (s > best) { best = s; localStorage.setItem(CFG.STORAGE_KEY, String(best)); }
+        $('#finalScore').textContent = `점수: ${s}`;
+        $('#bestScore').textContent = `최고점수: ${best}`;
+        showOverlay(gameOverOverlay, true);
+        updateHUD();
+      }
+      function pauseToggle() {
+        if (state === 'idle') { startGame(); return; }
+        if (state === 'gameover') return;
+        if (state === 'running') {
+          state = 'paused'; loop.stop(); showOverlay(pauseOverlay, true);
+        } else if (state === 'paused') {
+          state = 'running'; showOverlay(pauseOverlay, false); loop.start();
+        }
+        updateHUD();
+      }
+      function restart() { if (state === 'idle') return startGame(); startGame(); }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' && state === 'running') {
+          state = 'paused'; loop.stop(); showOverlay(pauseOverlay, true); updateHUD();
+        }
+      });
+
+      // ===== 입력 핸들 =====
+      // 터치의 좌/우 탭은 레인 변경, 키보드는 연속 이동(위의 keydown에서 onAction 호출 안 함)
+      input.onAction = (dir) => { if (state !== 'running') return; player.move(dir, laneCenters); };
+      input.onActionY = (dir) => { if (state !== 'running') return; player.moveY(dir, H); };
+      input.onPause = () => pauseToggle();
+      input.onRestart = () => restart();
+      input.onToggleDebug = () => { debug = !debug; };
+      input.onToggleMute = () => { audio.setMuted(!audio.muted); updateHUD(); };
+      startBtn.addEventListener('click', () => { audio.ensureCtx(); startGame(); });
+      resumeBtn.addEventListener('click', () => pauseToggle());
+      restartBtn1.addEventListener('click', () => restart());
+      restartBtn2.addEventListener('click', () => restart());
+      goStartBtn.addEventListener('click', () => { state = 'idle'; lives = 3; hitCooldown = 0; showOverlay(gameOverOverlay, false); showOverlay(startOverlay, true); updateHUD(); });
+      muteBtn.addEventListener('click', () => { audio.setMuted(!audio.muted); updateHUD(); });
+
+      // ===== 메인 스텝 (업데이트+드로우) =====
+      function step(dt) {
+        if (state !== 'running') return drawFrame();
+        elapsed += dt; score += CFG.SCORE_PER_SEC * dt; // 시간 점수
+        if (hitCooldown > 0) hitCooldown = Math.max(0, hitCooldown - dt);
+        // 난이도 증가(속도/스폰)
+        const t = Math.min(1, elapsed / CFG.RAMP_TIME);
+        speed = CFG.BASE_SPEED + (CFG.MAX_SPEED - CFG.BASE_SPEED) * t;
+        spawner.update(dt, elapsed);
+        // 연속 입력(좌/우): 키보드 누름 동안 부드럽게 좌우 이동
+        const vxDir = (input.left ? -1 : 0) + (input.right ? 1 : 0);
+        if (vxDir !== 0) player.addX(vxDir * CFG.HORIZ_SPEED * dt, roadX, roadW);
+
+        // 연속 입력(상/하)으로 타겟 Y를 갱신
+        const vyDir = (input.up ? -1 : 0) + (input.down ? 1 : 0);
+        if (vyDir !== 0) player.addTargetY(vyDir * CFG.VERT_SPEED * dt, H);
+        // 플레이어 부드러운 이동 업데이트
+        player.update(dt, laneCenters, H);
+        // 플레이어 박스(스폰 안전성 검사/충돌에 필요)
+        const pr = player.rect();
+        // 스폰
+        if (spawner.shouldSpawn()) {
+          const sz = { w: laneW * CFG.PLAYER_W_RATE * (0.95 + rng()*0.1), h: 0 };
+          sz.h = sz.w * CFG.PLAYER_H_RATE * (0.95 + rng()*0.1);
+          spawner.spawn(obstacles, laneCenters, sz, speed * (0.95 + rng()*0.1), pr);
+        }
+        // 업데이트/충돌/근접 판정
+        for (let i = 0; i < obstacles.length; i++) {
+          const o = obstacles[i]; if (!o.active) continue;
+          const prevY = o.y; o.update(dt);
+          const or = o.rect();
+          // 충돌
+          if (aabb(pr.x, pr.y, pr.w, pr.h, or.x, or.y, or.w, or.h)) {
+            if (hitCooldown === 0) {
+              // 남은 목숨이 1이면 즉시 게임오버(사운드는 gameOver에서 처리)
+              if (lives <= 1) { return gameOver(); }
+              // 아니면 목숨 감소 + 피격 무적
+              lives -= 1; audio.playCrash(); hitCooldown = CFG.HIT_INVULN;
+              // 충돌한 장애물은 제거하여 즉시 재충돌 방지
+              o.kill();
+            }
+          }
+          // 근접: 장애물의 하단이 플레이어의 상단을 지나갈 때, 임계값 이내
+          const prevBottom = prevY + or.h; const nowBottom = o.y + or.h;
+          if (!o.nearGiven && prevBottom <= pr.y && nowBottom >= pr.y) {
+            const gap = Math.abs(pr.y - prevBottom);
+            if (gap <= CFG.NEAR_MISS_THRESHOLD && !aabb(pr.x, pr.y, pr.w, pr.h, or.x, or.y, or.w, or.h)) {
+              score += CFG.NEAR_MISS_BONUS; o.nearGiven = true; audio.playNear();
+            } else { o.nearGiven = true; }
+          }
+          // 화면 하단 이탈 시 제거
+          if (o.offscreen(H)) o.kill();
+        }
+        // 차선 스트라이프 스크롤
+        stripeOffset = (stripeOffset + speed * dt) % 2000;
+        drawFrame();
+        updateHUD();
+      }
+
+      function drawFrame() {
+        // 좌표계/스케일 적용
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save(); ctx.scale(S, S);
+        // 배경/도로
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--panel');
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--road');
+        ctx.fillRect(roadX, 0, roadW, H);
+        // 레인 분리선 (도트)
+        const laneColor = getComputedStyle(document.documentElement).getPropertyValue('--lane');
+        ctx.strokeStyle = laneColor; ctx.lineWidth = 4;
+        ctx.setLineDash([16, 20]);
+        for (let i = 1; i < CFG.LANE_COUNT; i++) {
+          const x = roadX + i * laneW; ctx.beginPath();
+          // 스크롤 연출: 선 전체를 오프셋만큼 이동시킴
+          ctx.moveTo(x, - (stripeOffset % 36)); ctx.lineTo(x, H + 36);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        // 플레이어/장애물
+        for (let i = 0; i < obstacles.length; i++) { if (obstacles[i].active) obstacles[i].draw(ctx); }
+        player.draw(ctx);
+
+        // 디버그: 히트박스/임계선
+        if (debug) {
+          ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--debug');
+          ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
+          // player box
+          ctx.strokeRect(player.x, player.y, player.w, player.h);
+          // near-miss threshold line
+          ctx.beginPath(); ctx.moveTo(roadX, player.y); ctx.lineTo(roadX + roadW, player.y); ctx.stroke();
+          ctx.setLineDash([]);
+          // obstacle boxes
+          for (let i = 0; i < obstacles.length; i++) {
+            const o = obstacles[i]; if (!o.active) continue; ctx.strokeRect(o.x, o.y, o.w, o.h);
+          }
+        }
+        ctx.restore();
+      }
+
+      // ===== 초기 세팅 =====
+      function boot() { resize(); showOverlay(startOverlay, true); updateHUD(); drawFrame(); }
+      boot();
+
+      // ===== 간단 스모크 테스트 =====
+      function runSmokeTests() {
+        const tests = [];
+        function assert(name, cond) { tests.push({ name, ok: !!cond }); }
+        // 충돌 테스트
+        assert('AABB overlap', aabb(0,0,10,10, 5,5,5,5) === true);
+        assert('AABB separate', aabb(0,0,10,10, 20,20,5,5) === false);
+        // 레인 클램프
+        assert('Clamp lane low', clamp(-1, 0, 2) === 0);
+        assert('Clamp lane hi', clamp(9, 0, 2) === 2);
+        const okAll = tests.every(t => t.ok);
+        console.log('[SmokeTests]', okAll ? 'PASS' : 'FAIL');
+        for (const t of tests) console.log('-', t.ok ? '✅' : '❌', t.name);
+        return okAll;
+      }
+      window.runSmokeTests = runSmokeTests;
+
+      // ===== 개선 훅 (주석) =====
+      // TODO: v2에서 자동차 스프라이트를 벡터 경로로 개선, 파티클 효과 추가
+      // TODO: 장애물 패턴(차폭/속도/레인) 다양화, 두 물체 동시 스폰
+      // TODO: 점수 멀티플라이어(연속 근접 보너스)
+      // TODO: 모바일 햅틱 피드백 (Vibration API)
+      // TODO: 접근성 — 캔버스 외 HUD를 DOM 텍스트로 중복 제공
+    </script>
+
+    <!--
+    README (요약)
+    - 로컬에서 여는 방법:
+      1) 이 파일(car/index.html)을 브라우저에서 직접 더블클릭해 엽니다.
+      2) 모바일에서는 파일 공유/열기를 통해 실행하세요.
+
+    - 다음 개선 아이디어:
+      - 난이도 곡선 세분화 및 웨이브 시스템
+      - 플레이어 이동 애니메이션(부드러운 차선 변경), 화면 쉐이크
+      - 색맹 친화 팔레트/컨트라스트 옵션, 키 리맵 UI
+      - 리플레이(시드 고정) 공유 링크 생성
+    -->
+  </body>
+  </html>

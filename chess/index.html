@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 체스 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            display: block;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #status {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        #turn {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #45a049;
+        }
+        
+        #moveHistory {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 250px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        #moveHistory h3 {
+            margin-bottom: 10px;
+        }
+        
+        #moveList {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .move-item {
+            padding: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+        }
+        
+        #capturedPieces {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+        
+        #capturedPieces h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .captured-section {
+            margin-bottom: 10px;
+        }
+        
+        .captured-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="loading">게임 로딩 중...</div>
+    </div>
+    
+    <div id="ui">
+        <div id="status">체스 게임</div>
+        <div id="turn">차례: 백</div>
+        <button class="button" onclick="game.newGame()">새 게임</button>
+        <button class="button" onclick="game.undoMove()">무르기</button>
+    </div>
+    
+    <div id="moveHistory">
+        <h3>이동 기록</h3>
+        <div id="moveList"></div>
+    </div>
+    
+    <div id="capturedPieces">
+        <div class="captured-section">
+            <h4>먹힌 흰색 기물</h4>
+            <div id="capturedWhite" class="captured-list"></div>
+        </div>
+        <div class="captured-section">
+            <h4>먹힌 검은색 기물</h4>
+            <div id="capturedBlack" class="captured-list"></div>
+        </div>
+    </div>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // 체스 게임 클래스
+        class ChessGame {
+            constructor() {
+                this.setupScene();
+                this.setupBoard();
+                this.setupPieces();
+                this.setupControls();
+                this.setupRaycaster();
+                
+                this.selectedPiece = null;
+                this.validMoves = [];
+                this.currentPlayer = 'white'; // 'white' or 'black'
+                this.moveHistory = [];
+                this.gameOver = false;
+                this.enPassantTarget = null; // 앙파상 가능한 위치
+                
+                this.animate();
+                
+                // 로딩 완료
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x2c3e50);
+                
+                this.camera = new THREE.PerspectiveCamera(
+                    45,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 12, 12);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('gameCanvas'),
+                    antialias: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // 조명
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 50;
+                directionalLight.shadow.camera.left = -10;
+                directionalLight.shadow.camera.right = 10;
+                directionalLight.shadow.camera.top = 10;
+                directionalLight.shadow.camera.bottom = -10;
+                this.scene.add(directionalLight);
+                
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+            }
+            
+            setupBoard() {
+                this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+                this.boardGroup = new THREE.Group();
+                this.highlightSquares = [];
+                
+                const squareSize = 1;
+                const boardGeometry = new THREE.BoxGeometry(squareSize, 0.2, squareSize);
+                
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const isLight = (row + col) % 2 === 0;
+                        const material = new THREE.MeshStandardMaterial({
+                            color: isLight ? 0xf0d9b5 : 0xb58863,
+                            roughness: 0.7,
+                            metalness: 0.1
+                        });
+                        
+                        const square = new THREE.Mesh(boardGeometry, material);
+                        square.position.set(
+                            col - 3.5,
+                            -0.1,
+                            row - 3.5
+                        );
+                        square.receiveShadow = true;
+                        square.userData = { row, col, type: 'square' };
+                        this.boardGroup.add(square);
+                    }
+                }
+                
+                this.scene.add(this.boardGroup);
+            }
+            
+            setupPieces() {
+                this.pieces = [];
+                this.piecesMeshes = new THREE.Group();
+                
+                // 체스 말 초기 배치
+                const initialSetup = [
+                    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], // 검은색 뒷줄
+                    ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'], // 검은색 폰
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], // 흰색 폰
+                    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']  // 흰색 뒷줄
+                ];
+                
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const pieceType = initialSetup[row][col];
+                        if (pieceType) {
+                            this.createPiece(pieceType, row, col);
+                        }
+                    }
+                }
+                
+                this.scene.add(this.piecesMeshes);
+            }
+            
+            createPiece(type, row, col) {
+                const isWhite = type === type.toUpperCase();
+                const color = isWhite ? 0xeeeeee : 0x333333;
+                const pieceType = type.toLowerCase();
+                
+                const material = new THREE.MeshStandardMaterial({
+                    color: color,
+                    roughness: 0.4,
+                    metalness: 0.2
+                });
+                
+                // 여러 파트를 조합한 정교한 체스 말 생성
+                const pieceGroup = new THREE.Group();
+                
+                switch(pieceType) {
+                    case 'p': // 폰 - 더 정교한 디자인
+                        const pawnBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.25, 0.28, 0.1, 20),
+                            material
+                        );
+                        pawnBase.position.y = 0.05;
+                        pieceGroup.add(pawnBase);
+                        
+                        const pawnBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.18, 0.22, 0.4, 20),
+                            material
+                        );
+                        pawnBody.position.y = 0.3;
+                        pieceGroup.add(pawnBody);
+                        
+                        const pawnNeck = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.15, 0.18, 0.15, 20),
+                            material
+                        );
+                        pawnNeck.position.y = 0.575;
+                        pieceGroup.add(pawnNeck);
+                        
+                        const pawnHead = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.15, 16, 16),
+                            material
+                        );
+                        pawnHead.position.y = 0.7;
+                        pieceGroup.add(pawnHead);
+                        break;
+                        
+                    case 'r': // 룩 - 성 모양
+                        const rookBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.3, 0.32, 0.15, 4),
+                            material
+                        );
+                        rookBase.position.y = 0.075;
+                        pieceGroup.add(rookBase);
+                        
+                        const rookBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.25, 0.28, 0.5, 20),
+                            material
+                        );
+                        rookBody.position.y = 0.4;
+                        pieceGroup.add(rookBody);
+                        
+                        const rookTop = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.28, 0.28, 0.2, 4),
+                            material
+                        );
+                        rookTop.position.y = 0.75;
+                        pieceGroup.add(rookTop);
+                        
+                        // 성벽 모양의 돌출부
+                        for (let i = 0; i < 4; i++) {
+                            const angle = (Math.PI / 2) * i;
+                            const merlon = new THREE.Mesh(
+                                new THREE.BoxGeometry(0.15, 0.15, 0.08),
+                                material
+                            );
+                            merlon.position.y = 0.925;
+                            merlon.position.x = Math.cos(angle) * 0.25;
+                            merlon.position.z = Math.sin(angle) * 0.25;
+                            pieceGroup.add(merlon);
+                        }
+                        break;
+                        
+                    case 'n': // 나이트 - 정교한 말 모양
+                        const knightBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.28, 0.3, 0.15, 20),
+                            material
+                        );
+                        knightBase.position.y = 0.075;
+                        pieceGroup.add(knightBase);
+                        
+                        const knightBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.22, 0.26, 0.35, 20),
+                            material
+                        );
+                        knightBody.position.y = 0.3;
+                        pieceGroup.add(knightBody);
+                        
+                        // 말 가슴/어깨 부분
+                        const knightChest = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.24, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                            material
+                        );
+                        knightChest.position.y = 0.48;
+                        knightChest.rotation.z = Math.PI;
+                        pieceGroup.add(knightChest);
+                        
+                        // 말 목 (앞으로 기울어진)
+                        const knightNeck = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.15, 0.2, 0.45, 16),
+                            material
+                        );
+                        knightNeck.position.set(0.15, 0.7, 0);
+                        knightNeck.rotation.z = -Math.PI / 4.5;
+                        pieceGroup.add(knightNeck);
+                        
+                        // 말 머리 - 더 긴 주둥이
+                        const knightHead = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.25, 0.2, 0.18),
+                            material
+                        );
+                        knightHead.position.set(0.35, 0.95, 0);
+                        knightHead.rotation.z = -Math.PI / 8;
+                        pieceGroup.add(knightHead);
+                        
+                        // 주둥이
+                        const knightSnout = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.08, 0.18, 12),
+                            material
+                        );
+                        knightSnout.position.set(0.48, 0.92, 0);
+                        knightSnout.rotation.z = Math.PI / 2;
+                        pieceGroup.add(knightSnout);
+                        
+                        // 턱
+                        const knightJaw = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.15, 0.08, 0.16),
+                            material
+                        );
+                        knightJaw.position.set(0.42, 0.85, 0);
+                        knightJaw.rotation.z = -Math.PI / 6;
+                        pieceGroup.add(knightJaw);
+                        
+                        // 눈 (왼쪽)
+                        const eye1 = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.03, 8, 8),
+                            new THREE.MeshStandardMaterial({
+                                color: isWhite ? 0x333333 : 0xeeeeee,
+                                roughness: 0.3,
+                                metalness: 0.1
+                            })
+                        );
+                        eye1.position.set(0.38, 0.98, 0.08);
+                        pieceGroup.add(eye1);
+                        
+                        // 눈 (오른쪽)
+                        const eye2 = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.03, 8, 8),
+                            new THREE.MeshStandardMaterial({
+                                color: isWhite ? 0x333333 : 0xeeeeee,
+                                roughness: 0.3,
+                                metalness: 0.1
+                            })
+                        );
+                        eye2.position.set(0.38, 0.98, -0.08);
+                        pieceGroup.add(eye2);
+                        
+                        // 귀 (왼쪽) - 더 뾰족하게
+                        const ear1 = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.04, 0.18, 8),
+                            material
+                        );
+                        ear1.position.set(0.28, 1.08, 0.07);
+                        ear1.rotation.set(-Math.PI / 8, 0, -Math.PI / 4);
+                        pieceGroup.add(ear1);
+                        
+                        // 귀 (오른쪽)
+                        const ear2 = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.04, 0.18, 8),
+                            material
+                        );
+                        ear2.position.set(0.28, 1.08, -0.07);
+                        ear2.rotation.set(-Math.PI / 8, 0, Math.PI / 4);
+                        pieceGroup.add(ear2);
+                        
+                        // 갈기 (앞부분)
+                        for (let i = 0; i < 3; i++) {
+                            const mane = new THREE.Mesh(
+                                new THREE.BoxGeometry(0.06, 0.12, 0.04),
+                                material
+                            );
+                            mane.position.set(0.2 + i * 0.05, 1.0 - i * 0.08, 0);
+                            mane.rotation.z = -Math.PI / 6 - i * 0.1;
+                            pieceGroup.add(mane);
+                        }
+                        
+                        // 콧구멍 (왼쪽)
+                        const nostril1 = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.02, 8, 8),
+                            new THREE.MeshStandardMaterial({
+                                color: isWhite ? 0x333333 : 0x000000,
+                                roughness: 0.8
+                            })
+                        );
+                        nostril1.position.set(0.52, 0.92, 0.04);
+                        pieceGroup.add(nostril1);
+                        
+                        // 콧구멍 (오른쪽)
+                        const nostril2 = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.02, 8, 8),
+                            new THREE.MeshStandardMaterial({
+                                color: isWhite ? 0x333333 : 0x000000,
+                                roughness: 0.8
+                            })
+                        );
+                        nostril2.position.set(0.52, 0.92, -0.04);
+                        pieceGroup.add(nostril2);
+                        break;
+                        
+                    case 'b': // 비숍 - 주교 모자 모양
+                        const bishopBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.28, 0.3, 0.15, 20),
+                            material
+                        );
+                        bishopBase.position.y = 0.075;
+                        pieceGroup.add(bishopBase);
+                        
+                        const bishopBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.2, 0.26, 0.5, 20),
+                            material
+                        );
+                        bishopBody.position.y = 0.4;
+                        pieceGroup.add(bishopBody);
+                        
+                        const bishopNeck = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.22, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                            material
+                        );
+                        bishopNeck.position.y = 0.65;
+                        pieceGroup.add(bishopNeck);
+                        
+                        const bishopTop = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.18, 0.4, 20),
+                            material
+                        );
+                        bishopTop.position.y = 0.95;
+                        pieceGroup.add(bishopTop);
+                        
+                        // 십자가 모양 장식
+                        const bishopCross = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.08, 12, 12),
+                            material
+                        );
+                        bishopCross.position.y = 1.2;
+                        pieceGroup.add(bishopCross);
+                        
+                        const crossTop = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12),
+                            material
+                        );
+                        crossTop.position.y = 1.325;
+                        pieceGroup.add(crossTop);
+                        break;
+                        
+                    case 'q': // 퀸 - 왕관과 구슬 장식
+                        const queenBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.32, 0.35, 0.15, 20),
+                            material
+                        );
+                        queenBase.position.y = 0.075;
+                        pieceGroup.add(queenBase);
+                        
+                        const queenBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.22, 0.3, 0.5, 20),
+                            material
+                        );
+                        queenBody.position.y = 0.4;
+                        pieceGroup.add(queenBody);
+                        
+                        const queenNeck = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.24, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                            material
+                        );
+                        queenNeck.position.y = 0.65;
+                        pieceGroup.add(queenNeck);
+                        
+                        const queenCrown = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.25, 0.22, 0.3, 8),
+                            material
+                        );
+                        queenCrown.position.y = 0.95;
+                        pieceGroup.add(queenCrown);
+                        
+                        // 왕관 장식 - 8개의 구슬
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (Math.PI / 4) * i;
+                            const jewel = new THREE.Mesh(
+                                new THREE.SphereGeometry(0.06, 12, 12),
+                                material
+                            );
+                            jewel.position.y = 1.1;
+                            jewel.position.x = Math.cos(angle) * 0.23;
+                            jewel.position.z = Math.sin(angle) * 0.23;
+                            pieceGroup.add(jewel);
+                        }
+                        
+                        // 정상의 큰 구슬
+                        const queenTopJewel = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.1, 16, 16),
+                            material
+                        );
+                        queenTopJewel.position.y = 1.25;
+                        pieceGroup.add(queenTopJewel);
+                        break;
+                        
+                    case 'k': // 킹 - 십자가 장식
+                        const kingBase = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.32, 0.35, 0.15, 20),
+                            material
+                        );
+                        kingBase.position.y = 0.075;
+                        pieceGroup.add(kingBase);
+                        
+                        const kingBody = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.24, 0.3, 0.5, 20),
+                            material
+                        );
+                        kingBody.position.y = 0.4;
+                        pieceGroup.add(kingBody);
+                        
+                        const kingNeck = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.26, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                            material
+                        );
+                        kingNeck.position.y = 0.65;
+                        pieceGroup.add(kingNeck);
+                        
+                        const kingCrown = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.27, 0.24, 0.35, 8),
+                            material
+                        );
+                        kingCrown.position.y = 0.975;
+                        pieceGroup.add(kingCrown);
+                        
+                        // 십자가
+                        const kingCrossV = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.08, 0.35, 0.08),
+                            material
+                        );
+                        kingCrossV.position.y = 1.35;
+                        pieceGroup.add(kingCrossV);
+                        
+                        const kingCrossH = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.25, 0.08, 0.08),
+                            material
+                        );
+                        kingCrossH.position.y = 1.4;
+                        pieceGroup.add(kingCrossH);
+                        break;
+                }
+                
+                // 그룹의 모든 메시에 그림자 설정
+                pieceGroup.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                pieceGroup.position.set(col - 3.5, 0, row - 3.5);
+                
+                const piece = {
+                    type: pieceType,
+                    color: isWhite ? 'white' : 'black',
+                    row: row,
+                    col: col,
+                    mesh: pieceGroup,
+                    hasMoved: false
+                };
+                
+                pieceGroup.userData = { piece };
+                this.pieces.push(piece);
+                this.board[row][col] = piece;
+                this.piecesMeshes.add(pieceGroup);
+            }
+            
+            setupControls() {
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 8;
+                this.controls.maxDistance = 20;
+                this.controls.maxPolarAngle = Math.PI / 2.2;
+            }
+            
+            setupRaycaster() {
+                this.raycaster = new THREE.Raycaster();
+                this.raycaster.params.Points.threshold = 0.1;
+                this.mouse = new THREE.Vector2();
+                
+                this.renderer.domElement.addEventListener('click', (event) => this.onMouseClick(event));
+                this.renderer.domElement.addEventListener('mousemove', (event) => this.onMouseMove(event));
+            }
+            
+            onMouseClick(event) {
+                if (this.gameOver) return;
+                if (this.currentPlayer !== 'white') return; // 플레이어 차례가 아니면 무시
+                
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                
+                // 체스 말 클릭 체크 (보이는 기물만 대상으로)
+                const visiblePieces = this.piecesMeshes.children.filter(p => p.visible);
+                const pieceIntersects = this.raycaster.intersectObjects(visiblePieces, true);
+                
+                if (pieceIntersects.length > 0) {
+                    // 클릭된 객체의 부모 그룹 찾기
+                    let clickedObject = pieceIntersects[0].object;
+                    while (clickedObject.parent && !clickedObject.userData.piece) {
+                        clickedObject = clickedObject.parent;
+                    }
+                    
+                    if (clickedObject.userData && clickedObject.userData.piece) {
+                        const clickedPiece = clickedObject.userData.piece;
+                        
+                        // 플레이어의 말만 선택 가능
+                        if (clickedPiece.color === 'white') {
+                            this.selectPiece(clickedPiece);
+                            return;
+                        }
+                    }
+                }
+                
+                // 보드 클릭 체크 (이동)
+                const boardIntersects = this.raycaster.intersectObjects(this.boardGroup.children);
+                if (boardIntersects.length > 0 && this.selectedPiece) {
+                    const square = boardIntersects[0].object.userData;
+                    if (square && square.row !== undefined) {
+                        this.attemptMove(square.row, square.col);
+                    }
+                }
+            }
+            
+            onMouseMove(event) {
+                // 마우스 오버 효과 추가 가능
+            }
+            
+            selectPiece(piece) {
+                this.clearHighlights();
+                this.selectedPiece = piece;
+                
+                // 선택된 말 하이라이트 (그룹의 모든 메시에 적용)
+                piece.mesh.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.material.emissive = new THREE.Color(0x4444ff);
+                        child.material.emissiveIntensity = 0.5;
+                    }
+                });
+                
+                // 유효한 이동 위치 계산 및 표시
+                this.validMoves = this.getValidMoves(piece);
+                this.highlightValidMoves();
+            }
+            
+            clearHighlights() {
+                // 이전 선택 해제
+                if (this.selectedPiece) {
+                    this.selectedPiece.mesh.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            child.material.emissive = new THREE.Color(0x000000);
+                            child.material.emissiveIntensity = 0;
+                        }
+                    });
+                }
+                
+                // 하이라이트 제거
+                this.highlightSquares.forEach(square => {
+                    this.scene.remove(square);
+                });
+                this.highlightSquares = [];
+            }
+            
+            highlightValidMoves() {
+                const geometry = new THREE.PlaneGeometry(0.9, 0.9);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                this.validMoves.forEach(move => {
+                    const highlight = new THREE.Mesh(geometry, material);
+                    highlight.rotation.x = -Math.PI / 2;
+                    highlight.position.set(move.col - 3.5, 0.01, move.row - 3.5);
+                    this.scene.add(highlight);
+                    this.highlightSquares.push(highlight);
+                });
+            }
+            
+            getValidMoves(piece) {
+                const moves = [];
+                const { row, col, type, color } = piece;
+                
+                switch(type) {
+                    case 'p': // 폰
+                        moves.push(...this.getPawnMoves(piece));
+                        break;
+                    case 'r': // 룩
+                        moves.push(...this.getRookMoves(piece));
+                        break;
+                    case 'n': // 나이트
+                        moves.push(...this.getKnightMoves(piece));
+                        break;
+                    case 'b': // 비숍
+                        moves.push(...this.getBishopMoves(piece));
+                        break;
+                    case 'q': // 퀸
+                        moves.push(...this.getQueenMoves(piece));
+                        break;
+                    case 'k': // 킹
+                        moves.push(...this.getKingMoves(piece));
+                        break;
+                }
+                
+                // 체크 상황을 고려한 필터링
+                return moves.filter(move => !this.wouldBeInCheck(piece, move));
+            }
+            
+            getPawnMoves(piece) {
+                const moves = [];
+                const direction = piece.color === 'white' ? -1 : 1;
+                const startRow = piece.color === 'white' ? 6 : 1;
+                
+                // 앞으로 한 칸
+                const newRow = piece.row + direction;
+                if (this.isValidSquare(newRow, piece.col) && !this.board[newRow][piece.col]) {
+                    moves.push({ row: newRow, col: piece.col });
+                    
+                    // 시작 위치에서 두 칸
+                    if (piece.row === startRow) {
+                        const twoSquares = piece.row + direction * 2;
+                        if (!this.board[twoSquares][piece.col]) {
+                            moves.push({ row: twoSquares, col: piece.col, isDoublePawnMove: true });
+                        }
+                    }
+                }
+                
+                // 대각선 공격
+                [-1, 1].forEach(colOffset => {
+                    const newCol = piece.col + colOffset;
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (target && target.color !== piece.color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                    }
+                });
+                
+                // 앙파상 (En Passant)
+                if (this.enPassantTarget) {
+                    const epRow = this.enPassantTarget.row;
+                    const epCol = this.enPassantTarget.col;
+                    
+                    // 폰이 앙파상 타겟 옆에 있는지 확인
+                    if (piece.row === epRow && Math.abs(piece.col - epCol) === 1) {
+                        const captureRow = epRow + direction;
+                        if (this.isValidSquare(captureRow, epCol)) {
+                            moves.push({ 
+                                row: captureRow, 
+                                col: epCol, 
+                                isEnPassant: true 
+                            });
+                        }
+                    }
+                }
+                
+                return moves;
+            }
+            
+            getRookMoves(piece) {
+                const moves = [];
+                const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    let newRow = piece.row + dRow;
+                    let newCol = piece.col + dCol;
+                    
+                    while (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (!target) {
+                            moves.push({ row: newRow, col: newCol });
+                        } else {
+                            if (target.color !== piece.color) {
+                                moves.push({ row: newRow, col: newCol });
+                            }
+                            break;
+                        }
+                        newRow += dRow;
+                        newCol += dCol;
+                    }
+                });
+                
+                return moves;
+            }
+            
+            getKnightMoves(piece) {
+                const moves = [];
+                const knightMoves = [
+                    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+                    [1, -2], [1, 2], [2, -1], [2, 1]
+                ];
+                
+                knightMoves.forEach(([dRow, dCol]) => {
+                    const newRow = piece.row + dRow;
+                    const newCol = piece.col + dCol;
+                    
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (!target || target.color !== piece.color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                    }
+                });
+                
+                return moves;
+            }
+            
+            getBishopMoves(piece) {
+                const moves = [];
+                const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    let newRow = piece.row + dRow;
+                    let newCol = piece.col + dCol;
+                    
+                    while (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (!target) {
+                            moves.push({ row: newRow, col: newCol });
+                        } else {
+                            if (target.color !== piece.color) {
+                                moves.push({ row: newRow, col: newCol });
+                            }
+                            break;
+                        }
+                        newRow += dRow;
+                        newCol += dCol;
+                    }
+                });
+                
+                return moves;
+            }
+            
+            getQueenMoves(piece) {
+                return [...this.getRookMoves(piece), ...this.getBishopMoves(piece)];
+            }
+            
+            getKingMoves(piece) {
+                const moves = [];
+                const directions = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1],  [1, 0],  [1, 1]
+                ];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    const newRow = piece.row + dRow;
+                    const newCol = piece.col + dCol;
+                    
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (!target || target.color !== piece.color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                    }
+                });
+                
+                // 캐슬링 (Castling)
+                if (!piece.hasMoved && !this.isInCheck(piece.color)) {
+                    const row = piece.row;
+                    
+                    // 킹사이드 캐슬링 (짧은 캐슬링)
+                    const kingsideRook = this.board[row][7];
+                    if (kingsideRook && kingsideRook.type === 'r' && 
+                        kingsideRook.color === piece.color && !kingsideRook.hasMoved) {
+                        // 킹과 룩 사이가 비어있는지 확인
+                        if (!this.board[row][5] && !this.board[row][6]) {
+                            // 킹이 지나가는 경로가 체크되지 않는지 확인
+                            if (!this.isSquareAttacked(row, 5, piece.color) && 
+                                !this.isSquareAttacked(row, 6, piece.color)) {
+                                moves.push({ 
+                                    row: row, 
+                                    col: 6, 
+                                    isCastling: true,
+                                    castlingSide: 'kingside'
+                                });
+                            }
+                        }
+                    }
+                    
+                    // 퀸사이드 캐슬링 (긴 캐슬링)
+                    const queensideRook = this.board[row][0];
+                    if (queensideRook && queensideRook.type === 'r' && 
+                        queensideRook.color === piece.color && !queensideRook.hasMoved) {
+                        // 킹과 룩 사이가 비어있는지 확인
+                        if (!this.board[row][1] && !this.board[row][2] && !this.board[row][3]) {
+                            // 킹이 지나가는 경로가 체크되지 않는지 확인
+                            if (!this.isSquareAttacked(row, 2, piece.color) && 
+                                !this.isSquareAttacked(row, 3, piece.color)) {
+                                moves.push({ 
+                                    row: row, 
+                                    col: 2, 
+                                    isCastling: true,
+                                    castlingSide: 'queenside'
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return moves;
+            }
+            
+            isSquareAttacked(row, col, byColor) {
+                // 특정 위치가 특정 색상에게 공격받고 있는지 확인
+                const opponentColor = byColor === 'white' ? 'black' : 'white';
+                const opponents = this.pieces.filter(p => p.color === opponentColor);
+                
+                for (const opponent of opponents) {
+                    const moves = this.getBasicMoves(opponent);
+                    if (moves.some(m => m.row === row && m.col === col)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            isValidSquare(row, col) {
+                return row >= 0 && row < 8 && col >= 0 && col < 8;
+            }
+            
+            wouldBeInCheck(piece, move) {
+                // 임시로 이동해보고 체크 상태인지 확인
+                const originalRow = piece.row;
+                const originalCol = piece.col;
+                const capturedPiece = this.board[move.row][move.col];
+                
+                // 임시 이동
+                this.board[originalRow][originalCol] = null;
+                this.board[move.row][move.col] = piece;
+                piece.row = move.row;
+                piece.col = move.col;
+                
+                const inCheck = this.isInCheck(piece.color);
+                
+                // 원상복구
+                this.board[originalRow][originalCol] = piece;
+                this.board[move.row][move.col] = capturedPiece;
+                piece.row = originalRow;
+                piece.col = originalCol;
+                
+                return inCheck;
+            }
+            
+            isInCheck(color) {
+                // 킹 찾기
+                const king = this.pieces.find(p => p.type === 'k' && p.color === color);
+                if (!king) return false;
+                
+                // 상대편 말들이 킹을 공격할 수 있는지 확인
+                const opponentColor = color === 'white' ? 'black' : 'white';
+                const opponents = this.pieces.filter(p => p.color === opponentColor);
+                
+                for (const opponent of opponents) {
+                    const moves = this.getBasicMoves(opponent);
+                    if (moves.some(m => m.row === king.row && m.col === king.col)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            getBasicMoves(piece) {
+                // wouldBeInCheck 내부에서 무한 재귀를 방지하기 위한 기본 이동 계산
+                // 특수 이동(캐슬링, 앙파상)은 제외
+                switch(piece.type) {
+                    case 'p': return this.getBasicPawnMoves(piece);
+                    case 'r': return this.getRookMoves(piece);
+                    case 'n': return this.getKnightMoves(piece);
+                    case 'b': return this.getBishopMoves(piece);
+                    case 'q': return this.getQueenMoves(piece);
+                    case 'k': return this.getBasicKingMoves(piece);
+                    default: return [];
+                }
+            }
+            
+            getBasicPawnMoves(piece) {
+                // 앙파상을 제외한 기본 폰 이동
+                const moves = [];
+                const direction = piece.color === 'white' ? -1 : 1;
+                const startRow = piece.color === 'white' ? 6 : 1;
+                
+                // 앞으로 한 칸
+                const newRow = piece.row + direction;
+                if (this.isValidSquare(newRow, piece.col) && !this.board[newRow][piece.col]) {
+                    moves.push({ row: newRow, col: piece.col });
+                    
+                    // 시작 위치에서 두 칸
+                    if (piece.row === startRow) {
+                        const twoSquares = piece.row + direction * 2;
+                        if (!this.board[twoSquares][piece.col]) {
+                            moves.push({ row: twoSquares, col: piece.col });
+                        }
+                    }
+                }
+                
+                // 대각선 공격
+                [-1, 1].forEach(colOffset => {
+                    const newCol = piece.col + colOffset;
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (target && target.color !== piece.color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                    }
+                });
+                
+                return moves;
+            }
+            
+            getBasicKingMoves(piece) {
+                // 캐슬링을 제외한 기본 킹 이동
+                const moves = [];
+                const directions = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1],  [1, 0],  [1, 1]
+                ];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    const newRow = piece.row + dRow;
+                    const newCol = piece.col + dCol;
+                    
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const target = this.board[newRow][newCol];
+                        if (!target || target.color !== piece.color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                    }
+                });
+                
+                return moves;
+            }
+            
+            attemptMove(toRow, toCol) {
+                const validMove = this.validMoves.find(m => m.row === toRow && m.col === toCol);
+                if (!validMove) return;
+                
+                this.makeMove(this.selectedPiece, toRow, toCol, validMove);
+                this.clearHighlights();
+                this.selectedPiece = null;
+                
+                // 플레이어 교대
+                this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+                this.updateUI();
+                
+                // 게임 종료 확인
+                if (this.isCheckmate(this.currentPlayer)) {
+                    this.gameOver = true;
+                    const winner = this.currentPlayer === 'white' ? '검은색' : '흰색';
+                    document.getElementById('status').innerHTML = `체크메이트! ${winner} 승리!<br><button class="button" onclick="game.newGame()" style="margin-top: 10px;">새 게임</button>`;
+                    return;
+                }
+                
+                // AI 차례
+                if (this.currentPlayer === 'black') {
+                    setTimeout(() => this.aiMove(), 500);
+                }
+            }
+            
+            makeMove(piece, toRow, toCol, moveInfo = {}) {
+                let capturedPiece = this.board[toRow][toCol];
+                let specialMove = null;
+                
+                // 앙파상 처리
+                if (moveInfo.isEnPassant) {
+                    const capturedRow = piece.row;
+                    const capturedCol = toCol;
+                    capturedPiece = this.board[capturedRow][capturedCol];
+                    
+                    if (capturedPiece) {
+                        capturedPiece.mesh.visible = false;
+                        this.board[capturedRow][capturedCol] = null;
+                        const index = this.pieces.indexOf(capturedPiece);
+                        if (index > -1) this.pieces.splice(index, 1);
+                        this.addCapturedPiece(capturedPiece);
+                    }
+                    specialMove = 'enpassant';
+                }
+                // 캐슬링 처리
+                else if (moveInfo.isCastling) {
+                    const row = piece.row;
+                    let rookCol, rookNewCol;
+                    
+                    if (moveInfo.castlingSide === 'kingside') {
+                        rookCol = 7;
+                        rookNewCol = 5;
+                    } else {
+                        rookCol = 0;
+                        rookNewCol = 3;
+                    }
+                    
+                    const rook = this.board[row][rookCol];
+                    if (rook) {
+                        this.board[row][rookCol] = null;
+                        this.board[row][rookNewCol] = rook;
+                        rook.row = row;
+                        rook.col = rookNewCol;
+                        rook.hasMoved = true;
+                        this.animatePieceMove(rook.mesh, rookNewCol - 3.5, row - 3.5);
+                    }
+                    specialMove = moveInfo.castlingSide === 'kingside' ? 'castling-k' : 'castling-q';
+                }
+                // 일반 잡기
+                else if (capturedPiece) {
+                    capturedPiece.mesh.visible = false;
+                    const index = this.pieces.indexOf(capturedPiece);
+                    if (index > -1) this.pieces.splice(index, 1);
+                    this.addCapturedPiece(capturedPiece);
+                }
+                
+                // 앙파상 타겟 업데이트
+                if (piece.type === 'p' && moveInfo.isDoublePawnMove) {
+                    this.enPassantTarget = {
+                        row: piece.row,
+                        col: piece.col
+                    };
+                } else {
+                    this.enPassantTarget = null;
+                }
+                
+                // 보드 업데이트
+                this.board[piece.row][piece.col] = null;
+                this.board[toRow][toCol] = piece;
+                
+                // 이동 기록
+                const move = {
+                    piece: piece.type,
+                    from: { row: piece.row, col: piece.col },
+                    to: { row: toRow, col: toCol },
+                    captured: capturedPiece,
+                    color: piece.color,
+                    specialMove: specialMove,
+                    moveInfo: moveInfo
+                };
+                this.moveHistory.push(move);
+                this.addMoveToHistory(move);
+                
+                // 말 위치 업데이트
+                piece.row = toRow;
+                piece.col = toCol;
+                piece.hasMoved = true;
+                
+                // 3D 위치 애니메이션
+                this.animatePieceMove(piece.mesh, toCol - 3.5, toRow - 3.5);
+            }
+            
+            animatePieceMove(mesh, targetX, targetZ) {
+                const startX = mesh.position.x;
+                const startZ = mesh.position.z;
+                const duration = 300;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // 부드러운 이동
+                    const easeProgress = progress < 0.5
+                        ? 2 * progress * progress
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    mesh.position.x = startX + (targetX - startX) * easeProgress;
+                    mesh.position.z = startZ + (targetZ - startZ) * easeProgress;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+            }
+            
+            isCheckmate(color) {
+                if (!this.isInCheck(color)) return false;
+                
+                // 모든 가능한 이동이 여전히 체크 상태인지 확인
+                const pieces = this.pieces.filter(p => p.color === color);
+                for (const piece of pieces) {
+                    const moves = this.getValidMoves(piece);
+                    if (moves.length > 0) return false;
+                }
+                
+                return true;
+            }
+            
+            aiMove() {
+                if (this.gameOver) return;
+                
+                const bestMove = this.getBestMove();
+                if (bestMove) {
+                    this.selectedPiece = bestMove.piece;
+                    this.makeMove(bestMove.piece, bestMove.to.row, bestMove.to.col, bestMove.to);
+                    this.selectedPiece = null;
+                    
+                    this.currentPlayer = 'white';
+                    this.updateUI();
+                    
+                    if (this.isCheckmate(this.currentPlayer)) {
+                        this.gameOver = true;
+                        document.getElementById('status').innerHTML = '체크메이트! 검은색 승리!<br><button class="button" onclick="game.newGame()" style="margin-top: 10px;">새 게임</button>';
+                    }
+                }
+            }
+            
+            getBestMove() {
+                // 향상된 Minimax 알고리즘 - 백의 응수를 고려
+                const depth = 4;
+                let bestMove = null;
+                let bestScore = -Infinity;
+                
+                const blackPieces = this.pieces.filter(p => p.color === 'black');
+                const allMoves = [];
+                
+                // 모든 가능한 이동 수집
+                for (const piece of blackPieces) {
+                    const moves = this.getValidMoves(piece);
+                    for (const move of moves) {
+                        allMoves.push({ piece, move });
+                    }
+                }
+                
+                // 향상된 이동 우선순위 정렬
+                allMoves.sort((a, b) => {
+                    const scoreA = this.evaluateMoveQuality(a.piece, a.move);
+                    const scoreB = this.evaluateMoveQuality(b.piece, b.move);
+                    return scoreB - scoreA;
+                });
+                
+                // 각 이동에 대해 백의 최선 응수를 고려한 평가
+                for (const { piece, move } of allMoves) {
+                    const score = this.minimaxWithOpponentResponse(piece, move, depth - 1, false, -Infinity, Infinity);
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = { piece, to: move };
+                    }
+                }
+                
+                return bestMove;
+            }
+            
+            evaluateMoveQuality(piece, move) {
+                // 이동의 질을 평가 (우선순위 결정)
+                let score = 0;
+                
+                // 1. 기물 잡기
+                const target = this.board[move.row][move.col];
+                if (target) {
+                    const pieceValues = {'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000};
+                    score += pieceValues[target.type] * 10;
+                }
+                
+                // 2. 중앙 통제
+                const centerDistance = Math.abs(move.row - 3.5) + Math.abs(move.col - 3.5);
+                score += (7 - centerDistance) * 2;
+                
+                // 3. 체크 주기
+                const originalRow = piece.row;
+                const originalCol = piece.col;
+                this.board[originalRow][originalCol] = null;
+                this.board[move.row][move.col] = piece;
+                piece.row = move.row;
+                piece.col = move.col;
+                
+                if (this.isInCheck('white')) {
+                    score += 50;
+                }
+                
+                // 원상복구
+                this.board[originalRow][originalCol] = piece;
+                this.board[move.row][move.col] = target;
+                piece.row = originalRow;
+                piece.col = originalCol;
+                
+                return score;
+            }
+            
+            minimaxWithOpponentResponse(piece, move, depth, isMaximizing, alpha, beta) {
+                // 백의 응수를 더 정확히 시뮬레이션
+                const originalRow = piece.row;
+                const originalCol = piece.col;
+                const capturedPiece = this.board[move.row][move.col];
+                
+                this.board[originalRow][originalCol] = null;
+                this.board[move.row][move.col] = piece;
+                piece.row = move.row;
+                piece.col = move.col;
+                
+                let score;
+                
+                if (depth === 0 || this.isCheckmate('white') || this.isCheckmate('black')) {
+                    score = this.evaluateBoardAdvanced();
+                } else if (isMaximizing) {
+                    score = -Infinity;
+                    const blackPieces = this.pieces.filter(p => p.color === 'black');
+                    
+                    for (const p of blackPieces) {
+                        const moves = this.getValidMoves(p);
+                        for (const m of moves) {
+                            score = Math.max(score, this.minimaxWithOpponentResponse(p, m, depth - 1, false, alpha, beta));
+                            alpha = Math.max(alpha, score);
+                            if (beta <= alpha) break;
+                        }
+                        if (beta <= alpha) break;
+                    }
+                } else {
+                    // 백의 입장에서 최선의 응수 탐색 (더 깊이 고려)
+                    score = Infinity;
+                    const whitePieces = this.pieces.filter(p => p.color === 'white');
+                    
+                    // 백의 가능한 모든 응수에 대해 평가
+                    const whiteResponses = [];
+                    for (const p of whitePieces) {
+                        const moves = this.getValidMoves(p);
+                        for (const m of moves) {
+                            whiteResponses.push({ piece: p, move: m });
+                        }
+                    }
+                    
+                    // 백의 응수도 우선순위로 정렬 (효율성)
+                    whiteResponses.sort((a, b) => {
+                        const scoreA = this.evaluateMoveQuality(a.piece, a.move);
+                        const scoreB = this.evaluateMoveQuality(b.piece, b.move);
+                        return scoreB - scoreA;
+                    });
+                    
+                    for (const { piece: p, move: m } of whiteResponses) {
+                        score = Math.min(score, this.minimaxWithOpponentResponse(p, m, depth - 1, true, alpha, beta));
+                        beta = Math.min(beta, score);
+                        if (beta <= alpha) break;
+                    }
+                }
+                
+                // 원상복구
+                this.board[originalRow][originalCol] = piece;
+                this.board[move.row][move.col] = capturedPiece;
+                piece.row = originalRow;
+                piece.col = originalCol;
+                
+                return score;
+            }
+            
+            evaluateBoardAdvanced() {
+                // 더 정교한 보드 평가
+                const pieceValues = {
+                    'p': 100,
+                    'n': 320,
+                    'b': 330,
+                    'r': 500,
+                    'q': 900,
+                    'k': 20000
+                };
+                
+                let score = 0;
+                
+                for (const piece of this.pieces) {
+                    const materialValue = pieceValues[piece.type];
+                    const positionValue = this.getPositionValue(piece);
+                    const mobilityValue = this.getMobilityValue(piece);
+                    const threatValue = this.getThreatValue(piece);
+                    
+                    const totalValue = materialValue + positionValue + mobilityValue + threatValue;
+                    
+                    if (piece.color === 'black') {
+                        score += totalValue;
+                    } else {
+                        score -= totalValue;
+                    }
+                }
+                
+                // 체크메이트 보너스
+                if (this.isCheckmate('white')) score += 100000;
+                if (this.isCheckmate('black')) score -= 100000;
+                
+                // 체크 상태
+                if (this.isInCheck('white')) score += 50;
+                if (this.isInCheck('black')) score -= 50;
+                
+                // 킹 안전성
+                score += this.evaluateKingSafety('black');
+                score -= this.evaluateKingSafety('white');
+                
+                return score;
+            }
+            
+            getThreatValue(piece) {
+                // 기물이 공격하는 상대 기물의 가치
+                let threat = 0;
+                const moves = this.getBasicMoves(piece);
+                const pieceValues = {'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000};
+                
+                for (const move of moves) {
+                    const target = this.board[move.row][move.col];
+                    if (target && target.color !== piece.color) {
+                        threat += pieceValues[target.type] * 0.1;
+                    }
+                }
+                
+                return threat;
+            }
+            
+            minimax(piece, move, depth, isMaximizing, alpha, beta) {
+                // 이동 시뮬레이션
+                const originalRow = piece.row;
+                const originalCol = piece.col;
+                const capturedPiece = this.board[move.row][move.col];
+                
+                this.board[originalRow][originalCol] = null;
+                this.board[move.row][move.col] = piece;
+                piece.row = move.row;
+                piece.col = move.col;
+                
+                let score;
+                
+                if (depth === 0 || this.isCheckmate('white') || this.isCheckmate('black')) {
+                    score = this.evaluateBoard();
+                } else if (isMaximizing) {
+                    score = -Infinity;
+                    const blackPieces = this.pieces.filter(p => p.color === 'black');
+                    
+                    for (const p of blackPieces) {
+                        const moves = this.getValidMoves(p);
+                        for (const m of moves) {
+                            score = Math.max(score, this.minimax(p, m, depth - 1, false, alpha, beta));
+                            alpha = Math.max(alpha, score);
+                            if (beta <= alpha) break;
+                        }
+                        if (beta <= alpha) break;
+                    }
+                } else {
+                    score = Infinity;
+                    const whitePieces = this.pieces.filter(p => p.color === 'white');
+                    
+                    for (const p of whitePieces) {
+                        const moves = this.getValidMoves(p);
+                        for (const m of moves) {
+                            score = Math.min(score, this.minimax(p, m, depth - 1, true, alpha, beta));
+                            beta = Math.min(beta, score);
+                            if (beta <= alpha) break;
+                        }
+                        if (beta <= alpha) break;
+                    }
+                }
+                
+                // 원상복구
+                this.board[originalRow][originalCol] = piece;
+                this.board[move.row][move.col] = capturedPiece;
+                piece.row = originalRow;
+                piece.col = originalCol;
+                
+                return score;
+            }
+            
+            evaluateBoard() {
+                // 향상된 보드 평가 함수
+                const pieceValues = {
+                    'p': 100,
+                    'n': 320,
+                    'b': 330,
+                    'r': 500,
+                    'q': 900,
+                    'k': 20000
+                };
+                
+                let score = 0;
+                
+                for (const piece of this.pieces) {
+                    const materialValue = pieceValues[piece.type];
+                    const positionValue = this.getPositionValue(piece);
+                    const mobilityValue = this.getMobilityValue(piece);
+                    
+                    const totalValue = materialValue + positionValue + mobilityValue;
+                    
+                    if (piece.color === 'black') {
+                        score += totalValue;
+                    } else {
+                        score -= totalValue;
+                    }
+                }
+                
+                // 체크메이트 보너스
+                if (this.isCheckmate('white')) score += 100000;
+                if (this.isCheckmate('black')) score -= 100000;
+                
+                // 체크 상태 페널티/보너스
+                if (this.isInCheck('white')) score += 50;
+                if (this.isInCheck('black')) score -= 50;
+                
+                // 킹 안전성
+                score += this.evaluateKingSafety('black');
+                score -= this.evaluateKingSafety('white');
+                
+                return score;
+            }
+            
+            getPositionValue(piece) {
+                // 각 기물별 위치 가치 테이블
+                const pawnTable = [
+                    [0,  0,  0,  0,  0,  0,  0,  0],
+                    [50, 50, 50, 50, 50, 50, 50, 50],
+                    [10, 10, 20, 30, 30, 20, 10, 10],
+                    [5,  5, 10, 25, 25, 10,  5,  5],
+                    [0,  0,  0, 20, 20,  0,  0,  0],
+                    [5, -5,-10,  0,  0,-10, -5,  5],
+                    [5, 10, 10,-20,-20, 10, 10,  5],
+                    [0,  0,  0,  0,  0,  0,  0,  0]
+                ];
+                
+                const knightTable = [
+                    [-50,-40,-30,-30,-30,-30,-40,-50],
+                    [-40,-20,  0,  0,  0,  0,-20,-40],
+                    [-30,  0, 10, 15, 15, 10,  0,-30],
+                    [-30,  5, 15, 20, 20, 15,  5,-30],
+                    [-30,  0, 15, 20, 20, 15,  0,-30],
+                    [-30,  5, 10, 15, 15, 10,  5,-30],
+                    [-40,-20,  0,  5,  5,  0,-20,-40],
+                    [-50,-40,-30,-30,-30,-30,-40,-50]
+                ];
+                
+                const bishopTable = [
+                    [-20,-10,-10,-10,-10,-10,-10,-20],
+                    [-10,  0,  0,  0,  0,  0,  0,-10],
+                    [-10,  0,  5, 10, 10,  5,  0,-10],
+                    [-10,  5,  5, 10, 10,  5,  5,-10],
+                    [-10,  0, 10, 10, 10, 10,  0,-10],
+                    [-10, 10, 10, 10, 10, 10, 10,-10],
+                    [-10,  5,  0,  0,  0,  0,  5,-10],
+                    [-20,-10,-10,-10,-10,-10,-10,-20]
+                ];
+                
+                const rookTable = [
+                    [0,  0,  0,  0,  0,  0,  0,  0],
+                    [5, 10, 10, 10, 10, 10, 10,  5],
+                    [-5,  0,  0,  0,  0,  0,  0, -5],
+                    [-5,  0,  0,  0,  0,  0,  0, -5],
+                    [-5,  0,  0,  0,  0,  0,  0, -5],
+                    [-5,  0,  0,  0,  0,  0,  0, -5],
+                    [-5,  0,  0,  0,  0,  0,  0, -5],
+                    [0,  0,  0,  5,  5,  0,  0,  0]
+                ];
+                
+                const queenTable = [
+                    [-20,-10,-10, -5, -5,-10,-10,-20],
+                    [-10,  0,  0,  0,  0,  0,  0,-10],
+                    [-10,  0,  5,  5,  5,  5,  0,-10],
+                    [-5,  0,  5,  5,  5,  5,  0, -5],
+                    [0,  0,  5,  5,  5,  5,  0, -5],
+                    [-10,  5,  5,  5,  5,  5,  0,-10],
+                    [-10,  0,  5,  0,  0,  0,  0,-10],
+                    [-20,-10,-10, -5, -5,-10,-10,-20]
+                ];
+                
+                const kingTable = [
+                    [-30,-40,-40,-50,-50,-40,-40,-30],
+                    [-30,-40,-40,-50,-50,-40,-40,-30],
+                    [-30,-40,-40,-50,-50,-40,-40,-30],
+                    [-30,-40,-40,-50,-50,-40,-40,-30],
+                    [-20,-30,-30,-40,-40,-30,-30,-20],
+                    [-10,-20,-20,-20,-20,-20,-20,-10],
+                    [20, 20,  0,  0,  0,  0, 20, 20],
+                    [20, 30, 10,  0,  0, 10, 30, 20]
+                ];
+                
+                let table;
+                switch(piece.type) {
+                    case 'p': table = pawnTable; break;
+                    case 'n': table = knightTable; break;
+                    case 'b': table = bishopTable; break;
+                    case 'r': table = rookTable; break;
+                    case 'q': table = queenTable; break;
+                    case 'k': table = kingTable; break;
+                    default: return 0;
+                }
+                
+                // 검은색은 테이블을 뒤집어서 사용
+                const row = piece.color === 'white' ? piece.row : 7 - piece.row;
+                return table[row][piece.col];
+            }
+            
+            getMobilityValue(piece) {
+                // 이동 가능한 수가 많을수록 좋음
+                const moves = this.getBasicMoves(piece);
+                return moves.length * 2;
+            }
+            
+            evaluateKingSafety(color) {
+                const king = this.pieces.find(p => p.type === 'k' && p.color === color);
+                if (!king) return 0;
+                
+                let safety = 0;
+                
+                // 킹 주변의 아군 말 개수 (보호도)
+                const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+                for (const [dr, dc] of directions) {
+                    const newRow = king.row + dr;
+                    const newCol = king.col + dc;
+                    if (this.isValidSquare(newRow, newCol)) {
+                        const piece = this.board[newRow][newCol];
+                        if (piece && piece.color === color) {
+                            safety += 5;
+                        }
+                    }
+                }
+                
+                return safety;
+            }
+            
+            updateUI() {
+                const turnText = this.currentPlayer === 'white' ? '백' : '흑';
+                document.getElementById('turn').textContent = `차례: ${turnText}`;
+            }
+            
+            addMoveToHistory(move) {
+                const moveList = document.getElementById('moveList');
+                const moveItem = document.createElement('div');
+                moveItem.className = 'move-item';
+                
+                const pieceNames = {
+                    'p': '폰', 'r': '룩', 'n': '나이트',
+                    'b': '비숍', 'q': '퀸', 'k': '킹'
+                };
+                
+                const fromPos = String.fromCharCode(97 + move.from.col) + (8 - move.from.row);
+                const toPos = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
+                const color = move.color === 'white' ? '백' : '흑';
+                
+                let moveText = '';
+                
+                // 특수 이동 표시
+                if (move.specialMove === 'castling-k') {
+                    moveText = `${color} 킹사이드 캐슬링`;
+                } else if (move.specialMove === 'castling-q') {
+                    moveText = `${color} 퀸사이드 캐슬링`;
+                } else if (move.specialMove === 'enpassant') {
+                    moveText = `${color} ${pieceNames[move.piece]}: ${fromPos} → ${toPos} (앙파상)`;
+                } else {
+                    moveText = `${color} ${pieceNames[move.piece]}: ${fromPos} → ${toPos}`;
+                }
+                
+                moveItem.textContent = moveText;
+                moveList.appendChild(moveItem);
+                moveList.scrollTop = moveList.scrollHeight;
+            }
+            
+            addCapturedPiece(piece) {
+                const pieceSymbols = {
+                    'white': {
+                        'p': '♙', 'r': '♖', 'n': '♘',
+                        'b': '♗', 'q': '♕', 'k': '♔'
+                    },
+                    'black': {
+                        'p': '♟', 'r': '♜', 'n': '♞',
+                        'b': '♝', 'q': '♛', 'k': '♚'
+                    }
+                };
+                
+                const targetDiv = piece.color === 'white' ? 'capturedWhite' : 'capturedBlack';
+                const capturedList = document.getElementById(targetDiv);
+                
+                const pieceSpan = document.createElement('span');
+                pieceSpan.textContent = pieceSymbols[piece.color][piece.type];
+                pieceSpan.style.fontSize = '24px';
+                
+                capturedList.appendChild(pieceSpan);
+            }
+            
+            newGame() {
+                // 게임 초기화
+                location.reload();
+            }
+            
+            undoMove() {
+                if (this.moveHistory.length === 0) return;
+                
+                // 마지막 이동 취소
+                const lastMove = this.moveHistory.pop();
+                
+                // 말 복원
+                const piece = this.board[lastMove.to.row][lastMove.to.col];
+                this.board[lastMove.from.row][lastMove.from.col] = piece;
+                this.board[lastMove.to.row][lastMove.to.col] = lastMove.captured;
+                
+                piece.row = lastMove.from.row;
+                piece.col = lastMove.from.col;
+                piece.mesh.position.set(
+                    lastMove.from.col - 3.5,
+                    0,
+                    lastMove.from.row - 3.5
+                );
+                
+                // 잡혔던 말 복원
+                if (lastMove.captured) {
+                    this.pieces.push(lastMove.captured);
+                    lastMove.captured.mesh.visible = true;
+                    
+                    // UI에서 먹힌 기물 제거
+                    const targetDiv = lastMove.captured.color === 'white' ? 'capturedWhite' : 'capturedBlack';
+                    const capturedList = document.getElementById(targetDiv);
+                    if (capturedList.lastChild) {
+                        capturedList.removeChild(capturedList.lastChild);
+                    }
+                }
+                
+                // 이동 기록에서 제거
+                const moveList = document.getElementById('moveList');
+                if (moveList.lastChild) {
+                    moveList.removeChild(moveList.lastChild);
+                }
+                
+                // AI 턴도 취소
+                if (this.currentPlayer === 'white' && this.moveHistory.length > 0) {
+                    this.undoMove();
+                }
+                
+                this.currentPlayer = 'white';
+                this.gameOver = false;
+                this.updateUI();
+                document.getElementById('status').textContent = '체스 게임';
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // 게임 시작
+        window.game = new ChessGame();
+    </script>
+</body>
+</html>
+

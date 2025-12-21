@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris 게임</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">tetris<span>.game</span></div>
+      <div class="controls">
+        <button id="start-btn" class="action">게임 시작</button>
+        <button id="pause-btn" class="action" disabled>일시정지</button>
+        <button id="restart-btn" class="action">재시작</button>
+      </div>
+      <div class="status" id="status-text">게임 시작 버튼을 눌러주세요</div>
+    </header>
+
+    <main class="content">
+      <section class="board-panel">
+        <div class="game-container">
+          <canvas id="game-canvas" width="300" height="600"></canvas>
+          <div id="game-over-overlay" class="game-over hidden">
+            <div class="game-over-content">
+              <h2>Game Over</h2>
+              <p>최종 점수: <span id="final-score">0</span></p>
+              <button id="restart-game-btn" class="action">다시 시작</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="section">
+          <h2>점수</h2>
+          <div class="score-display">
+            <div class="score-value" id="score">0</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>난이도</h2>
+          <div class="difficulty-display">
+            <div class="difficulty-row">
+              <span>레벨</span>
+              <span class="value" id="level">1</span>
+            </div>
+            <div class="difficulty-row">
+              <span>난이도 단계</span>
+              <span class="value" id="run-count">1</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>시간 제한</h2>
+          <div class="timer-display">
+            <span class="timer-value" id="timer">01:30</span>
+            <span class="timer-label">남은 시간</span>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>다음 블록</h2>
+          <div class="next-block-container">
+            <canvas id="next-canvas" width="120" height="120"></canvas>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>조작법</h2>
+          <div class="controls-list">
+            <div class="control-item">
+              <span class="key">←/→</span>
+              <span class="desc">좌우 이동</span>
+            </div>
+            <div class="control-item">
+              <span class="key">↓</span>
+              <span class="desc">빠른 낙하</span>
+            </div>
+            <div class="control-item">
+              <span class="key">↑/Space</span>
+              <span class="desc">회전</span>
+            </div>
+            <div class="control-item">
+              <span class="key">P</span>
+              <span class="desc">일시정지</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>점수 시스템</h2>
+          <div class="score-info">
+            <div class="score-row">
+              <span>1줄 제거</span>
+              <span class="points">100점</span>
+            </div>
+            <div class="score-row">
+              <span>2줄 제거</span>
+              <span class="points">300점</span>
+            </div>
+            <div class="score-row">
+              <span>3줄 제거</span>
+              <span class="points">500점</span>
+            </div>
+            <div class="score-row">
+              <span>4줄 (테트리스)</span>
+              <span class="points">800점</span>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

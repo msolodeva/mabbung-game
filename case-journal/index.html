@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사건 일지 | 타임라인 추리</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="title-group">
+      <p class="eyebrow">내러티브 추리 미니게임</p>
+      <h1 id="case-title">사건 일지: 카페 노트북 실종</h1>
+      <p class="lede" id="case-lede">단서를 읽고 사건의 순서를 재구성해보세요. 각 사건을 순서에 맞게 배치한 뒤 추리를 검증할 수 있습니다.</p>
+    </div>
+    <div class="header-actions">
+      <div class="case-switch">
+        <label for="case-select">케이스 선택</label>
+        <select id="case-select" aria-label="케이스 선택">
+          <option value="cafe">케이스 014 · 카페 노트북 실종</option>
+          <option value="subway">케이스 022 · 지하철 백팩 분실</option>
+          <option value="camp">케이스 031 · 야간 캠프 장비 도난</option>
+          <option value="harbor">케이스 045 · 항구 컨테이너 침입</option>
+        </select>
+      </div>
+      <div class="meta" id="case-badges">
+        <span class="badge">플레이타임 5~10분</span>
+        <span class="badge">UI/텍스트: 한국어</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">사건 개요</p>
+          <h2 id="case-subtitle">도심 카페 노트북 실종</h2>
+        </div>
+        <span class="tag" id="case-tag">케이스 파일 014</span>
+      </div>
+      <p class="body-text" id="case-overview">
+        비 오는 오후, 도심 카페에서 손님 민지의 노트북이 사라졌습니다. 내부 CCTV와 영수증, 경비 호출 기록이 남아 있습니다.
+        당신의 목표는 단서를 바탕으로 사건의 타임라인을 올바르게 재구성하는 것입니다.
+      </p>
+
+      <div class="clue-grid" id="clue-grid" aria-label="단서 목록"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">타임라인 재구성</p>
+          <h2 id="timeline-title">사건들을 순서대로 배치하세요</h2>
+        </div>
+        <div class="controls">
+          <button class="ghost" id="reset-button" type="button">초기화</button>
+          <button class="primary" id="hint-button" type="button">힌트</button>
+          <button class="accent" id="check-button" type="button">추리 검증</button>
+        </div>
+      </div>
+
+      <p class="body-text" id="timeline-intro">사건 카드를 드래그해서 순서를 맞추세요. 카드는 무작위로 섞여 있으며 드래그로 재배치할 수 있습니다.</p>
+      <ol class="event-list" id="event-list" aria-label="사건 카드 드래그 목록"></ol>
+
+      <div class="result" id="result" role="status" aria-live="polite">
+        아직 검증하지 않았습니다.
+      </div>
+
+      <div class="report" id="report" aria-live="polite">
+        추리 결과 근거가 여기에 표시됩니다.
+      </div>
+
+      <details class="hint" id="hint-box">
+        <summary>힌트 펼치기</summary>
+        <ul>
+          <li>카페 결제(라떼 영수증)가 가장 이른 기록입니다.</li>
+          <li>우산을 든 남성은 배달원이 다녀간 직후 자리에서 일어납니다.</li>
+          <li>민지는 자리에서 일어난 뒤 다섯 분 이상 돌아오지 않았고, 그 사이 사건이 발생했습니다.</li>
+        </ul>
+      </details>
+
+      <div class="memo">
+        <label for="memo-field">추리 메모 <span id="memo-count">(0/400)</span></label>
+        <textarea id="memo-field" maxlength="400" placeholder="단서와 가설을 적어보세요. (브라우저에 자동 저장)"></textarea>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>⌁ 간단한 추리 퍼즐 프로토타입입니다. 여러 케이스를 추가해도 구조가 유지되도록 설계했습니다.</p>
+  </footer>
+
+  <script src="game.js"></script>
+</body>
+</html>
