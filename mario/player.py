@@ -2,6 +2,7 @@
 플레이어 관련 클래스 및 함수
 """
 
+from typing import Any
 import pygame
 from constants import *  # CAR_SPEED_MULT 포함
 from sprites import make_player_sprite
@@ -10,7 +11,7 @@ from sprites import make_player_sprite
 class Player:
     """플레이어 캐릭터를 관리하는 클래스"""
 
-    def __init__(self, player_id, color):
+    def __init__(self, player_id: int, color: tuple[int, int, int]) -> None:
         """
         플레이어 초기화
 
@@ -52,7 +53,7 @@ class Player:
         # 스프라이트
         self.sprite = make_player_sprite(self.rect.width, self.rect.height, self.color)
 
-    def reset(self):
+    def reset(self) -> None:
         """플레이어를 초기 상태로 리셋"""
         self.rect.x = PLAYER_START_X + (self.player_id - 1) * 50
         self.rect.y = PLAYER_START_Y
@@ -71,12 +72,12 @@ class Player:
         self.current_car = None
         self.sprite = make_player_sprite(self.rect.width, self.rect.height, self.color)
 
-    def update_invincibility(self):
+    def update_invincibility(self) -> None:
         """무적 시간 업데이트"""
         if self.invincible_timer > 0:
             self.invincible_timer -= 1
 
-    def make_big(self):
+    def make_big(self) -> None:
         """플레이어를 크게 만듭니다"""
         old_bottom = self.rect.bottom
         old_centerx = self.rect.centerx
@@ -88,7 +89,7 @@ class Player:
         self.invincible_timer = 60
         self.sprite = make_player_sprite(self.rect.width, self.rect.height, self.color)
 
-    def take_damage(self):
+    def take_damage(self) -> bool:
         """
         플레이어가 피해를 입습니다.
 
@@ -107,14 +108,14 @@ class Player:
 
         return self.health <= 0
 
-    def heal(self):
+    def heal(self) -> bool:
         """체력을 1 회복합니다 (최대 3까지)"""
         if self.health < MAX_HEALTH:
             self.health += 1
             return True
         return False
 
-    def make_small(self):
+    def make_small(self) -> None:
         """플레이어를 작게 만듭니다"""
         old_center = self.rect.center
         self.rect.width = PLAYER_SMALL_WIDTH
@@ -125,7 +126,7 @@ class Player:
         self.invincible_timer = 60
         self.sprite = make_player_sprite(self.rect.width, self.rect.height, self.color)
 
-    def mount_dino(self, dino):
+    def mount_dino(self, dino: dict[str, Any]) -> None:
         """공룡에 탑승합니다"""
         if self.on_car:
             self.dismount_car()
@@ -136,7 +137,7 @@ class Player:
         self.rect.bottom = dino["rect"].top + 6
         self.dino_fire_cooldown = 0
 
-    def dismount_dino(self, kick_speed=3):
+    def dismount_dino(self, kick_speed: float = 3.0) -> None:
         """공룡에서 내립니다"""
         if not self.on_dino or self.current_dino is None:
             return
@@ -150,7 +151,7 @@ class Player:
         self.dino_fire_cooldown = 0
         d["rect"].bottom = min(d["rect"].bottom, GROUND_TOP_Y)
 
-    def mount_car(self, car):
+    def mount_car(self, car: dict[str, Any]) -> None:
         """자동차에 탑승합니다"""
         if self.on_dino:
             self.dismount_dino()
@@ -160,7 +161,7 @@ class Player:
         self.velocity_y = 0
         self.rect.bottom = car["rect"].top + 6
 
-    def dismount_car(self):
+    def dismount_car(self) -> None:
         """자동차에서 내립니다"""
         if not self.on_car or self.current_car is None:
             return
@@ -172,7 +173,9 @@ class Player:
         self.velocity_y = JUMP_POWER * 0.5  # 내릴 때 살짝 점프
         car["rect"].bottom = min(car["rect"].bottom, GROUND_TOP_Y)
 
-    def apply_horizontal_movement(self, move_direction, platforms):
+    def apply_horizontal_movement(
+        self, move_direction: int, platforms: list[pygame.Rect]
+    ) -> None:
         """
         플레이어의 가로 이동을 처리합니다.
 
@@ -199,7 +202,9 @@ class Player:
                 elif effective_move < 0:
                     self.rect.left = p.right
 
-    def apply_vertical_movement(self, platforms, on_ground, jump_down):
+    def apply_vertical_movement(
+        self, platforms: list[pygame.Rect], on_ground: bool, jump_down: bool
+    ) -> bool:
         """
         플레이어의 수직 이동을 처리합니다.
         """
@@ -269,7 +274,7 @@ class Player:
 
         return new_on_ground
 
-    def handle_jump(self, jump_pressed, on_ground):
+    def handle_jump(self, jump_pressed: bool, on_ground: bool) -> None:
         """
         점프 입력을 처리합니다.
 
@@ -298,7 +303,9 @@ class Player:
             self.jump_buffer_timer = 0
             self.coyote_timer = 0
 
-    def handle_swimming(self, keys, jump_pressed):
+    def handle_swimming(
+        self, keys: pygame.key.ScancodeWrapper, jump_pressed: bool
+    ) -> None:
         """
         물속에서의 움직임을 처리합니다.
 
@@ -331,7 +338,7 @@ class Player:
         if self.velocity_y < -SWIM_UP_MAX:
             self.velocity_y = -SWIM_UP_MAX
 
-    def draw(self, screen, camera_x):
+    def draw(self, screen: pygame.Surface, camera_x: float) -> None:
         """
         플레이어를 화면에 그립니다.
 

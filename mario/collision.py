@@ -2,6 +2,8 @@
 충돌 처리 담당 모듈
 """
 
+from typing import Callable, Any, Optional
+import pygame
 from constants import *
 
 
@@ -9,7 +11,11 @@ class CollisionHandler:
     """게임 내 충돌을 처리하는 클래스"""
 
     @staticmethod
-    def check_enemy_collision(player, enemies, on_reset_game):
+    def check_enemy_collision(
+        player: "Player",
+        enemies: list[dict[str, Any]],
+        on_reset_game: Callable[[], None],
+    ) -> int:
         """
         플레이어와 적의 충돌을 확인합니다.
 
@@ -60,7 +66,11 @@ class CollisionHandler:
         return score
 
     @staticmethod
-    def check_water_enemy_collision(player, water_enemies, on_reset_game):
+    def check_water_enemy_collision(
+        player: "Player",
+        water_enemies: list[dict[str, Any]],
+        on_reset_game: Callable[[], None],
+    ) -> int:
         """
         플레이어와 물 속 적의 충돌을 확인합니다.
 
@@ -104,7 +114,11 @@ class CollisionHandler:
         return score
 
     @staticmethod
-    def check_jelly_collision(player, jellies, on_reset_game):
+    def check_jelly_collision(
+        player: "Player",
+        jellies: list[dict[str, Any]],
+        on_reset_game: Callable[[], None],
+    ) -> None:
         """
         플레이어와 해파리의 충돌을 확인합니다.
 
@@ -125,7 +139,7 @@ class CollisionHandler:
                     break
 
     @staticmethod
-    def check_coin_collision(player, coins):
+    def check_coin_collision(player: "Player", coins: list[pygame.Rect]) -> int:
         """
         플레이어와 동전의 충돌을 확인합니다.
 
@@ -144,7 +158,7 @@ class CollisionHandler:
         return score
 
     @staticmethod
-    def check_spring_collision(player, springs):
+    def check_spring_collision(player: "Player", springs: list[pygame.Rect]) -> None:
         """
         플레이어와 스프링의 충돌을 확인합니다.
 
@@ -159,7 +173,9 @@ class CollisionHandler:
                 player.jump_hold_timer = JUMP_HOLD_TIME_MAX
 
     @staticmethod
-    def check_mushroom_collision(player, mushrooms):
+    def check_mushroom_collision(
+        player: "Player", mushrooms: list[dict[str, Any]]
+    ) -> None:
         """
         플레이어와 버섯의 충돌을 확인합니다.
 
@@ -179,7 +195,9 @@ class CollisionHandler:
                     player.make_big()
 
     @staticmethod
-    def check_spike_collision(player, spikes, on_reset_game):
+    def check_spike_collision(
+        player: "Player", spikes: list[pygame.Rect], on_reset_game: Callable[[], None]
+    ) -> None:
         """
         플레이어와 가시의 충돌을 확인합니다.
 
@@ -197,7 +215,9 @@ class CollisionHandler:
                     break
 
     @staticmethod
-    def check_dino_collision(player, dinos, on_ground):
+    def check_dino_collision(
+        player: "Player", dinos: list[dict[str, Any]], on_ground: bool
+    ) -> None:
         """
         플레이어와 공룡의 충돌을 확인합니다 (탑승 처리).
 
@@ -220,7 +240,7 @@ class CollisionHandler:
                 break
 
     @staticmethod
-    def is_in_water(player, seas):
+    def is_in_water(player: "Player", seas: list[pygame.Rect]) -> Optional[pygame.Rect]:
         """
         플레이어가 물속에 있는지 확인합니다.
 
@@ -237,7 +257,9 @@ class CollisionHandler:
         return None
 
     @staticmethod
-    def check_car_collision(player, cars, on_ground):
+    def check_car_collision(
+        player: "Player", cars: list[dict[str, Any]], on_ground: bool
+    ) -> None:
         """
         플레이어와 자동차의 충돌을 확인합니다 (탑승 처리).
 
@@ -260,7 +282,9 @@ class CollisionHandler:
                 break
 
     @staticmethod
-    def check_car_ram_enemies(player, enemies, cars):
+    def check_car_ram_enemies(
+        player: "Player", enemies: list[dict[str, Any]], cars: list[dict[str, Any]]
+    ) -> int:
         """
         자동차로 적을 들이받아 처치합니다.
 

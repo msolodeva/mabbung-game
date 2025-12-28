@@ -5,7 +5,7 @@
 import pygame
 
 
-def make_player_sprite(w, h, color):
+def make_player_sprite(w: int, h: int, color: tuple[int, int, int]) -> pygame.Surface:
     """
     플레이어 스프라이트를 생성합니다.
 
@@ -46,7 +46,7 @@ def make_player_sprite(w, h, color):
     return s
 
 
-def make_enemy_sprite(w, h):
+def make_enemy_sprite(w: int, h: int) -> pygame.Surface:
     """
     적(버섯 친구) 스프라이트를 생성합니다.
 
@@ -73,7 +73,7 @@ def make_enemy_sprite(w, h):
     return s
 
 
-def make_mushroom_sprite(w, h):
+def make_mushroom_sprite(w: int, h: int) -> pygame.Surface:
     """
     버섯 아이템 스프라이트를 생성합니다.
 
@@ -93,7 +93,7 @@ def make_mushroom_sprite(w, h):
     return s
 
 
-def make_fish_sprite(w, h):
+def make_fish_sprite(w: int, h: int) -> pygame.Surface:
     """
     물고기 스프라이트를 생성합니다.
 
@@ -114,7 +114,7 @@ def make_fish_sprite(w, h):
     return s
 
 
-def make_turtle_sprite(w, h):
+def make_turtle_sprite(w: int, h: int) -> pygame.Surface:
     """
     거북이 스프라이트를 생성합니다.
 
@@ -134,7 +134,7 @@ def make_turtle_sprite(w, h):
     return s
 
 
-def make_dino_sprite(w, h):
+def make_dino_sprite(w: int, h: int) -> pygame.Surface:
     """
     공룡(요시 느낌) 스프라이트를 생성합니다.
 
@@ -160,7 +160,7 @@ def make_dino_sprite(w, h):
     return s
 
 
-def make_fireball_sprite(r):
+def make_fireball_sprite(r: int) -> pygame.Surface:
     """
     불똥 스프라이트를 생성합니다.
 
@@ -176,7 +176,7 @@ def make_fireball_sprite(r):
     return s
 
 
-def make_car_sprite(w, h):
+def make_car_sprite(w: int, h: int) -> pygame.Surface:
     """
     자동차 스프라이트를 생성합니다.
 
