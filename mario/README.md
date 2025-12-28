@@ -16,7 +16,7 @@ mario/
 ├── level.py             # 레벨 생성 및 관리
 ├── renderer.py          # 렌더링
 ├── collision.py         # 충돌 처리
-├── requirements.txt     # 의존성 패키지
+├── pyproject.toml       # uv 프로젝트 설정
 └── game_original.py     # 원본 코드 (백업)
 ```
 
@@ -62,12 +62,11 @@ mario/
 
 ## 게임 실행
 
-```bash
-# 의존성 설치
-pip install -r requirements.txt
+이 프로젝트는 [uv](https://docs.astral.sh/uv/)를 사용하여 의존성을 관리합니다.
 
-# 게임 실행
-python game.py
+```bash
+# 의존성 설치 및 게임 실행
+uv run game.py
 ```
 
 ## 조작법

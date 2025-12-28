@@ -1,6 +1,7 @@
 """
 게임 상수 및 설정값들을 모아놓은 모듈
 """
+
 import pygame
 
 # 화면 설정
@@ -57,6 +58,12 @@ FIREBALL_SPEED = 12  # 불똥 속도
 FIREBALL_LIFETIME = 90  # 불똥이 사라지기까지 프레임 수
 FIRE_KEY = pygame.K_LSHIFT  # 불똥을 쏘는 키
 
+# 자동차 관련 설정
+CAR_SPEED_MULT = 2.0  # 자동차를 타면 2배 빨라짐
+CAR_JUMP_MULT = 1.2  # 자동차 점프력 (일반 점프보다 강력하게 상향)
+CAR_RAM_DAMAGE = True  # 적을 들이받아 처치 가능
+CAR_INVINCIBLE_ON_RAM = 30  # 들이받기 후 무적 프레임
+
 # 레벨 생성 설정
 CHUNK_WIDTH = 800  # 한 구간의 가로 길이
 INITIAL_GENERATED_X = 2600  # 초기 생성된 맵의 끝 X 좌표
@@ -70,4 +77,3 @@ SWIM_DOWN_MAX = 8
 # 체력 시스템
 MAX_HEALTH = 3
 INITIAL_HEALTH = 3
-
