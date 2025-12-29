@@ -274,14 +274,11 @@ class EntityManager:
                 # 탑승 중인 공룡의 위치 업데이트는 Player.apply_vertical_movement에서 수행됨
                 continue
 
-            # 자유 이동
+            # 자유 이동 (자동차와 동일한 왔다 갔다 로직)
             d["rect"].x += d["vx"]
             if d["rect"].left < d["left"] or d["rect"].right > d["right"]:
                 d["vx"] *= -1
                 d["rect"].x += d["vx"]
-
-            d["breathe"] += 0.05
-            d["rect"].y += int(math.sin(d["breathe"]) * 0.4)
 
             # 플랫폼 위에 고정
             on_platform = False

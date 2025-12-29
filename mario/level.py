@@ -145,30 +145,6 @@ class LevelGenerator:
                 }
                 self.entity_manager.mushrooms.append(mushroom)
 
-        # 공룡 생성
-        if random.random() < 0.35:
-            base = random.choice(chunk_plats)
-            # 공룡 너비는 60. 안전하게 배치하기 위해 최소 100 이상 너비 필요
-            if base.width >= 100:
-                # 좌우 여유 공간 확보 (최소 20px)
-                dx = random.randint(
-                    base.left + 10, max(base.left + 11, base.right - 70)
-                )
-                dy = base.top - 38
-                roam_left = base.left + 5
-                roam_right = base.right - 5
-                dino = {
-                    "rect": pygame.Rect(dx, dy, 60, 36),
-                    "alive": True,
-                    "rider": None,
-                    "fire_cooldown": 0,
-                    "vx": random.choice([-1, 1]) * random.randint(1, 2),
-                    "left": roam_left,
-                    "right": roam_right,
-                    "breathe": random.random() * math.tau,
-                }
-                self.entity_manager.dinos.append(dino)
-
         # 자동차 생성
         if random.random() < 0.30:  # 30% 확률
             base = random.choice(chunk_plats)

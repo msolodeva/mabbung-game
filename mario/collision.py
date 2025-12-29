@@ -50,18 +50,11 @@ class CollisionHandler:
                     score += 1
                     player.velocity_y = JUMP_POWER * 0.6
                 else:
-                    # 옆이나 아래에서 닿았을 때
-                    if player.on_dino and player.current_dino:
-                        player.dismount_dino()
-                        player.invincible_timer = 30
-                        player.velocity_y = JUMP_POWER * 0.5
-                        player.rect.bottom = e["rect"].top - 2
-                    else:
-                        # 체력 감소
-                        game_over = player.take_damage()
-                        if game_over:
-                            on_reset_game()
-                            break
+                    # 옆이나 아래에서 닿았을 때 - 체력 감소
+                    game_over = player.take_damage()
+                    if game_over:
+                        on_reset_game()
+                        break
 
         return score
 
@@ -213,31 +206,6 @@ class CollisionHandler:
                 if game_over:
                     on_reset_game()
                     break
-
-    @staticmethod
-    def check_dino_collision(
-        player: "Player", dinos: list[dict[str, Any]], on_ground: bool
-    ) -> None:
-        """
-        플레이어와 공룡의 충돌을 확인합니다 (탑승 처리).
-
-        Args:
-            player: 플레이어 객체
-            dinos: 공룡 리스트
-            on_ground: 플레이어가 바닥에 있는지 여부
-        """
-        for d in dinos:
-            if not d["alive"]:
-                continue
-            is_landing = player.velocity_y >= 0
-            if (
-                player.rect.colliderect(d["rect"])
-                and (on_ground or is_landing)
-                and not player.on_dino
-                and d["rider"] is None
-            ):
-                player.mount_dino(d)
-                break
 
     @staticmethod
     def is_in_water(player: "Player", seas: list[pygame.Rect]) -> Optional[pygame.Rect]:

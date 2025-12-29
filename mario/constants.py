@@ -50,13 +50,6 @@ PLAYER_BIG_HEIGHT = 56
 # 적 관련 설정
 STOMP_TOLERANCE = 16  # 적 머리를 밟을 때 허용하는 여유 높이
 
-# 공룡 관련 설정
-DINO_SPEED_MULT = 1.2  # 공룡을 타면 조금 더 빨라짐
-DINO_JUMP_BOOST = 0.1  # 공룡을 타면 점프가 더 부드럽게
-DINO_FIRE_DELAY = 20  # 불똥 재장전 시간
-FIREBALL_SPEED = 12  # 불똥 속도
-FIREBALL_LIFETIME = 90  # 불똥이 사라지기까지 프레임 수
-FIRE_KEY = pygame.K_LSHIFT  # 불똥을 쏘는 키
 
 # 자동차 관련 설정
 CAR_SPEED_MULT = 2.0  # 자동차를 타면 2배 빨라짐

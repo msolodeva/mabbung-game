@@ -128,16 +128,6 @@ class Mushroom:
 
 
 @dataclass
-class Dino:
-    """공룡 엔티티"""
-
-    rect: pygame.Rect
-    vel_x: float = 0.0
-    vel_y: float = 0.0
-    mounted: bool = False
-
-
-@dataclass
 class Car:
     """자동차 엔티티"""
 

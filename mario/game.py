@@ -70,32 +70,58 @@ class Game:
         입력 처리
 
         Returns:
-            list: 각 플레이어의 입력 튜플 리스트 [(move_dir, jump_down, jump_pressed, fire_pressed), ...]
+            list: 각 플레이어의 입력 튜플 리스트 [(move_dir, jump_down, jump_pressed, fire_pressed, dismount_pressed), ...]
         """
         keys = pygame.key.get_pressed()
         inputs = []
 
-        # P1 Controls (Arrows, Space/Up, Shift)
+        # P1 Controls (Arrows, Space/Up, Shift, Down for dismount)
         p1_jump_down = keys[pygame.K_SPACE] or keys[pygame.K_UP]
         p1_move = (1 if keys[pygame.K_RIGHT] else 0) - (1 if keys[pygame.K_LEFT] else 0)
         p1_jump_pressed = p1_jump_down and not self.players[0].jump_was_down
         p1_fire_down = keys[pygame.K_RSHIFT] or keys[pygame.K_LSHIFT]
         p1_fire_pressed = p1_fire_down and not self.players[0].fire_was_down
+        p1_dismount_down = keys[pygame.K_DOWN]
+        p1_dismount_pressed = p1_dismount_down and not getattr(
+            self.players[0], "dismount_was_down", False
+        )
+        self.players[0].dismount_was_down = p1_dismount_down
 
         self.players[0].jump_was_down = p1_jump_down
         self.players[0].fire_was_down = p1_fire_down
-        inputs.append((p1_move, p1_jump_down, p1_jump_pressed, p1_fire_pressed))
+        inputs.append(
+            (
+                p1_move,
+                p1_jump_down,
+                p1_jump_pressed,
+                p1_fire_pressed,
+                p1_dismount_pressed,
+            )
+        )
 
-        # P2 Controls (WASD, W, G)
+        # P2 Controls (WASD, W, G, E for dismount)
         p2_jump_down = keys[pygame.K_w]
         p2_move = (1 if keys[pygame.K_d] else 0) - (1 if keys[pygame.K_a] else 0)
         p2_jump_pressed = p2_jump_down and not self.players[1].jump_was_down
         p2_fire_down = keys[pygame.K_g]
         p2_fire_pressed = p2_fire_down and not self.players[1].fire_was_down
+        p2_dismount_down = keys[pygame.K_e]
+        p2_dismount_pressed = p2_dismount_down and not getattr(
+            self.players[1], "dismount_was_down", False
+        )
+        self.players[1].dismount_was_down = p2_dismount_down
 
         self.players[1].jump_was_down = p2_jump_down
         self.players[1].fire_was_down = p2_fire_down
-        inputs.append((p2_move, p2_jump_down, p2_jump_pressed, p2_fire_pressed))
+        inputs.append(
+            (
+                p2_move,
+                p2_jump_down,
+                p2_jump_pressed,
+                p2_fire_pressed,
+                p2_dismount_pressed,
+            )
+        )
 
         return inputs, keys
 
@@ -104,7 +130,13 @@ class Game:
         all_platforms = self.entity_manager.get_all_platforms()
 
         for i, player in enumerate(self.players):
-            move_dir, jump_down, jump_pressed, fire_pressed = inputs[i]
+            move_dir, jump_down, jump_pressed, fire_pressed, dismount_pressed = inputs[
+                i
+            ]
+
+            if dismount_pressed:
+                if player.on_car:
+                    player.dismount_car()
 
             # 점프 버퍼 감소
             if player.jump_buffer_timer > 0:
@@ -145,11 +177,6 @@ class Game:
             # 수직 플랫폼 위에서 같이 이동
             self._handle_vertical_platform_movement(player)
 
-            # 공룡과 충돌 (탑승) - 여기서 처리
-            self.collision_handler.check_dino_collision(
-                player, self.entity_manager.dinos, on_ground
-            )
-
             # 자동차와 충돌 (탑승)
             self.collision_handler.check_car_collision(
                 player, self.entity_manager.cars, on_ground
@@ -186,29 +213,7 @@ class Game:
     def handle_fireball_shooting(self, inputs):
         """불똥 발사 처리"""
         for i, player in enumerate(self.players):
-            _, _, _, fire_pressed = inputs[i]
-
-            if player.on_dino and player.current_dino and fire_pressed:
-                if player.dino_fire_cooldown == 0:
-                    fb_dir = player.facing if player.facing != 0 else 1
-                    fb_rect = pygame.Rect(
-                        player.rect.centerx + fb_dir * 18,
-                        player.rect.centery - 6,
-                        12,
-                        12,
-                    )
-                    self.entity_manager.fireballs.append(
-                        {
-                            "rect": fb_rect,
-                            "vx": fb_dir * FIREBALL_SPEED,
-                            "alive": True,
-                            "ttl": FIREBALL_LIFETIME,
-                        }
-                    )
-                    player.dino_fire_cooldown = DINO_FIRE_DELAY
-
-            if player.dino_fire_cooldown > 0:
-                player.dino_fire_cooldown -= 1
+            _, _, _, fire_pressed, _ = inputs[i]
 
     def update_entities(self):
         """모든 엔티티 업데이트"""
@@ -219,7 +224,6 @@ class Game:
         self.entity_manager.update_turtle_enemies()
         self.entity_manager.update_jellies()
         self.entity_manager.update_mushrooms()
-        self.entity_manager.update_dinos()
         self.entity_manager.update_cars()
         self.score = self.entity_manager.update_fireballs(self.score)
 
@@ -308,7 +312,6 @@ class Game:
                     p.rect.x = other_p.rect.x
                     p.rect.bottom = other_p.rect.top - 50
                     p.velocity_y = 0
-                    p.dismount_dino()
                     p.dismount_car()
                 break
 

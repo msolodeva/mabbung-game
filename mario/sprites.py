@@ -134,32 +134,6 @@ def make_turtle_sprite(w: int, h: int) -> pygame.Surface:
     return s
 
 
-def make_dino_sprite(w: int, h: int) -> pygame.Surface:
-    """
-    공룡(요시 느낌) 스프라이트를 생성합니다.
-
-    Args:
-        w: 가로 크기
-        h: 세로 크기
-
-    Returns:
-        pygame.Surface: 생성된 공룡 스프라이트
-    """
-    s = pygame.Surface((w, h), pygame.SRCALPHA)
-    pygame.draw.ellipse(s, (70, 200, 120), (4, h // 3, w - 8, h // 2 + 4))  # 몸통
-    pygame.draw.circle(s, (70, 200, 120), (w - 10, h // 2), h // 3)  # 머리
-    pygame.draw.circle(s, (0, 0, 0), (w - 6, h // 2 - 4), 4)  # 눈
-    pygame.draw.circle(s, (255, 255, 255), (w - 7, h // 2 - 5), 2)  # 눈 하이라이트
-    pygame.draw.rect(s, (90, 60, 30), (10, h - 6, 12, 6))  # 왼쪽 발
-    pygame.draw.rect(s, (90, 60, 30), (24, h - 6, 12, 6))  # 가운데 발
-    pygame.draw.rect(s, (90, 60, 30), (38, h - 6, 12, 6))  # 오른쪽 발
-    pygame.draw.polygon(
-        s, (60, 180, 110), [(6, h // 2 + 4), (0, h // 2 - 2), (10, h // 2 - 6)]
-    )  # 꼬리
-    pygame.draw.circle(s, (255, 100, 100), (w - 2, h // 2 + 4), 6)  # 볼 빨간 점
-    return s
-
-
 def make_fireball_sprite(r: int) -> pygame.Surface:
     """
     불똥 스프라이트를 생성합니다.

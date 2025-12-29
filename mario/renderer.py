@@ -26,7 +26,6 @@ class Renderer:
         self.enemy_img = make_enemy_sprite(28, 28)
         self.fish_img = make_fish_sprite(28, 18)
         self.turtle_img = make_turtle_sprite(30, 20)
-        self.dino_img = make_dino_sprite(64, 40)
         self.fireball_img = make_fireball_sprite(8)
         self.mushroom_img = make_mushroom_sprite(24, 24)
         self.car_img = make_car_sprite(50, 30)
@@ -277,11 +276,6 @@ class Renderer:
                 self.screen.blit(
                     self.mushroom_img, (m["rect"].x - camera_x, m["rect"].y)
                 )
-
-        # 공룡
-        for d in entity_manager.dinos:
-            if d["alive"]:
-                self.screen.blit(self.dino_img, (d["rect"].x - camera_x, d["rect"].y))
 
         # 불똥
         for fb in entity_manager.fireballs:

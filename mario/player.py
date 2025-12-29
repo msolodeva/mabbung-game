@@ -40,12 +40,6 @@ class Player:
         self.jump_buffer_timer = 0
         self.jump_was_down = False
 
-        # 공룡 탑승 관련
-        self.on_dino = False
-        self.current_dino = None
-        self.dino_fire_cooldown = 0
-        self.fire_was_down = False
-
         # 자동차 탑승 관련
         self.on_car = False
         self.current_car = None
@@ -126,35 +120,8 @@ class Player:
         self.invincible_timer = 60
         self.sprite = make_player_sprite(self.rect.width, self.rect.height, self.color)
 
-    def mount_dino(self, dino: dict[str, Any]) -> None:
-        """공룡에 탑승합니다"""
-        if self.on_car:
-            self.dismount_car()
-        self.on_dino = True
-        self.current_dino = dino
-        dino["rider"] = self.rect
-        self.velocity_y = 0
-        self.rect.bottom = dino["rect"].top + 6
-        self.dino_fire_cooldown = 0
-
-    def dismount_dino(self, kick_speed: float = 3.0) -> None:
-        """공룡에서 내립니다"""
-        if not self.on_dino or self.current_dino is None:
-            return
-
-        d = self.current_dino
-        d["rider"] = None
-        d["fire_cooldown"] = 0
-        d["vx"] = kick_speed * (self.facing if self.facing != 0 else 1)
-        self.on_dino = False
-        self.current_dino = None
-        self.dino_fire_cooldown = 0
-        d["rect"].bottom = min(d["rect"].bottom, GROUND_TOP_Y)
-
     def mount_car(self, car: dict[str, Any]) -> None:
         """자동차에 탑승합니다"""
-        if self.on_dino:
-            self.dismount_dino()
         self.on_car = True
         self.current_car = car
         car["rider"] = self.rect
@@ -187,9 +154,7 @@ class Player:
             self.facing = move_direction
 
         effective_move = move_direction * self.speed
-        if self.on_dino and self.current_dino:
-            effective_move *= DINO_SPEED_MULT
-        elif self.on_car and self.current_car:
+        if self.on_car and self.current_car:
             effective_move *= CAR_SPEED_MULT
 
         self.rect.x += effective_move
@@ -243,23 +208,6 @@ class Player:
                         self.rect.bottom = car["rect"].top + 6
                         self.velocity_y = 0
 
-        elif self.on_dino and self.current_dino:
-            # 공룡 탑승 중
-            dino = self.current_dino
-            dino["rect"].centerx = self.rect.centerx
-            dino["rect"].bottom = self.rect.bottom + 6
-
-            for p in platforms:
-                if dino["rect"].colliderect(p):
-                    if self.velocity_y > 0:
-                        dino["rect"].bottom = p.top
-                        self.rect.bottom = dino["rect"].top + 6
-                        self.velocity_y = 0
-                        new_on_ground = True
-                    elif self.velocity_y < 0:
-                        dino["rect"].top = p.bottom
-                        self.rect.bottom = dino["rect"].top + 6
-                        self.velocity_y = 0
         else:
             # 일반 상태
             for p in platforms:
