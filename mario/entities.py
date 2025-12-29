@@ -30,6 +30,7 @@ class EntityManager:
         self.seas = []
         self.cars = []
         self.corals = []
+        self.flags = []
 
     def reset_to_initial_state(self):
         """초기 상태로 리셋"""
@@ -126,6 +127,8 @@ class EntityManager:
                 "right": 600,
             }
         ]
+
+        self.flags = []
 
     def get_all_platforms(self):
         """모든 플랫폼을 하나의 리스트로 반환"""
@@ -435,6 +438,7 @@ class EntityManager:
         self.cars = [
             car for car in self.cars if car["rect"].right > despawn_x and car["alive"]
         ]
+        self.flags = [f for f in self.flags if f.right > despawn_x]
 
     def _is_in_water(self, rect):
         """주어진 rect가 물속에 있는지 확인"""

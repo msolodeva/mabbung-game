@@ -287,6 +287,7 @@ class LevelGenerator:
     def should_generate_chunk(self, player_x):
         """
         새 구간을 생성해야 하는지 확인합니다.
+        월드 길이 제한을 넘지 않도록 합니다.
 
         Args:
             player_x: 플레이어의 X 좌표
@@ -294,9 +295,33 @@ class LevelGenerator:
         Returns:
             bool: 새 구간 생성 필요 여부
         """
+        if self.generated_until_x >= WORLD_LENGTH:
+            return False
         return player_x + SCREEN_WIDTH > self.generated_until_x - 200
 
     def generate_next_chunk(self):
         """다음 구간을 생성합니다"""
-        self.spawn_chunk(self.generated_until_x, CHUNK_WIDTH)
-        self.generated_until_x += CHUNK_WIDTH
+        # 마지막 구간 체크
+        if self.generated_until_x + CHUNK_WIDTH >= WORLD_LENGTH:
+            self.spawn_finish_line(self.generated_until_x)
+            self.generated_until_x += CHUNK_WIDTH
+        else:
+            self.spawn_chunk(self.generated_until_x, CHUNK_WIDTH)
+            self.generated_until_x += CHUNK_WIDTH
+
+    def spawn_finish_line(self, start_x):
+        """
+        마지막 구간에 깃발(Finish Line)을 생성합니다.
+        """
+        # 평평한 바닥 생성
+        ground = pygame.Rect(start_x, GROUND_TOP_Y, 1000, GROUND_THICKNESS)
+        self.entity_manager.platforms.append(ground)
+
+        # 깃발 생성 (끝부분 쯤에)
+        flag_x = start_x + 600
+        flag_rect = pygame.Rect(flag_x, GROUND_TOP_Y - 300, 10, 300)
+        self.entity_manager.flags.append(flag_rect)
+
+        # 성(Castle) 장식 (선택)
+        # castle_rect = pygame.Rect(flag_x + 100, GROUND_TOP_Y - 160, 120, 160)
+        # self.entity_manager.platforms.append(castle_rect)

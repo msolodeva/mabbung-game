@@ -48,7 +48,8 @@ class Game:
         self.coins = 0
         self.time_left = 400
         self.last_time_update = pygame.time.get_ticks()
-        self.on_ground = False  # 이건 각 플레이어별로 처리해야 함, 제거 고려
+        self.on_ground = False
+        self.current_world = 1
 
         # 초기 레벨 설정
         self.entity_manager.reset_to_initial_state()
@@ -64,6 +65,75 @@ class Game:
         self.coins = 0
         self.time_left = 400
         self.last_time_update = pygame.time.get_ticks()
+
+    def complete_level(self):
+        """레벨 클리어 처리"""
+        print(f"World {self.current_world} Cleared!")
+        self.next_level()
+
+    def next_level(self):
+        """다음 월드로 이동"""
+        self.current_world += 1
+
+        # 플레이어 상태 유지하되 위치는 리셋
+        for p in self.players:
+            p.rect.x = PLAYER_START_X + (p.player_id - 1) * 30
+            p.rect.y = PLAYER_START_Y
+            p.velocity_x = 0
+            p.velocity_y = 0
+            p.on_car = False
+            p.current_car = None
+            p.invincible_timer = 120  # 시작 시 잠시 무적
+
+        # 엔티티 및 레벨 리셋
+        self.entity_manager.reset_to_initial_state()
+        self.level_generator.reset()
+
+        # 월드 길이를 늘리거나 난이도를 높이는 등의 추가 설정 가능
+        global WORLD_LENGTH
+        # WORLD_LENGTH += 2000 # 예시: 월드가 갈수록 길어짐
+
+        self.camera_x = 0
+        self.time_left = 400
+        self.last_time_update = pygame.time.get_ticks()
+
+    def handle_collisions(self):
+        """모든 충돌 처리 (모든 플레이어에 대해 수행)"""
+        for player in self.players:
+            # 깃발(Finish Line) 충돌
+            if self.collision_handler.check_flag_collision(
+                player, self.entity_manager.flags
+            ):
+                self.complete_level()
+                return  # 레벨 끝났으므로 더 이상 충돌 체크 안 함
+
+            # 적과 충돌
+            self.score += self.collision_handler.check_enemy_collision(
+                player, self.entity_manager.enemies, self.reset_game
+            )
+
+    # ... (중략) ...
+
+    # 자동차와 충돌 (탑승) - update_players에서 처리됨
+    # self.collision_handler.check_car_collision(...)
+
+    def run(self):
+        # ... (중략) ...
+
+        # 렌더링
+        self.renderer.render_all(
+            self.entity_manager,
+            self.players,
+            self.camera_x,
+            self.score,
+            self.coins,
+            self.time_left,
+            self.current_world,
+        )
+
+        # 화면 업데이트
+        pygame.display.flip()
+        self.clock.tick(60)
 
     def handle_input(self):
         """
@@ -230,6 +300,13 @@ class Game:
     def handle_collisions(self):
         """모든 충돌 처리 (모든 플레이어에 대해 수행)"""
         for player in self.players:
+            # 깃발(Finish Line) 충돌
+            if self.collision_handler.check_flag_collision(
+                player, self.entity_manager.flags
+            ):
+                self.complete_level()
+                return
+
             # 적과 충돌
             self.score += self.collision_handler.check_enemy_collision(
                 player, self.entity_manager.enemies, self.reset_game
@@ -271,10 +348,6 @@ class Game:
             self.collision_handler.check_spike_collision(
                 player, self.entity_manager.spikes, self.reset_game
             )
-
-            # 공룡 충돌처리는 update_players에서 ground check 후 수행함
-
-            # 자동차 들이받기는 check_enemy_collision 내부에서 우선적으로 처리됨
 
     def update_camera(self):
         """카메라 업데이트 (플레이어들의 중간 지점)"""
@@ -372,6 +445,7 @@ class Game:
                 self.score,
                 self.coins,
                 self.time_left,
+                self.current_world,
             )
 
             # 화면 업데이트

@@ -32,15 +32,15 @@ class CollisionHandler:
             if not e["alive"]:
                 continue
 
-            if player.rect.colliderect(e["rect"]):
-                # 자동차로 들이받기 우선 확인
-                if player.on_car and player.current_car:
-                    e["alive"] = False
-                    score += 1
-                    player.invincible_timer = max(player.invincible_timer, 20)
-                    continue
+            # 플레이어 본체 또는 탑승 중인 자동차와 충돌 확인
+            player_hit = player.rect.colliderect(e["rect"])
+            car_hit = False
+            if player.on_car and player.current_car:
+                car_hit = player.current_car["rect"].colliderect(e["rect"])
 
-                # 위에서 밟았을 때
+            if player_hit or car_hit:
+                # 위에서 밟았을 때 (플레이어 발이 적 머리 위)
+                # 자동차 타고 있어도 밟기는 가능하게 처리 (선택사항이나 게임성을 위해 유지)
                 if (
                     player.velocity_y > 0
                     and player.rect.bottom <= e["rect"].top + STOMP_TOLERANCE
@@ -50,7 +50,7 @@ class CollisionHandler:
                     score += 1
                     player.velocity_y = JUMP_POWER * 0.6
                 else:
-                    # 옆이나 아래에서 닿았을 때 - 체력 감소
+                    # 그 외 방향에서 닿으면 데미지
                     game_over = player.take_damage()
                     if game_over:
                         on_reset_game()
@@ -80,15 +80,17 @@ class CollisionHandler:
             if not enemy["alive"]:
                 continue
 
-            if player.rect.colliderect(enemy["rect"]):
-                # 자동차로 들이받기 우선 확인
-                if player.on_car and player.current_car:
-                    enemy["alive"] = False
-                    score += 1
-                    player.invincible_timer = max(player.invincible_timer, 20)
-                    continue
+            # 플레이어 본체 또는 탑승 중인 자동차와 충돌 확인
+            player_hit = player.rect.colliderect(enemy["rect"])
+            car_hit = False
+            if player.on_car and player.current_car:
+                car_hit = player.current_car["rect"].colliderect(enemy["rect"])
 
-                # 위에서 밟았을 때
+            if player_hit or car_hit:
+                # 물속 적은 밟을 수 없음 (보통) - 그냥 닿으면 데미지
+                # 단, 슈퍼마리오 월드처럼 위에서 밟으면 죽는지는 기획에 따라 다름.
+                # 여기선 기존 로직(밟기 가능)을 유지하되 자동차 무적만 제거
+
                 if (
                     player.velocity_y > 0
                     and player.rect.bottom <= enemy["rect"].top + STOMP_TOLERANCE
@@ -250,32 +252,22 @@ class CollisionHandler:
                 break
 
     @staticmethod
-    def check_car_ram_enemies(
-        player: "Player", enemies: list[dict[str, Any]], cars: list[dict[str, Any]]
-    ) -> int:
+    def check_flag_collision(player: "Player", flags: list[pygame.Rect]) -> bool:
         """
-        자동차로 적을 들이받아 처치합니다.
+        플레이어와 깃발(Finish Line)의 충돌을 확인합니다.
 
         Args:
             player: 플레이어 객체
-            enemies: 적 리스트
-            cars: 자동차 리스트
+            flags: 깃발 리스트
 
         Returns:
-            int: 획득한 점수
+            bool: 깃발 획득 여부
         """
-        score = 0
-        if not player.on_car or player.current_car is None:
-            return score
-
-        car_rect = player.current_car["rect"]
-        for e in enemies:
-            if not e["alive"]:
-                continue
-
-            if car_rect.colliderect(e["rect"]):
-                e["alive"] = False
-                score += 1
-                player.invincible_timer = max(player.invincible_timer, 15)
-
-        return score
+        for f in flags:
+            if player.rect.colliderect(f):
+                return True
+            # 자동차 타고 있을 때 자동차가 깃발에 닿아도 인정
+            if player.on_car and player.current_car:
+                if player.current_car["rect"].colliderect(f):
+                    return True
+        return False

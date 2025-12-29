@@ -70,3 +70,13 @@ SWIM_DOWN_MAX = 8
 # 체력 시스템
 MAX_HEALTH = 3
 INITIAL_HEALTH = 3
+
+# 월드 설정
+WORLD_LENGTH = 6000  # 한 월드의 길이 (끝 지점)
+
+# 월드 2 (네온 사이버) 테마 색상
+NEON_BLACK = (10, 10, 20)  # 배경/블록 내부
+NEON_GREEN = (50, 255, 50)  # 블록 테두리
+NEON_PINK = (255, 20, 147)  # 장애물/가시
+CYBER_PURPLE_TOP = (20, 0, 40)  # 배경 그라데이션 위
+CYBER_PURPLE_BOT = (80, 0, 120)  # 배경 그라데이션 아래
