@@ -39,13 +39,39 @@ class Player:
             self.rect.y += self.speed
 
     def draw(self, surface):
-        # Player ship as a polygon (triangle)
-        points = [
+        # [교육 주석] 단순한 삼각형에서 좀 더 세련된 함선 디자인으로 변경
+        # 함선의 본체, 날개, 조종석을 각각 그려서 입체감을 줍니다.
+
+        # 중심 본체
+        body_rect = pygame.Rect(self.rect.centerx - 8, self.rect.top + 10, 16, 30)
+        pygame.draw.rect(surface, self.color, body_rect)
+
+        # 머리 부분 (삼각형)
+        head_points = [
             (self.rect.centerx, self.rect.top),
-            (self.rect.left, self.rect.bottom),
-            (self.rect.right, self.rect.bottom),
+            (self.rect.centerx - 8, self.rect.top + 10),
+            (self.rect.centerx + 8, self.rect.top + 10),
         ]
-        pygame.draw.polygon(surface, self.color, points)
+        pygame.draw.polygon(surface, self.color, head_points)
+
+        # 왼쪽 날개
+        left_wing = [
+            (self.rect.centerx - 8, self.rect.top + 15),
+            (self.rect.left, self.rect.bottom),
+            (self.rect.centerx - 8, self.rect.bottom - 5),
+        ]
+        pygame.draw.polygon(surface, self.color, left_wing)
+
+        # 오른쪽 날개
+        right_wing = [
+            (self.rect.centerx + 8, self.rect.top + 15),
+            (self.rect.right, self.rect.bottom),
+            (self.rect.centerx + 8, self.rect.bottom - 5),
+        ]
+        pygame.draw.polygon(surface, self.color, right_wing)
+
+        # 조종석 (포인트)
+        pygame.draw.circle(surface, WHITE, (self.rect.centerx, self.rect.top + 18), 4)
 
 
 class Laser:
@@ -84,7 +110,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Twin Vacuum: Zero-G")
+        pygame.display.set_caption("Space Cleaner")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 24)
         self.large_font = pygame.font.SysFont("Arial", 64)
