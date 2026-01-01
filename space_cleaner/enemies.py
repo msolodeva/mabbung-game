@@ -4,7 +4,19 @@
 import pygame
 import random
 
-from constants import WIDTH, YELLOW, RED, PURPLE, GREEN, DARK_GREY
+from constants import (
+    WIDTH,
+    HEIGHT,
+    YELLOW,
+    RED,
+    PURPLE,
+    GREEN,
+    DARK_GREY,
+    CYAN,
+    WHITE,
+    BLUE,
+    ORANGE,
+)
 
 
 class EnemyBullet:
@@ -158,3 +170,139 @@ class HeavyEnemy:
         pygame.draw.rect(
             surface, GREEN, (self.rect.x, self.rect.top - 10, self.width * ratio, 5)
         )
+
+
+class Interceptor:
+    """
+    고속 요격기.
+    - 매우 빠름, 사격 없음
+    - 플레이어 방향으로 돌진하거나 빠르게 화면을 가로지름
+    """
+
+    def __init__(self, difficulty=1.0):
+        self.width = 30
+        self.height = 40
+        self.x = random.randint(0, WIDTH - self.width)
+        self.y = -self.height
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        self.speed_y = 8 * (1 + (difficulty - 1) * 0.3)
+        self.speed_x = random.uniform(-2, 2)
+
+    def update(self, enemy_bullets):
+        self.rect.y += self.speed_y
+        self.rect.x += self.speed_x
+
+    def draw(self, surface):
+        # 날렵한 삼각형 함선
+        points = [
+            (self.rect.centerx, self.rect.bottom),
+            (self.rect.left, self.rect.top),
+            (self.rect.right, self.rect.top),
+        ]
+        pygame.draw.polygon(surface, CYAN, points)
+        # 엔진 불꽃
+        pygame.draw.circle(
+            surface, ORANGE, (self.rect.centerx, self.rect.top), random.randint(3, 8)
+        )
+
+
+class SniperEnemy:
+    """
+    저격수 적.
+    - 화면 상단에서 플레이어 중 한 명을 조준하여 빠른 탄환 발사
+    """
+
+    def __init__(self, difficulty=1.0):
+        self.width = 40
+        self.height = 40
+        self.x = random.randint(0, WIDTH - self.width)
+        self.y = -self.height
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        self.target_y = random.randint(30, 100)
+        self.state = "entering"
+        self.fire_timer = 0
+        self.fire_rate = max(60, int(150 / difficulty))
+        self.color = WHITE
+
+    def update(self, enemy_bullets, players=None):
+        if self.state == "entering":
+            self.rect.y += 3
+            if self.rect.y >= self.target_y:
+                self.state = "sniping"
+        else:
+            # 저격 로직
+            self.fire_timer += 1
+            if self.fire_timer >= self.fire_rate:
+                if players:
+                    # 살아있는 플레이어 중 한 명 타겟팅
+                    target = random.choice([p for p in players if p.health > 0])
+                    # 방향 계산
+                    dx = target.rect.centerx - self.rect.centerx
+                    dy = target.rect.centery - self.rect.bottom
+                    dist = (dx**2 + dy**2) ** 0.5
+                    if dist != 0:
+                        vx = (dx / dist) * 10
+                        vy = (dy / dist) * 10
+                        enemy_bullets.append(
+                            EnemyBullet(self.rect.centerx, self.rect.bottom, vx, vy)
+                        )
+                self.fire_timer = 0
+
+    def draw(self, surface):
+        # 긴 육각형 형태
+        pts = [
+            (self.rect.centerx, self.rect.top),
+            (self.rect.right, self.rect.centery),
+            (self.rect.centerx, self.rect.bottom),
+            (self.rect.left, self.rect.centery),
+        ]
+        pygame.draw.polygon(surface, WHITE, pts, 2)
+        pygame.draw.circle(surface, RED, self.rect.center, 5)
+
+
+class GhostEnemy:
+    """
+    유령 적.
+    - 주기적으로 반투명해지며 레이저를 통과시킴 (무적 상태)
+    """
+
+    def __init__(self, difficulty=1.0):
+        self.width = 45
+        self.height = 45
+        self.x = random.randint(0, WIDTH - self.width)
+        self.y = -self.height
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        self.speed_y = 3 * (1 + (difficulty - 1) * 0.1)
+        self.timer = 0
+        self.is_ghost = False
+        self.color = (200, 200, 255)
+
+    def update(self, enemy_bullets):
+        self.rect.y += self.speed_y
+        self.timer += 1
+        # 2초 주기로 상태 변화 (60fps 기준 120프레임)
+        if self.timer % 120 < 60:
+            self.is_ghost = True
+        else:
+            self.is_ghost = False
+
+    def draw(self, surface):
+        alpha = 100 if self.is_ghost else 255
+        s = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        # 구름/유령 형태
+        pygame.draw.circle(
+            s,
+            (*self.color, alpha),
+            (self.width // 2, self.height // 2),
+            self.width // 2,
+        )
+        pygame.draw.circle(
+            s, (255, 255, 255, alpha), (self.width // 2 - 10, self.height // 2 - 5), 5
+        )
+        pygame.draw.circle(
+            s, (255, 255, 255, alpha), (self.width // 2 + 10, self.height // 2 - 5), 5
+        )
+        surface.blit(s, (self.rect.x, self.rect.y))

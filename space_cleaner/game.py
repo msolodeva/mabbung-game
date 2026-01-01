@@ -22,7 +22,7 @@ from constants import (
 from sound import generate_sound
 from background import BackgroundManager
 from entities import Player, Laser, Item, Explosion
-from enemies import Enemy, HeavyEnemy
+from enemies import Enemy, HeavyEnemy, Interceptor, SniperEnemy, GhostEnemy
 from junk import Junk
 
 
@@ -128,8 +128,17 @@ class Game:
                 # HeavyEnemy 발생 빈도 감소 및 등장 시점 조절
                 # 한번에 최대 1개만 출현하도록 제한 추가
                 has_heavy = any(isinstance(e, HeavyEnemy) for e in self.enemies)
-                if difficulty > 1.2 and not has_heavy and random.random() < 0.05:
+
+                # 모든 종류의 적이 처음부터 출현 가능하도록 변경
+                r2 = random.random()
+                if not has_heavy and r2 < 0.05:
                     self.enemies.append(HeavyEnemy(difficulty))
+                elif r2 < 0.15:  # 고속 요격기
+                    self.enemies.append(Interceptor(difficulty))
+                elif r2 < 0.25:  # 저격수
+                    self.enemies.append(SniperEnemy(difficulty))
+                elif r2 < 0.35:  # 유령 적
+                    self.enemies.append(GhostEnemy(difficulty))
                 else:
                     self.enemies.append(Enemy(difficulty))
             elif r < enemy_prob + 0.02:
@@ -207,9 +216,14 @@ class Game:
             for enemy in self.enemies[:]:
                 if laser.rect.colliderect(enemy.rect):
                     if enemy in self.enemies:
-                        # HeavyEnemy는 체력 시스템 사용
+                        # 유령 상태일 때 무시
+                        if getattr(enemy, "is_ghost", False):
+                            continue
+
+                        # 체력이 있는 적 (HeavyEnemy, ShieldEnemy 등) 처리
                         if hasattr(enemy, "health"):
-                            enemy.health -= 10
+                            damage = 10
+                            enemy.health -= damage
                             self.explosions.append(
                                 Explosion(
                                     laser.rect.centerx, laser.rect.centery, ORANGE
@@ -247,10 +261,20 @@ class Game:
                             )
                             if self.snd_explosion:
                                 self.snd_explosion.play()
+
+                            # 적 종류에 따른 점수 차등
+                            score_gain = 20
+                            if isinstance(enemy, Interceptor):
+                                score_gain = 40
+                            elif isinstance(enemy, SniperEnemy):
+                                score_gain = 50
+                            elif isinstance(enemy, GhostEnemy):
+                                score_gain = 60
+
                             if laser.color == RED:
-                                self.p1.score += 20
+                                self.p1.score += score_gain
                             else:
-                                self.p2.score += 20
+                                self.p2.score += score_gain
 
                     if laser in self.lasers:
                         self.lasers.remove(laser)
@@ -481,7 +505,10 @@ class Game:
 
         # 적 업데이트
         for enemy in self.enemies[:]:
-            enemy.update(self.enemy_bullets)
+            if isinstance(enemy, SniperEnemy):
+                enemy.update(self.enemy_bullets, [self.p1, self.p2])
+            else:
+                enemy.update(self.enemy_bullets)
             if enemy.rect.top > HEIGHT:
                 self.enemies.remove(enemy)
 
