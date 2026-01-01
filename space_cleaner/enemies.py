@@ -3,6 +3,7 @@
 
 import pygame
 import random
+import math
 
 from constants import (
     WIDTH,
@@ -271,11 +272,14 @@ class GhostEnemy:
     def __init__(self, difficulty=1.0):
         self.width = 45
         self.height = 45
-        self.x = random.randint(0, WIDTH - self.width)
+        self.x = random.randint(50, WIDTH - 50 - self.width)
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        self.speed_y = 3 * (1 + (difficulty - 1) * 0.1)
+        # 더 빨라진 속도
+        self.speed_y = 4 * (1 + (difficulty - 1) * 0.15)
+        self.float_offset = random.uniform(0, 100)  # 개별적인 흔들림 시작점
+
         self.timer = 0
         self.is_ghost = False
         self.color = (200, 200, 255)
@@ -283,8 +287,13 @@ class GhostEnemy:
     def update(self, enemy_bullets):
         self.rect.y += self.speed_y
         self.timer += 1
-        # 2초 주기로 상태 변화 (60fps 기준 120프레임)
-        if self.timer % 120 < 60:
+
+        # 좌우로 흔들리는 움직임 (Sine파 이용)
+        sway = math.sin((self.timer + self.float_offset) * 0.05) * 4
+        self.rect.x += sway
+
+        # 1.5초 주기로 상태 변화 (더 빠르게 깜빡임)
+        if self.timer % 90 < 45:
             self.is_ghost = True
         else:
             self.is_ghost = False
