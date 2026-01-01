@@ -75,6 +75,7 @@ class Game:
                 "up": pygame.K_w,
                 "down": pygame.K_s,
                 "fire": pygame.K_LSHIFT,
+                "bomb": pygame.K_SPACE,
             },
         )
 
@@ -89,6 +90,7 @@ class Game:
                 "up": pygame.K_UP,
                 "down": pygame.K_DOWN,
                 "fire": pygame.K_RSHIFT,
+                "bomb": pygame.K_RETURN,
             },
         )
 
@@ -108,23 +110,25 @@ class Game:
 
     def spawn_junk(self):
         """적, 아이템, 쓰레기 스폰."""
-        # 난이도 계산: 45초마다 난이도 1.0 증가
+        # 난이도 계산: 60초마다 난이도 1.0 증가 (기존 45초에서 늦춤)
         elapsed_seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000
-        difficulty = 1.0 + (elapsed_seconds / 45.0)
+        difficulty = 1.0 + (elapsed_seconds / 60.0)
 
-        # 난이도가 오를수록 스폰 주기 빨라짐
-        spawn_threshold = max(15, 40 - int((difficulty - 1) * 10))
+        # 난이도가 오를수록 스폰 주기 빨라짐 (더 완만하게 조정)
+        spawn_threshold = max(20, 45 - int((difficulty - 1) * 8))
 
         self.spawn_timer += 1
         if self.spawn_timer > spawn_threshold:
             r = random.random()
 
-            # 난이도가 오를수록 적 생성 확률 증가
-            enemy_prob = min(0.4, 0.15 + (difficulty - 1) * 0.08)
+            # 난이도가 오를수록 적 생성 확률 증가 (더 완만하게 조정)
+            enemy_prob = min(0.35, 0.12 + (difficulty - 1) * 0.05)
 
             if r < enemy_prob:
-                # 10% 확률로 HeavyEnemy
-                if random.random() < 0.1:
+                # HeavyEnemy 발생 빈도 감소 및 등장 시점 조절
+                # 한번에 최대 1개만 출현하도록 제한 추가
+                has_heavy = any(isinstance(e, HeavyEnemy) for e in self.enemies)
+                if difficulty > 1.2 and not has_heavy and random.random() < 0.05:
                     self.enemies.append(HeavyEnemy(difficulty))
                 else:
                     self.enemies.append(Enemy(difficulty))
@@ -302,8 +306,13 @@ class Game:
 
                     if item.kind == "weapon":
                         self.p1.weapon_level = min(3, self.p1.weapon_level + 1)
+                        self.p1.weapon_timer = 1800  # 30초 (60FPS 기준)
                     elif item.kind == "health":
                         self.p1.health = min(self.p1.max_health, self.p1.health + 30)
+                    elif item.kind == "bomb":
+                        self.p1.bomb_count = min(
+                            self.p1.max_bombs, self.p1.bomb_count + 1
+                        )
 
             elif self.p2.rect.colliderect(item.rect):
                 if item in self.items:
@@ -316,12 +325,32 @@ class Game:
 
                     if item.kind == "weapon":
                         self.p2.weapon_level = min(3, self.p2.weapon_level + 1)
+                        self.p2.weapon_timer = 1800  # 30초
                     elif item.kind == "health":
                         self.p2.health = min(self.p2.max_health, self.p2.health + 30)
+                    elif item.kind == "bomb":
+                        self.p2.bomb_count = min(
+                            self.p2.max_bombs, self.p2.bomb_count + 1
+                        )
 
-    # ---------------------------
-    # 게임 루프
-    # ---------------------------
+    def _draw_hud_bar(self, x, y, width, height, ratio, color):
+        """HUD용 반투명 막대 그리기."""
+        # 배경 (반투명 어두운 회색)
+        bg_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+        bg_surf.fill((50, 50, 50, 100))
+        self.screen.blit(bg_surf, (x, y))
+
+        # 채우기 (반투명 색상)
+        fill_width = int(width * max(0, min(1, ratio)))
+        if fill_width > 0:
+            fill_surf = pygame.Surface((fill_width, height), pygame.SRCALPHA)
+            fill_surf.fill((*color, 150))
+            self.screen.blit(fill_surf, (x, y))
+
+        # 테두리 (반투명 흰색)
+        border_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+        pygame.draw.rect(border_surf, (255, 255, 255, 80), (0, 0, width, height), 1)
+        self.screen.blit(border_surf, (x, y))
 
     def run(self):
         """메인 게임 루프."""
@@ -347,6 +376,64 @@ class Game:
                     if event.key == self.p2.controls["fire"]:
                         self._fire_weapon(self.p2)
 
+                    # 폭탄 사용
+                    if event.key == self.p1.controls["bomb"]:
+                        self._use_bomb(self.p1)
+                    if event.key == self.p2.controls["bomb"]:
+                        self._use_bomb(self.p2)
+
+    def _use_bomb(self, player):
+        """폭탄 사용: 적 총알 제거, 장애물 파괴, 적에게 데미지."""
+        if player.bomb_count > 0:
+            player.bomb_count -= 1
+            if self.snd_explosion:
+                self.snd_explosion.play()
+
+            # 화면 전체 섬광 효과 (단순 폭발에서 더 화려하게)
+            # 폭발을 시간차를 두고 여러 개 생성하거나, 랜덤 위치에 대량 생성
+            for _ in range(50):  # 20개 -> 50개로 증가
+                self.explosions.append(
+                    Explosion(
+                        random.randint(0, WIDTH),
+                        random.randint(0, HEIGHT),
+                        random.choice([ORANGE, RED, WHITE, YELLOW]),  # 색상 다양화
+                    )
+                )
+
+            # 적 총알 모두 제거
+            self.enemy_bullets.clear()
+
+            # 쓰레기(Junk) 모두 제거
+            for junk in self.junks:
+                self.explosions.append(
+                    Explosion(junk.rect.centerx, junk.rect.centery, GREY)
+                )
+            self.junks.clear()
+
+            # 적에게 데미지 (일반 적 즉사, HeavyEnemy 50 데미지)
+            for enemy in self.enemies[:]:
+                if hasattr(enemy, "health"):
+                    enemy.health -= 50
+                    self.explosions.append(
+                        Explosion(enemy.rect.centerx, enemy.rect.centery, ORANGE)
+                    )
+                    if enemy.health <= 0:
+                        self.enemies.remove(enemy)
+                        # 대형 폭발 추가
+                        for _ in range(10):  # 5개 -> 10개로 증가
+                            self.explosions.append(
+                                Explosion(
+                                    enemy.rect.centerx + random.randint(-40, 40),
+                                    enemy.rect.centery + random.randint(-40, 40),
+                                    RED,
+                                )
+                            )
+                else:
+                    self.enemies.remove(enemy)
+                    self.explosions.append(
+                        Explosion(enemy.rect.centerx, enemy.rect.centery, PURPLE)
+                    )
+
     def _fire_weapon(self, player):
         """무기 레벨에 따른 레이저 발사."""
         px = player.rect.centerx
@@ -370,6 +457,10 @@ class Game:
         """게임 상태 업데이트."""
         # 배경 업데이트
         self.bg_manager.update()
+
+        # 플레이어 업데이트 (타이머)
+        self.p1.update()
+        self.p2.update()
 
         # 플레이어 입력
         keys = pygame.key.get_pressed()
@@ -409,7 +500,7 @@ class Game:
         # 폭발 업데이트
         for exp in self.explosions[:]:
             exp.update()
-            if exp.timer > 20:
+            if exp.timer > 60:  # 20 -> 60으로 증가 (잔상이 다 사라질 때까지 대기)
                 self.explosions.remove(exp)
 
         # 스폰 및 충돌 검사
@@ -445,6 +536,25 @@ class Game:
             p2_score_txt = self.font.render(f"P2 (BLUE): {self.p2.score}", True, BLUE)
             self.screen.blit(p1_score_txt, (20, 20))
             self.screen.blit(p2_score_txt, (WIDTH - 180, 20))
+
+            # 폭탄 개수 표시
+            p1_bomb_txt = self.font.render(f"Bomb: {self.p1.bomb_count}", True, ORANGE)
+            p2_bomb_txt = self.font.render(f"Bomb: {self.p2.bomb_count}", True, ORANGE)
+            self.screen.blit(p1_bomb_txt, (20, 50))
+            self.screen.blit(p2_bomb_txt, (WIDTH - 180, 50))
+
+            # 체력바 표시 (HUD) - 작고 반투명하게 변경
+            self._draw_hud_bar(
+                20, 80, 120, 10, self.p1.health / self.p1.max_health, GREEN
+            )
+            self._draw_hud_bar(
+                WIDTH - 180,
+                80,
+                120,
+                10,
+                self.p2.health / self.p2.max_health,
+                GREEN,
+            )
         else:
             # 게임 오버 화면
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)

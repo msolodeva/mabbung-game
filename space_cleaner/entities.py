@@ -4,7 +4,7 @@
 import pygame
 import random
 
-from constants import WIDTH, HEIGHT, WHITE, RED, GREEN, CYAN
+from constants import WIDTH, HEIGHT, WHITE, RED, GREEN, CYAN, ORANGE
 
 
 class Player:
@@ -20,9 +20,19 @@ class Player:
         self.controls = controls
         self.speed = 5
         self.score = 0
-        self.max_health = 100
+        self.max_health = 140
         self.health = self.max_health
         self.weapon_level = 1  # 무기 레벨 (1~3)
+        self.bomb_count = 3  # 폭탄 개수 (기본 3개)
+        self.max_bombs = 3  # 최대 폭탄 개수
+        self.weapon_timer = 0  # 무기 강화 지속 시간 프레임
+
+    def update(self):
+        """플레이어 상태 업데이트 (타이머 등)."""
+        if self.weapon_level > 1:
+            self.weapon_timer -= 1
+            if self.weapon_timer <= 0:
+                self.weapon_level = 1
 
     def handle_input(self, keys):
         """
@@ -71,16 +81,7 @@ class Player:
         # 조종석 (포인트)
         pygame.draw.circle(surface, WHITE, (self.rect.centerx, self.rect.top + 18), 4)
 
-        # 체력바 그리기
-        bar_width = 40
-        bar_height = 5
-        fill = (self.health / self.max_health) * bar_width
-        pygame.draw.rect(
-            surface, RED, (self.rect.x, self.rect.bottom + 5, bar_width, bar_height)
-        )
-        pygame.draw.rect(
-            surface, GREEN, (self.rect.x, self.rect.bottom + 5, fill, bar_height)
-        )
+        # 체력바는 이제 HUD에 표시하므로 제거
 
 
 class Laser:
@@ -115,15 +116,20 @@ class Item:
         self.rect = pygame.Rect(self.x, self.y, self.size, self.size)
         self.speed = 3
 
-        # 아이템 종류 결정 (60% 무기, 40% 체력)
-        if random.random() < 0.6:
+        # 아이템 종류 결정 (30% 무기, 40% 체력, 30% 폭탄)
+        r = random.random()
+        if r < 0.3:
             self.kind = "weapon"
             self.color = CYAN
             self.label = "P"
-        else:
+        elif r < 0.7:
             self.kind = "health"
             self.color = GREEN
             self.label = "H"
+        else:
+            self.kind = "bomb"
+            self.color = ORANGE
+            self.label = "B"
 
         self.pulse = 0
         self.pulse_dir = 1
@@ -180,7 +186,7 @@ class Explosion:
         for p in self.particles:
             p[0] += p[2]  # x += dx
             p[1] += p[3]  # y += dy
-            p[4] -= 0.2  # radius 감소
+            p[4] -= 0.1  # radius 감소 (0.2 -> 0.1로 줄여서 더 오래 지속)
 
     def draw(self, surface):
         for p in self.particles:

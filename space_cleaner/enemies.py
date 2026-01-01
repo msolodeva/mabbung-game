@@ -43,10 +43,10 @@ class Enemy:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        # 난이도에 따른 속도 증가
+        # 난이도에 따른 속도 증가 (0.4 -> 0.25로 완화)
         base_speed = random.uniform(2, 4)
-        self.speed_y = base_speed * (1 + (difficulty - 1) * 0.4)
-        self.speed_x = random.choice([-3, 3]) * (1 + (difficulty - 1) * 0.2)
+        self.speed_y = base_speed * (1 + (difficulty - 1) * 0.25)
+        self.speed_x = random.choice([-3, 3]) * (1 + (difficulty - 1) * 0.15)
 
         self.move_timer = 0
         self.fire_timer = 0
@@ -110,10 +110,11 @@ class HeavyEnemy:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        self.speed = 2 * (1 + (difficulty - 1) * 0.1)
+        self.speed = 2 * (1 + (difficulty - 1) * 0.08)
         self.speed_x = 2
 
-        self.max_health = 40 * difficulty
+        # 체력 스케일링 완화 (기존 30 + 10 * difficulty -> 30 + 7 * difficulty)
+        self.max_health = 30 + 7 * difficulty
         self.health = self.max_health
 
         self.target_y = random.randint(50, 200)
