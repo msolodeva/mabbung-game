@@ -123,7 +123,7 @@ class BackgroundManager:
     """
 
     def __init__(self):
-        self.stars = [Star() for _ in range(120)]
+        self.stars = [Star() for _ in range(60)]  # 120 -> 60으로 감소
         self.bg_objects = []
         self.timer = 0
 

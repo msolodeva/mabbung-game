@@ -22,7 +22,16 @@ from constants import (
 )
 from sound import generate_sound
 from background import BackgroundManager
-from entities import Player, Laser, Item, Explosion, EngineTrail, HitSpark, LaserTrail
+from entities import (
+    Player,
+    Laser,
+    Item,
+    Explosion,
+    EngineTrail,
+    HitSpark,
+    LaserTrail,
+    Ally,
+)
 from enemies import (
     Enemy,
     HeavyEnemy,
@@ -157,6 +166,7 @@ class Game:
         self.enemies = []
         self.enemy_bullets = []
         self.items = []
+        self.allies = []
         self.special_projectiles = []
         self.explosions = []
         self.hit_sparks = []
@@ -186,12 +196,17 @@ class Game:
 
         self.spawn_timer += 1
         if self.spawn_timer > spawn_threshold:
+            # 지원군 스폰 (2% 확률, 동시 1기 제한)
+            if not self.allies and random.random() < 0.02:
+                self.allies.append(Ally(WIDTH // 2, HEIGHT + 40))
+
             r = random.random()
 
             # 난이도가 오를수록 적 생성 확률 증가 (더 완만하게 조정)
             enemy_prob = min(0.35, 0.12 + (difficulty - 1) * 0.05)
 
-            if r < enemy_prob:
+            # 성능 최적화: 화면 내 객체 수 제한
+            if r < enemy_prob and len(self.enemies) < 15:  # 최대 적 15기
                 # HeavyEnemy 발생 빈도 감소 및 등장 시점 조절
                 # 한번에 최대 1개만 출현하도록 제한 추가
                 has_heavy = any(isinstance(e, HeavyEnemy) for e in self.enemies)
@@ -216,7 +231,7 @@ class Game:
                     self.enemies.append(Enemy(difficulty))
             elif r < enemy_prob + 0.02:
                 self.items.append(Item())
-            else:
+            elif len(self.junks) < 25:  # 최대 쓰레기 25개
                 self.junks.append(Junk(difficulty))
             self.spawn_timer = 0
 
@@ -298,7 +313,7 @@ class Game:
                 if junk in self.junks:
                     self.junks.remove(junk)
 
-                if self.p1.health <= 0 or self.p2.health <= 0:
+                if self.p1.health <= 0 and self.p2.health <= 0:
                     self.game_over = True
 
     def _check_laser_enemy_collisions(self):
@@ -399,7 +414,7 @@ class Game:
                 if bullet in self.enemy_bullets:
                     self.enemy_bullets.remove(bullet)
 
-                if self.p1.health <= 0 or self.p2.health <= 0:
+                if self.p1.health <= 0 and self.p2.health <= 0:
                     self.game_over = True
 
     def _check_enemy_player_collisions(self):
@@ -420,7 +435,7 @@ class Game:
                 if enemy in self.enemies:
                     self.enemies.remove(enemy)
 
-                if self.p1.health <= 0 or self.p2.health <= 0:
+                if self.p1.health <= 0 and self.p2.health <= 0:
                     self.game_over = True
 
     def _check_item_collisions(self):
@@ -438,7 +453,7 @@ class Game:
                     if item.kind == "weapon":
                         r_weapon = random.choice(["homing", "piercing", "plasma"])
                         self.p1.special_weapon = r_weapon
-                        self.p1.special_weapon_timer = 600  # 10초
+                        self.p1.special_weapon_timer = 1200  # 20초
                     elif item.kind == "health":
                         self.p1.health = min(self.p1.max_health, self.p1.health + 30)
                     elif item.kind == "bomb":
@@ -447,12 +462,10 @@ class Game:
                         )
                     elif item.kind == "shield":
                         self.p1.has_shield = True
-                    elif item.kind == "magnet":
-                        self.p1.magnet_timer = 600  # 10초
                     elif item.kind == "slow":
-                        self.p1.slow_timer = 300  # 5초
+                        self.p1.slow_timer = 900  # 15초
                     elif item.kind == "clone":
-                        self.p1.clone_timer = 480  # 8초
+                        self.p1.clone_timer = 1200  # 20초
 
             elif self.p2.rect.colliderect(item.rect):
                 if item in self.items:
@@ -466,7 +479,7 @@ class Game:
                     if item.kind == "weapon":
                         r_weapon = random.choice(["homing", "piercing", "plasma"])
                         self.p2.special_weapon = r_weapon
-                        self.p2.special_weapon_timer = 600
+                        self.p2.special_weapon_timer = 1200  # 20초
                     elif item.kind == "health":
                         self.p2.health = min(self.p2.max_health, self.p2.health + 30)
                     elif item.kind == "bomb":
@@ -475,12 +488,10 @@ class Game:
                         )
                     elif item.kind == "shield":
                         self.p2.has_shield = True
-                    elif item.kind == "magnet":
-                        self.p2.magnet_timer = 600  # 10초
                     elif item.kind == "slow":
-                        self.p2.slow_timer = 300  # 5초
+                        self.p2.slow_timer = 900  # 15초
                     elif item.kind == "clone":
-                        self.p2.clone_timer = 480  # 8초
+                        self.p2.clone_timer = 1200  # 20초
 
     def _check_laser_beam_player_collisions(self):
         """LaserEnemy의 회전 레이저 빔과 플레이어 충돌 검사."""
@@ -512,7 +523,7 @@ class Game:
                                             RED,
                                         )
                                     )
-                                if player.health <= 0:
+                                if self.p1.health <= 0 and self.p2.health <= 0:
                                     self.game_over = True
 
     def _point_to_line_distance(self, point, line_start, line_end):
@@ -582,15 +593,15 @@ class Game:
                     self.reset_game()
 
                 if not self.game_over and not self.game_paused:
-                    if event.key == self.p1.controls["fire"]:
+                    if event.key == self.p1.controls["fire"] and self.p1.health > 0:
                         self._fire_weapon(self.p1)
-                    if event.key == self.p2.controls["fire"]:
+                    if event.key == self.p2.controls["fire"] and self.p2.health > 0:
                         self._fire_weapon(self.p2)
 
                     # 폭탄 사용
-                    if event.key == self.p1.controls["bomb"]:
+                    if event.key == self.p1.controls["bomb"] and self.p1.health > 0:
                         self._use_bomb(self.p1)
-                    if event.key == self.p2.controls["bomb"]:
+                    if event.key == self.p2.controls["bomb"] and self.p2.health > 0:
                         self._use_bomb(self.p2)
 
     def _use_bomb(self, player):
@@ -605,7 +616,7 @@ class Game:
 
             # 화면 전체 섬광 효과 (단순 폭발에서 더 화려하게)
             # 폭발을 시간차를 두고 여러 개 생성하거나, 랜덤 위치에 대량 생성
-            for _ in range(50):  # 20개 -> 50개로 증가
+            for _ in range(25):  # 50개 -> 25개로 감소 (성능 최적화)
                 self.explosions.append(
                     Explosion(
                         random.randint(0, WIDTH),
@@ -634,7 +645,7 @@ class Game:
                     if enemy.health <= 0:
                         self.enemies.remove(enemy)
                         # 대형 폭발 추가
-                        for _ in range(10):  # 5개 -> 10개로 증가
+                        for _ in range(6):  # 10개 -> 6개로 감소 (성능 최적화)
                             self.explosions.append(
                                 Explosion(
                                     enemy.rect.centerx + random.randint(-40, 40),
@@ -699,19 +710,23 @@ class Game:
         self.p1.update()
         self.p2.update()
 
-        # 플레이어 입력
+        # 플레이어 입력 (살아있을 때만)
         keys = pygame.key.get_pressed()
-        self.p1.handle_input(keys)
-        self.p2.handle_input(keys)
+        if self.p1.health > 0:
+            self.p1.handle_input(keys)
+        if self.p2.health > 0:
+            self.p2.handle_input(keys)
 
-        # 플레이어 엔진 트레일 생성 (확률 감소)
+        # 플레이어 엔진 트레일 생성 (확률 감소, 살아있을 때만)
         if random.random() < 0.1:  # 30% -> 10%
-            self.engine_trail.emit(
-                self.p1.rect.centerx, self.p1.rect.bottom, self.p1.color
-            )
-            self.engine_trail.emit(
-                self.p2.rect.centerx, self.p2.rect.bottom, self.p2.color
-            )
+            if self.p1.health > 0:
+                self.engine_trail.emit(
+                    self.p1.rect.centerx, self.p1.rect.bottom, self.p1.color
+                )
+            if self.p2.health > 0:
+                self.engine_trail.emit(
+                    self.p2.rect.centerx, self.p2.rect.bottom, self.p2.color
+                )
 
         # 레이저 업데이트
         for laser in self.lasers[:]:
@@ -738,6 +753,12 @@ class Game:
                 if proj in self.special_projectiles:
                     self.special_projectiles.remove(proj)
                 continue
+
+        # 지원군 업데이트
+        for ally in self.allies[:]:
+            ally.update(self.enemies, self.special_projectiles)
+            if ally.state == "leave" and ally.rect.top > HEIGHT:
+                self.allies.remove(ally)
 
         # 쓰레기 업데이트
         slow_factor = 0.5 if (self.p1.slow_timer > 0 or self.p2.slow_timer > 0) else 1.0
@@ -783,7 +804,7 @@ class Game:
                         dist = (dx**2 + dy**2) ** 0.5
                         if dist < 80:
                             player.health -= 25
-                            if player.health <= 0:
+                            if self.p1.health <= 0 and self.p2.health <= 0:
                                 self.game_over = True
                     # 적 제거
                     if enemy in self.enemies:
@@ -802,19 +823,6 @@ class Game:
         # 아이템 업데이트
         for item in self.items[:]:
             item.update()
-
-            # 자석 효과: 플레이어에게 끌려감
-            for player in [self.p1, self.p2]:
-                if player.magnet_timer > 0:
-                    dx = player.rect.centerx - item.rect.centerx
-                    dy = player.rect.centery - item.rect.centery
-                    dist = (dx**2 + dy**2) ** 0.5
-                    if dist > 0 and dist < 200:  # 200px 범위 내
-                        pull_speed = 8
-                        item.x += (dx / dist) * pull_speed
-                        item.y += (dy / dist) * pull_speed
-                        item.rect.x = int(item.x)
-                        item.rect.y = int(item.y)
 
             if item.rect.top > HEIGHT:
                 self.items.remove(item)
@@ -854,6 +862,10 @@ class Game:
 
         # 환경 요소 그리기 (블랙홀 등)
         self.env_manager.draw(shake_surface)
+
+        # 지원군 그리기
+        for ally in self.allies:
+            ally.draw(shake_surface)
 
         # 배경
         self.bg_manager.draw(shake_surface)

@@ -5,6 +5,7 @@ import pygame
 import random
 
 from constants import WIDTH, HEIGHT, WHITE, RED, GREEN, CYAN, ORANGE
+from weapons import HomingMissile
 
 
 class Player:
@@ -29,7 +30,6 @@ class Player:
 
         # 새로운 아이템 상태
         self.has_shield = False  # 쉴드 (1회 피격 방어)
-        self.magnet_timer = 0  # 자석 효과 지속 시간
         self.slow_timer = 0  # 슬로우 타임 (전역 효과이지만 플레이어가 활성화)
         self.clone_timer = 0  # 분신 지속 시간
 
@@ -45,8 +45,6 @@ class Player:
                 self.weapon_level = 1
 
         # 아이템 타이머 감소
-        if self.magnet_timer > 0:
-            self.magnet_timer -= 1
         if self.slow_timer > 0:
             self.slow_timer -= 1
         if self.clone_timer > 0:
@@ -72,6 +70,10 @@ class Player:
 
     def draw(self, surface):
         """우주선과 체력바 그리기."""
+        # 체력이 0 이하면 그리지 않음
+        if self.health <= 0:
+            return
+
         # 분신 효과 (반투명 고스트)
         if self.clone_timer > 0:
             # 왼쪽 분신
@@ -181,28 +183,24 @@ class Item:
         self.rect = pygame.Rect(self.x, self.y, self.size, self.size)
         self.speed = 3
 
-        # 아이템 종류 결정 (weapon 15%, health 20%, bomb 15%, shield 15%, magnet 15%, slow 10%, clone 10%)
+        # 아이템 종류 결정 (weapon 20%, health 25%, bomb 20%, shield 15%, slow 10%, clone 10%)
         r = random.random()
-        if r < 0.15:
+        if r < 0.20:
             self.kind = "weapon"
             self.color = CYAN
             self.label = "P"
-        elif r < 0.35:
+        elif r < 0.45:
             self.kind = "health"
             self.color = GREEN
             self.label = "H"
-        elif r < 0.50:
+        elif r < 0.65:
             self.kind = "bomb"
             self.color = ORANGE
             self.label = "B"
-        elif r < 0.65:
+        elif r < 0.80:
             self.kind = "shield"
             self.color = (0, 255, 255)  # 청록색
             self.label = "S"
-        elif r < 0.80:
-            self.kind = "magnet"
-            self.color = (255, 0, 255)  # 자주색
-            self.label = "M"
         elif r < 0.90:
             self.kind = "slow"
             self.color = (100, 100, 255)  # 파란색
@@ -251,7 +249,7 @@ class Explosion:
     def __init__(self, x, y, color):
         self.particles = []
         self.timer = 0
-        for _ in range(10):
+        for _ in range(6):  # 10 -> 6으로 감소 (성능 최적화)
             dx = random.uniform(-5, 5)
             dy = random.uniform(-5, 5)
             # 색상을 약간 랜덤하게 변형하여 풍부한 연출
@@ -303,18 +301,11 @@ class Particle:
 
     def draw(self, surface):
         if self.size > 0:
-            # 수명에 따라 투명도 감소
-            alpha = int(255 * (1 - self.age / self.lifetime))
-            s = pygame.Surface(
-                (int(self.size * 2), int(self.size * 2)), pygame.SRCALPHA
-            )
+            # 매 프레임 Surface를 생성하는 것은 무겁습니다.
+            # 성능을 위해 직접 원으로 그립니다 (투명도 대신 크기 감소 활용)
             pygame.draw.circle(
-                s,
-                (*self.color, alpha),
-                (int(self.size), int(self.size)),
-                int(self.size),
+                surface, self.color, (int(self.x), int(self.y)), int(self.size)
             )
-            surface.blit(s, (int(self.x - self.size), int(self.y - self.size)))
 
 
 class EngineTrail:
@@ -357,7 +348,7 @@ class HitSpark:
         self.particles = []
         self.timer = 0
         # 적은 파티클로 단순화
-        for _ in range(4):
+        for _ in range(3):  # 4 -> 3으로 감소
             angle = random.uniform(0, 2 * 3.14159)
             speed = random.uniform(3, 8)
             vx = speed * pygame.math.Vector2(1, 0).rotate_rad(angle).x
@@ -403,3 +394,70 @@ class LaserTrail:
             s = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             s.fill((*self.color, self.alpha))
             surface.blit(s, (self.x - self.width // 2, self.y))
+
+
+class Ally:
+    """
+    지원군 유닛. 플레이어를 돕는 AI 드론.
+    - 일정 시간 등장하여 적에게 호밍 미사일 발사
+    - 무적 상태
+    """
+
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.color = (100, 255, 100)  # 연두색
+        self.speed_x = 4
+        self.target_y = HEIGHT - 250
+        self.state = "enter"
+        self.lifetime = 900  # 15초 활동
+        self.fire_timer = 0
+
+    def update(self, enemies, projectiles):
+        self.lifetime -= 1
+
+        # 1. 입장
+        if self.state == "enter":
+            self.rect.y -= 3
+            if self.rect.y <= self.target_y:
+                self.state = "fight"
+
+        # 2. 전투 (좌우 배회)
+        elif self.state == "fight":
+            self.rect.x += self.speed_x
+            if self.rect.right > WIDTH - 20:
+                self.speed_x = -abs(self.speed_x)
+            elif self.rect.left < 20:
+                self.speed_x = abs(self.speed_x)
+
+            # 공격 (호밍 미사일)
+            self.fire_timer += 1
+            if self.fire_timer > 40:  # 약 0.7초마다 발사
+                self.fire_timer = 0
+                if enemies:
+                    # HomingMissile 생성
+                    missile = HomingMissile(
+                        self.rect.centerx, self.rect.top, self.color, enemies
+                    )
+                    projectiles.append(missile)
+
+        # 3. 퇴장 (수명 끝)
+        if self.lifetime <= 0:
+            self.state = "leave"
+            self.rect.y += 5  # 아래로 퇴장
+
+    def draw(self, surface):
+        # 드론 모양 그리기
+        # 본체
+        pygame.draw.circle(surface, self.color, self.rect.center, 15)
+        pygame.draw.circle(surface, WHITE, self.rect.center, 8)
+
+        # 날개
+        wing_rect = pygame.Rect(0, 0, 34, 6)
+        wing_rect.center = self.rect.center
+        pygame.draw.rect(surface, self.color, wing_rect)
+
+        # 엔진 불꽃 (장식)
+        if self.state in ["enter", "fight"]:
+            pygame.draw.circle(
+                surface, (255, 200, 0), (self.rect.centerx, self.rect.bottom + 5), 4
+            )
