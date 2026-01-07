@@ -1,6 +1,21 @@
 import pygame
 import random
-from constants import RED, YELLOW, GREY, CYAN, ORANGE, PURPLE, GREEN, BLUE
+from constants import (
+    RED,
+    YELLOW,
+    GREY,
+    CYAN,
+    ORANGE,
+    PURPLE,
+    GREEN,
+    BLUE,
+    DAMAGE_PLAYER_BASIC,
+    DAMAGE_PLAYER_COLLISION,
+    DAMAGE_PLAYER_LASER_BEAM,
+    HEAL_AMOUNT,
+    PLAYER_MAX_HEALTH,
+    PLAYER_MAX_BOMBS,
+)
 from entities import Explosion, HitSpark
 from weapons import PiercingLaser, PlasmaWave
 from enemies import SplitEnemy, LaserEnemy
@@ -190,7 +205,7 @@ class CollisionManager:
                             )
                         )
                     else:
-                        self.game.p1.health -= 10
+                        self.game.p1.health -= DAMAGE_PLAYER_BASIC
                 if hit_p2:
                     if self.game.p2.has_shield:
                         self.game.p2.has_shield = False
@@ -202,7 +217,7 @@ class CollisionManager:
                             )
                         )
                     else:
-                        self.game.p2.health -= 10
+                        self.game.p2.health -= DAMAGE_PLAYER_BASIC
 
                 if bullet in self.game.enemy_bullets:
                     self.game.enemy_bullets.remove(bullet)
@@ -218,9 +233,9 @@ class CollisionManager:
 
             if hit_p1 or hit_p2:
                 if hit_p1:
-                    self.game.p1.health -= 20
+                    self.game.p1.health -= DAMAGE_PLAYER_COLLISION
                 if hit_p2:
-                    self.game.p2.health -= 20
+                    self.game.p2.health -= DAMAGE_PLAYER_COLLISION
 
                 # 강한 화면 흔들림
                 self.game.screen_shake.trigger(intensity=15, duration=10)
@@ -254,9 +269,9 @@ class CollisionManager:
                 player.special_weapon = r_weapon
                 player.special_weapon_timer = 1200  # 20초
             elif item.kind == "health":
-                player.health = min(player.max_health, player.health + 30)
+                player.health = min(PLAYER_MAX_HEALTH, player.health + HEAL_AMOUNT)
             elif item.kind == "bomb":
-                player.bomb_count = min(player.max_bombs, player.bomb_count + 1)
+                player.bomb_count = min(PLAYER_MAX_BOMBS, player.bomb_count + 1)
             elif item.kind == "shield":
                 player.has_shield = True
             elif item.kind == "slow":
@@ -278,7 +293,7 @@ class CollisionManager:
                                 )
                                 < 20
                             ):
-                                player.health -= 1
+                                player.health -= DAMAGE_PLAYER_LASER_BEAM
                                 if random.random() < 0.1:
                                     self.game.screen_shake.trigger(
                                         intensity=3, duration=3

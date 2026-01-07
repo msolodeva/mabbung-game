@@ -42,10 +42,28 @@ class BlackHole:
         self.timer = 0
         self.is_active = True
         self.angle = 0  # 회전 효과용
+        self._create_assets()
+
+    def _create_assets(self):
+        """렌더링용 에셋 미리 생성 (최적화)."""
+        self.layers = []
+        for i in range(3):
+            r = self.radius + i * 10
+            # 충분히 큰 서피스 생성
+            s = pygame.Surface((int(r * 2), int(r * 2)), pygame.SRCALPHA)
+            # 반투명 배경 원
+            pygame.draw.circle(
+                s, (100, 50, 150, 100 - i * 30), (int(r), int(r)), int(r)
+            )
+            # 회전할 무늬 (아크)
+            rect = (0, 0, int(r * 2), int(r * 2))
+            pygame.draw.arc(s, PURPLE, rect, 0, 3.14, 2)
+            pygame.draw.arc(s, PURPLE, rect, 3.14 + 0.2, 6.28 - 0.2, 2)
+            self.layers.append(s)
 
     def update(self, enemies, bullets, junks, items):
         self.timer += 1
-        self.angle += 5
+        self.angle += 2  # 회전 속도 조절
         if self.timer >= self.duration:
             self.is_active = False
             return
@@ -79,22 +97,16 @@ class BlackHole:
                         obj.y = float(obj.rect.y)
 
     def draw(self, surface):
-        # 소용돌이 효과 그리기
-        for i in range(3):
-            r = self.radius + i * 10 + math.sin(pygame.time.get_ticks() * 0.01) * 5
-            s = pygame.Surface((int(r * 2), int(r * 2)), pygame.SRCALPHA)
-            pygame.draw.circle(
-                s, (100, 50, 150, 100 - i * 30), (int(r), int(r)), int(r)
-            )
+        # 미리 생성된 레이어 회전 및 그리기
+        for i, layer in enumerate(self.layers):
+            # 맥동 효과 (크기 변화) 대신 단순 회전으로 변경하여 성능 확보
+            # 각 레이어마다 회전 각도를 다르게 주어 역동성 부여
+            current_angle = self.angle * (1 if i % 2 == 0 else -1) + i * 45
 
-            # 회전 선
-            start_angle = math.radians(self.angle + i * 120)
-            end_angle = start_angle + math.radians(180)
-            pygame.draw.arc(
-                s, PURPLE, (0, 0, int(r * 2), int(r * 2)), start_angle, end_angle, 2
-            )
-
-            surface.blit(s, (int(self.x - r), int(self.y - r)))
+            # 이미지 회전 (중심 기준)
+            rotated_layer = pygame.transform.rotate(layer, current_angle)
+            new_rect = rotated_layer.get_rect(center=(self.x, self.y))
+            surface.blit(rotated_layer, new_rect)
 
         # 중심부 (검은색)
         pygame.draw.circle(surface, BLACK, (int(self.x), int(self.y)), self.radius // 2)

@@ -5,7 +5,32 @@ import pygame
 import random
 import math
 
-from constants import WIDTH, HEIGHT, WHITE, RED, GREEN, CYAN, ORANGE
+from constants import (
+    WIDTH,
+    HEIGHT,
+    WHITE,
+    RED,
+    GREEN,
+    CYAN,
+    ORANGE,
+    PLAYER_SPEED,
+    PLAYER_MAX_HEALTH,
+    PLAYER_INIT_BOMBS,
+    PLAYER_MAX_BOMBS,
+    ITEM_WEAPON_THRESHOLD,
+    ITEM_HEALTH_THRESHOLD,
+    ITEM_BOMB_THRESHOLD,
+    ITEM_SHIELD_THRESHOLD,
+    ITEM_SLOW_THRESHOLD,
+    SHOCKWAVE_SPEED,
+    SHOCKWAVE_FADE,
+    EXPLOSION_PARTICLE_COUNT,
+    HIT_SPARK_PARTICLE_COUNT,
+    ALLY_SPEED_X,
+    ALLY_LIFETIME,
+    ALLY_FIRE_RATE,
+    LASER_TRAIL_FADE,
+)
 from weapons import HomingMissile
 
 
@@ -20,13 +45,13 @@ class Player:
         self.rect = pygame.Rect(x, y, 40, 40)
         self.color = color
         self.controls = controls
-        self.speed = 5
+        self.speed = PLAYER_SPEED
         self.score = 0
-        self.max_health = 140
+        self.max_health = PLAYER_MAX_HEALTH
         self.health = self.max_health
         self.weapon_level = 1  # 무기 레벨 (1~3)
-        self.bomb_count = 3  # 폭탄 개수 (기본 3개)
-        self.max_bombs = 3  # 최대 폭탄 개수
+        self.bomb_count = PLAYER_INIT_BOMBS  # 폭탄 개수
+        self.max_bombs = PLAYER_MAX_BOMBS  # 최대 폭탄 개수
         self.weapon_timer = 0  # 무기 강화 지속 시간 프레임
 
         # 새로운 아이템 상태
@@ -184,25 +209,25 @@ class Item:
         self.rect = pygame.Rect(self.x, self.y, self.size, self.size)
         self.speed = 3
 
-        # 아이템 종류 결정 (weapon 20%, health 25%, bomb 20%, shield 15%, slow 10%, clone 10%)
+        # 아이템 종류 결정
         r = random.random()
-        if r < 0.20:
+        if r < ITEM_WEAPON_THRESHOLD:
             self.kind = "weapon"
             self.color = CYAN
             self.label = "P"
-        elif r < 0.45:
+        elif r < ITEM_HEALTH_THRESHOLD:
             self.kind = "health"
             self.color = GREEN
             self.label = "H"
-        elif r < 0.65:
+        elif r < ITEM_BOMB_THRESHOLD:
             self.kind = "bomb"
             self.color = ORANGE
             self.label = "B"
-        elif r < 0.80:
+        elif r < ITEM_SHIELD_THRESHOLD:
             self.kind = "shield"
             self.color = (0, 255, 255)  # 청록색
             self.label = "S"
-        elif r < 0.90:
+        elif r < ITEM_SLOW_THRESHOLD:
             self.kind = "slow"
             self.color = (100, 100, 255)  # 파란색
             self.label = "T"
@@ -256,13 +281,13 @@ class Shockwave:
         self.radius = 10
         self.width = 10
         self.alpha = 255
-        self.speed = 8
+        self.speed = SHOCKWAVE_SPEED
         self.frame = 0
 
     def update(self, *args):  # args to ignore extra default args if any
         self.radius += self.speed
         self.width = max(1, self.width * 0.9)  # 너비가 빠르게 줄어듦
-        self.alpha = max(0, self.alpha - 20)
+        self.alpha = max(0, self.alpha - SHOCKWAVE_FADE)
         self.frame += 1
 
     def draw(self, surface):
@@ -300,7 +325,7 @@ class Explosion:
         self.timer = 0
 
         # 파티클 개수 증가 및 물리학 개선
-        count = 12
+        count = EXPLOSION_PARTICLE_COUNT
         for _ in range(count):
             angle = random.uniform(0, 6.28)
             speed = random.uniform(2, 8)
@@ -413,7 +438,7 @@ class HitSpark:
         self.particles = []
         self.timer = 0
         # 적은 파티클로 단순화
-        for _ in range(3):  # 4 -> 3으로 감소
+        for _ in range(HIT_SPARK_PARTICLE_COUNT):
             angle = random.uniform(0, 2 * 3.14159)
             speed = random.uniform(3, 8)
             vx = speed * pygame.math.Vector2(1, 0).rotate_rad(angle).x
@@ -445,7 +470,7 @@ class LaserTrail:
         self.width = width
         self.height = height
         self.alpha = 255
-        self.fade_speed = 20
+        self.fade_speed = LASER_TRAIL_FADE
 
         # 최적화: Surface 미리 생성
         self.image = pygame.Surface((width, height))
@@ -473,10 +498,10 @@ class Ally:
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 30, 30)
         self.color = (100, 255, 100)  # 연두색
-        self.speed_x = 4
+        self.speed_x = ALLY_SPEED_X
         self.target_y = HEIGHT - 250
         self.state = "enter"
-        self.lifetime = 900  # 15초 활동
+        self.lifetime = ALLY_LIFETIME
         self.fire_timer = 0
 
     def update(self, enemies, projectiles):
@@ -498,7 +523,7 @@ class Ally:
 
             # 공격 (호밍 미사일)
             self.fire_timer += 1
-            if self.fire_timer > 40:  # 약 0.7초마다 발사
+            if self.fire_timer > ALLY_FIRE_RATE:
                 self.fire_timer = 0
                 if enemies:
                     # HomingMissile 생성

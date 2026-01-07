@@ -4,7 +4,17 @@
 import pygame
 import random
 
-from constants import WIDTH, RED, BLUE, GREY, DARK_GREY, LIGHT_GREY, WHITE
+from constants import (
+    WIDTH,
+    RED,
+    BLUE,
+    GREY,
+    DARK_GREY,
+    LIGHT_GREY,
+    WHITE,
+    JUNK_SPEED_Y_MIN,
+    JUNK_SPEED_Y_MAX,
+)
 
 
 class Junk:
@@ -25,7 +35,9 @@ class Junk:
         self.color = random.choice([RED, BLUE])
 
         # 난이도에 따른 속도 증가
-        self.speed_y = random.uniform(2, 5) * (1 + (difficulty - 1) * 0.5)
+        self.speed_y = random.uniform(JUNK_SPEED_Y_MIN, JUNK_SPEED_Y_MAX) * (
+            1 + (difficulty - 1) * 0.5
+        )
         self.speed_x = random.uniform(-1.0, 1.0) * (1 + (difficulty - 1) * 0.2)
 
         self.angle = 0

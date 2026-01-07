@@ -19,6 +19,8 @@ from constants import (
     GREEN,
     ORANGE,
     CYAN,
+    DAMAGE_KAMIKAZE_EXPLOSION,
+    KAMIKAZE_EXPLOSION_RADIUS,
 )
 from utils import ScreenShake, point_to_line_distance
 from sound import generate_sound
@@ -430,13 +432,13 @@ class Game:
                         )
                     # 화면 흔들림
                     self.screen_shake.trigger(intensity=15, duration=12)
-                    # 범위 데미지 (50 픽셀 내 플레이어)
+                    # 범위 데미지
                     for player in [self.p1, self.p2]:
                         dx = player.rect.centerx - enemy.rect.centerx
                         dy = player.rect.centery - enemy.rect.centery
                         dist = (dx**2 + dy**2) ** 0.5
-                        if dist < 80:
-                            player.health -= 25
+                        if dist < KAMIKAZE_EXPLOSION_RADIUS:
+                            player.health -= DAMAGE_KAMIKAZE_EXPLOSION
                             if self.p1.health <= 0 and self.p2.health <= 0:
                                 self.game_over = True
                     # 적 제거

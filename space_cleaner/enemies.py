@@ -17,6 +17,21 @@ from constants import (
     WHITE,
     BLUE,
     ORANGE,
+    ENEMY_BASE_SPEED_Y,
+    ENEMY_FIRE_RATE_MIN,
+    ENEMY_FIRE_RATE_MAX,
+    HEAVY_ENEMY_HEALTH_BASE,
+    HEAVY_ENEMY_HEALTH_SCALE,
+    HEAVY_ENEMY_FIRE_RATE_BASE,
+    INTERCEPTOR_SPEED_Y,
+    SNIPER_FIRE_RATE_BASE,
+    GHOST_PHASE_DURATION,
+    SPLIT_ENEMY_HEALTH_BASE,
+    SPLIT_ENEMY_HEALTH_SCALE,
+    LASER_ENEMY_HEALTH_BASE,
+    LASER_ENEMY_HEALTH_SCALE,
+    LASER_ENEMY_ROTATION_SPEED_BASE,
+    KAMIKAZE_SPEED_BASE,
 )
 
 
@@ -56,8 +71,8 @@ class Enemy:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        # 난이도에 따른 속도 증가 (0.4 -> 0.25로 완화)
-        base_speed = random.uniform(2, 4)
+        # 난이도에 따른 속도 증가
+        base_speed = random.uniform(ENEMY_BASE_SPEED_Y - 1, ENEMY_BASE_SPEED_Y + 1)
         self.speed_y = base_speed * (1 + (difficulty - 1) * 0.25)
         self.speed_x = random.choice([-3, 3]) * (1 + (difficulty - 1) * 0.15)
 
@@ -65,8 +80,8 @@ class Enemy:
         self.fire_timer = 0
 
         # 난이도가 높을수록 발사 간격 감소
-        min_fire = max(30, int(60 / difficulty))
-        max_fire = max(60, int(120 / difficulty))
+        min_fire = max(30, int(ENEMY_FIRE_RATE_MIN / difficulty))
+        max_fire = max(60, int(ENEMY_FIRE_RATE_MAX / difficulty))
         self.fire_rate = random.randint(min_fire, max_fire)
 
     def update(self, enemy_bullets):
@@ -126,15 +141,17 @@ class HeavyEnemy:
         self.speed = 2 * (1 + (difficulty - 1) * 0.08)
         self.speed_x = 2
 
-        # 체력 스케일링 완화 (기존 30 + 10 * difficulty -> 30 + 7 * difficulty)
-        self.max_health = 30 + 7 * difficulty
+        # 체력 스케일링
+        self.max_health = (
+            HEAVY_ENEMY_HEALTH_BASE + HEAVY_ENEMY_HEALTH_SCALE * difficulty
+        )
         self.health = self.max_health
 
         self.target_y = random.randint(50, 200)
         self.state = "entering"
 
         self.fire_timer = 0
-        self.fire_rate = max(40, int(90 / difficulty))
+        self.fire_rate = max(40, int(HEAVY_ENEMY_FIRE_RATE_BASE / difficulty))
 
     def update(self, enemy_bullets):
         # 움직임 로직: 등장 후 좌우 이동
@@ -187,7 +204,7 @@ class Interceptor:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        self.speed_y = 8 * (1 + (difficulty - 1) * 0.3)
+        self.speed_y = INTERCEPTOR_SPEED_Y * (1 + (difficulty - 1) * 0.3)
         self.speed_x = random.uniform(-2, 2)
 
     def update(self, enemy_bullets):
@@ -224,7 +241,7 @@ class SniperEnemy:
         self.target_y = random.randint(30, 100)
         self.state = "entering"
         self.fire_timer = 0
-        self.fire_rate = max(60, int(150 / difficulty))
+        self.fire_rate = max(60, int(SNIPER_FIRE_RATE_BASE / difficulty))
         self.color = WHITE
 
     def update(self, enemy_bullets, players=None):
@@ -292,8 +309,8 @@ class GhostEnemy:
         sway = math.sin((self.timer + self.float_offset) * 0.05) * 4
         self.rect.x = int(self.rect.x + sway)
 
-        # 1.5초 주기로 상태 변화 (더 빠르게 깜빡임)
-        if self.timer % 90 < 45:
+        # 상태 변화
+        if self.timer % (GHOST_PHASE_DURATION * 2) < GHOST_PHASE_DURATION:
             self.is_ghost = True
         else:
             self.is_ghost = False
@@ -334,7 +351,9 @@ class SplitEnemy:
         self.speed_y = 3 * (1 + (difficulty - 1) * 0.2)
         self.speed_x = random.choice([-2, 2])
 
-        self.max_health = 20 + 5 * difficulty
+        self.max_health = (
+            SPLIT_ENEMY_HEALTH_BASE + SPLIT_ENEMY_HEALTH_SCALE * difficulty
+        )
         self.health = self.max_health
 
         self.pulse = 0
@@ -432,10 +451,12 @@ class LaserEnemy:
         self.state = "entering"
 
         self.laser_angle = 0
-        self.laser_rotation_speed = 2 * difficulty
+        self.laser_rotation_speed = LASER_ENEMY_ROTATION_SPEED_BASE * difficulty
         self.laser_length = 300
 
-        self.max_health = 30 + 8 * difficulty
+        self.max_health = (
+            LASER_ENEMY_HEALTH_BASE + LASER_ENEMY_HEALTH_SCALE * difficulty
+        )
         self.health = self.max_health
 
     def update(self, enemy_bullets):
@@ -516,7 +537,7 @@ class KamikazeEnemy:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        self.speed = 2 * (1 + (difficulty - 1) * 0.3)
+        self.speed = KAMIKAZE_SPEED_BASE * (1 + (difficulty - 1) * 0.3)
         self.target = None
         self.timer = 0
         self.warning_blink = False

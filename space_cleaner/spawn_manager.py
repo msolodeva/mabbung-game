@@ -1,5 +1,23 @@
 import random
-from constants import WIDTH, HEIGHT
+from constants import (
+    WIDTH,
+    HEIGHT,
+    DIFFICULTY_INTERVAL,
+    MAX_ENEMIES,
+    MAX_JUNKS,
+    SPAWN_BASE_THRESHOLD,
+    PROB_SUPPORT_ALLY,
+    PROB_BASE_ENEMY,
+    PROB_MAX_ENEMY,
+    SPAWN_HEAVY_THRESHOLD,
+    SPAWN_INTERCEPTOR_THRESHOLD,
+    SPAWN_SNIPER_THRESHOLD,
+    SPAWN_GHOST_THRESHOLD,
+    SPAWN_SPLIT_THRESHOLD,
+    SPAWN_LASER_THRESHOLD,
+    SPAWN_KAMIKAZE_THRESHOLD,
+    ITEM_SPAWN_OFFSET,
+)
 from entities import Item, Ally
 from junk import Junk
 from enemies import (
@@ -38,43 +56,45 @@ class SpawnManager:
         # 환경 스폰 배율 가져오기
         spawn_mul = env_manager.get_spawn_multiplier()
 
-        # 난이도 계산: 60초마다 난이도 1.0 증가
-        difficulty = 1.0 + (game_time / 60.0)
+        # 난이도 계산
+        difficulty = 1.0 + (game_time / DIFFICULTY_INTERVAL)
 
         # 난이도가 오를수록 스폰 주기 빨라짐
-        spawn_threshold = max(5, (45 - int((difficulty - 1) * 8)) // int(spawn_mul))
+        spawn_threshold = max(
+            5, (SPAWN_BASE_THRESHOLD - int((difficulty - 1) * 8)) // int(spawn_mul)
+        )
 
         self.spawn_timer += 1  # 프레임 단위 카운트라고 가정
 
         if self.spawn_timer > spawn_threshold:
-            # 지원군 스폰 (2% 확률, 동시 1기 제한)
-            if not allies and random.random() < 0.02:
+            # 지원군 스폰 (PROB_SUPPORT_ALLY 확률, 동시 1기 제한)
+            if not allies and random.random() < PROB_SUPPORT_ALLY:
                 allies.append(Ally(WIDTH // 2, HEIGHT + 40))
 
             r = random.random()
 
             # 난이도가 오를수록 적 생성 확률 증가
-            enemy_prob = min(0.35, 0.12 + (difficulty - 1) * 0.05)
+            enemy_prob = min(PROB_MAX_ENEMY, PROB_BASE_ENEMY + (difficulty - 1) * 0.05)
 
             # 화면 내 객체 수 제한
-            if r < enemy_prob and len(enemies) < 15:  # 최대 적 15기
+            if r < enemy_prob and len(enemies) < MAX_ENEMIES:
                 # HeavyEnemy 발생 빈도 조절
                 has_heavy = any(isinstance(e, HeavyEnemy) for e in enemies)
 
                 r2 = random.random()
-                if not has_heavy and r2 < 0.04:
+                if not has_heavy and r2 < SPAWN_HEAVY_THRESHOLD:
                     enemies.append(HeavyEnemy(difficulty))
-                elif r2 < 0.12:  # 고속 요격기
+                elif r2 < SPAWN_INTERCEPTOR_THRESHOLD:  # 고속 요격기
                     enemies.append(Interceptor(difficulty))
-                elif r2 < 0.20:  # 저격수
+                elif r2 < SPAWN_SNIPER_THRESHOLD:  # 저격수
                     enemies.append(SniperEnemy(difficulty))
-                elif r2 < 0.28:  # 유령 적
+                elif r2 < SPAWN_GHOST_THRESHOLD:  # 유령 적
                     enemies.append(GhostEnemy(difficulty))
-                elif r2 < 0.36:  # 분열 적
+                elif r2 < SPAWN_SPLIT_THRESHOLD:  # 분열 적
                     enemies.append(SplitEnemy(difficulty))
-                elif r2 < 0.42:  # 회전 레이저 적
+                elif r2 < SPAWN_LASER_THRESHOLD:  # 회전 레이저 적
                     enemies.append(LaserEnemy(difficulty))
-                elif r2 < 0.48:  # 자폭 적
+                elif r2 < SPAWN_KAMIKAZE_THRESHOLD:  # 자폭 적
                     enemies.append(KamikazeEnemy(difficulty))
                 else:
                     enemies.append(Enemy(difficulty))
@@ -82,7 +102,7 @@ class SpawnManager:
             elif r < enemy_prob + 0.02:
                 items.append(Item())
 
-            elif len(junks) < 25:  # 최대 쓰레기 25개
+            elif len(junks) < MAX_JUNKS:
                 junks.append(Junk(difficulty))
 
             self.spawn_timer = 0
