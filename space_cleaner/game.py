@@ -20,6 +20,7 @@ from constants import (
     ORANGE,
     CYAN,
 )
+from utils import ScreenShake, point_to_line_distance
 from sound import generate_sound
 from background import BackgroundManager
 from entities import (
@@ -48,44 +49,6 @@ from environment import EnvironmentManager
 from junk import Junk
 
 
-class ScreenShake:
-    """
-    화면 흔들림 효과 클래스.
-    카메라 오프셋을 랜덤하게 조정하여 진동 효과 생성.
-    """
-
-    def __init__(self):
-        self.offset_x = 0
-        self.offset_y = 0
-        self.intensity = 0
-        self.duration = 0
-
-    def trigger(self, intensity=10, duration=10):
-        """
-        화면 흔들림 시작.
-        Args:
-            intensity: 흔들림의 강도 (픽셀 단위)
-            duration: 지속 시간 (프레임)
-        """
-        self.intensity = intensity
-        self.duration = duration
-
-    def update(self):
-        """화면 흔들림 업데이트."""
-        if self.duration > 0:
-            self.duration -= 1
-            # 랜덤 오프셋 생성 (정수로 변환)
-            intensity_int = int(self.intensity)
-            self.offset_x = random.randint(-intensity_int, intensity_int)
-            self.offset_y = random.randint(-intensity_int, intensity_int)
-            # 시간이 지나면서 감쇠
-            self.intensity = max(0, self.intensity - 0.5)
-        else:
-            self.offset_x = 0
-            self.offset_y = 0
-            self.intensity = 0
-
-
 class Game:
     """
     메인 게임 클래스.
@@ -108,6 +71,9 @@ class Game:
         # 화면 흔들림 시스템
         self.screen_shake = ScreenShake()
 
+        # 히트 스탑 (프레임 정지)
+        self.hit_stop = 0
+
         self.reset_game()
 
     def _init_sounds(self):
@@ -126,6 +92,7 @@ class Game:
     def reset_game(self):
         """게임 상태 초기화."""
         self.start_ticks = pygame.time.get_ticks()
+        self.game_time = 0  # 순수 게임 진행 시간 (초 단위로 관리하거나 프레임으로 관리)
 
         # 게임 상태 리셋
         self.game_over = False
@@ -188,8 +155,9 @@ class Game:
         spawn_mul = self.env_manager.get_spawn_multiplier()
 
         # 난이도 계산: 60초마다 난이도 1.0 증가 (기존 45초에서 늦춤)
-        elapsed_seconds = (pygame.time.get_ticks() - self.start_ticks) / 1000
-        difficulty = 1.0 + (elapsed_seconds / 60.0)
+        # 난이도 계산: 60초마다 난이도 1.0 증가
+        # 일시정지 등을 고려하여 self.game_time 사용
+        difficulty = 1.0 + (self.game_time / 60.0)
 
         # 난이도가 오를수록 스폰 주기 빨라짐 (더 완만하게 조정)
         spawn_threshold = max(5, (45 - int((difficulty - 1) * 8)) // int(spawn_mul))
@@ -366,6 +334,7 @@ class Game:
                                         )
                                     )
                                 self.screen_shake.trigger(12, 12)
+                                self.hit_stop = 4  # 강한 타격감
                                 if self.snd_explosion:
                                     self.snd_explosion.play()
                                 self.p1.score += 100  # 간단하게 P1 점수로 합산 (실제로는 발사자 구분이 필요하지만 일단 단순화)
@@ -431,6 +400,7 @@ class Game:
 
                 # 강한 화면 흔들림
                 self.screen_shake.trigger(intensity=15, duration=10)
+                self.hit_stop = 8  # 매우 강한 충돌
 
                 if enemy in self.enemies:
                     self.enemies.remove(enemy)
@@ -504,7 +474,7 @@ class Game:
                         if player.health > 0:
                             # 간단한 거리 기반 충돌 검사
                             if (
-                                self._point_to_line_distance(
+                                point_to_line_distance(
                                     player.rect.center, laser_line[0], laser_line[1]
                                 )
                                 < 20
@@ -525,29 +495,6 @@ class Game:
                                     )
                                 if self.p1.health <= 0 and self.p2.health <= 0:
                                     self.game_over = True
-
-    def _point_to_line_distance(self, point, line_start, line_end):
-        """점과 선분 사이의 거리 계산."""
-        px, py = point
-        x1, y1 = line_start
-        x2, y2 = line_end
-
-        # 선분의 길이
-        line_len_sq = (x2 - x1) ** 2 + (y2 - y1) ** 2
-        if line_len_sq == 0:
-            return ((px - x1) ** 2 + (py - y1) ** 2) ** 0.5
-
-        # 점에서 선분으로의 수직선이 선분 위에 있는 비율
-        t = max(
-            0, min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / line_len_sq)
-        )
-
-        # 가장 가까운 점
-        closest_x = x1 + t * (x2 - x1)
-        closest_y = y1 + t * (y2 - y1)
-
-        # 거리 반환
-        return ((px - closest_x) ** 2 + (py - closest_y) ** 2) ** 0.5
 
     def _draw_hud_bar(self, surface, x, y, width, height, ratio, color):
         """HUD용 반투명 막대 그리기."""
@@ -613,6 +560,7 @@ class Game:
 
             # 강한 화면 흔들림
             self.screen_shake.trigger(intensity=20, duration=15)
+            self.hit_stop = 10  # 폭탄 사용 시 연출 강화
 
             # 화면 전체 섬광 효과 (단순 폭발에서 더 화려하게)
             # 폭발을 시간차를 두고 여러 개 생성하거나, 랜덤 위치에 대량 생성
@@ -695,6 +643,14 @@ class Game:
 
     def update(self):
         """게임 상태 업데이트."""
+        # 히트 스탑 처리
+        if self.hit_stop > 0:
+            self.hit_stop -= 1
+            return
+
+        # 게임 시간 업데이트 (초 단위)
+        self.game_time += 1 / FPS
+
         # 화면 흔들림 업데이트
         self.screen_shake.update()
 

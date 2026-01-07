@@ -3,6 +3,7 @@
 
 import pygame
 import random
+import math
 
 from constants import WIDTH, HEIGHT, WHITE, RED, GREEN, CYAN, ORANGE
 from weapons import HomingMissile
@@ -240,6 +241,41 @@ class Item:
         surface.blit(txt, txt.get_rect(center=self.rect.center))
 
 
+class Shockwave:
+    """
+    폭발 시 발생하는 충격파 이펙트 (확장되는 원).
+    """
+
+    def __init__(self, x, y, color):
+        self.x = x
+        self.y = y
+        self.color = color if len(color) == 3 else color[:3]
+        self.radius = 10
+        self.width = 10
+        self.alpha = 255
+        self.speed = 8
+
+    def update(self, *args):  # args to ignore extra default args if any
+        self.radius += self.speed
+        self.width = max(1, self.width * 0.9)  # 너비가 빠르게 줄어듦
+        self.alpha = max(0, self.alpha - 20)
+
+    def draw(self, surface):
+        if self.alpha > 0 and self.width > 1:
+            # 큰 서피스 생성을 피하기 위해 화면 밖 체크 등을 할 수 있지만 여기선 단순화
+            # 알파 블렌딩을 위해 임시 서피스 사용
+            size = int(self.radius * 2 + self.width * 2)
+            s = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.circle(
+                s,
+                (*self.color, self.alpha),
+                (size // 2, size // 2),
+                int(self.radius),
+                int(self.width),
+            )
+            surface.blit(s, (self.x - size // 2, self.y - size // 2))
+
+
 class Explosion:
     """
     폭발 파티클 이펙트.
@@ -248,28 +284,45 @@ class Explosion:
 
     def __init__(self, x, y, color):
         self.particles = []
+        self.shockwave = Shockwave(x, y, color)
         self.timer = 0
-        for _ in range(6):  # 10 -> 6으로 감소 (성능 최적화)
-            dx = random.uniform(-5, 5)
-            dy = random.uniform(-5, 5)
-            # 색상을 약간 랜덤하게 변형하여 풍부한 연출
+
+        # 파티클 개수 증가 및 물리학 개선
+        count = 12
+        for _ in range(count):
+            angle = random.uniform(0, 6.28)
+            speed = random.uniform(2, 8)
+            dx = math.cos(angle) * speed
+            dy = math.sin(angle) * speed
+
+            # 색상을 랜덤하게 변형
             c_list = list(color)
             c_list[0] = max(0, min(255, c_list[0] + random.randint(-50, 50)))
             c_list[1] = max(0, min(255, c_list[1] + random.randint(-50, 50)))
             c_list[2] = max(0, min(255, c_list[2] + random.randint(-50, 50)))
 
-            self.particles.append([x, y, dx, dy, random.randint(2, 6), tuple(c_list)])
+            # [x, y, vx, vy, radius, color, visible]
+            self.particles.append(
+                [x, y, dx, dy, random.uniform(3, 6), tuple(c_list), True]
+            )
 
     def update(self):
         self.timer += 1
+        self.shockwave.update()
         for p in self.particles:
-            p[0] += p[2]  # x += dx
-            p[1] += p[3]  # y += dy
-            p[4] -= 0.1  # radius 감소 (0.2 -> 0.1로 줄여서 더 오래 지속)
+            p[0] += p[2]  # x += vx
+            p[1] += p[3]  # y += vy
+            p[2] *= 0.9  # 마찰력 (속도 감소)
+            p[3] *= 0.9
+            p[4] -= 0.15  # radius 감소
+            if p[4] <= 0:
+                p[6] = False
 
     def draw(self, surface):
+        self.shockwave.draw(surface)
         for p in self.particles:
-            if p[4] > 0:
+            if p[6] and p[4] > 0:
+                # 반투명 효과를 위해 서피스를 쓰면 좋지만 성능상 불투명 원으로 유지하되 크기로 조절
                 pygame.draw.circle(surface, p[5], (int(p[0]), int(p[1])), int(p[4]))
 
 
