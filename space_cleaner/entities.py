@@ -244,36 +244,48 @@ class Item:
 class Shockwave:
     """
     폭발 시 발생하는 충격파 이펙트 (확장되는 원).
+    성능 최적화를 위해 프레임별 이미지를 캐싱하여 사용.
     """
+
+    _cache = {}  # (color, frame) -> image
 
     def __init__(self, x, y, color):
         self.x = x
         self.y = y
-        self.color = color if len(color) == 3 else color[:3]
+        self.color = tuple(color[:3]) if len(color) >= 3 else tuple(color)
         self.radius = 10
         self.width = 10
         self.alpha = 255
         self.speed = 8
+        self.frame = 0
 
     def update(self, *args):  # args to ignore extra default args if any
         self.radius += self.speed
         self.width = max(1, self.width * 0.9)  # 너비가 빠르게 줄어듦
         self.alpha = max(0, self.alpha - 20)
+        self.frame += 1
 
     def draw(self, surface):
         if self.alpha > 0 and self.width > 1:
-            # 큰 서피스 생성을 피하기 위해 화면 밖 체크 등을 할 수 있지만 여기선 단순화
-            # 알파 블렌딩을 위해 임시 서피스 사용
-            size = int(self.radius * 2 + self.width * 2)
-            s = pygame.Surface((size, size), pygame.SRCALPHA)
-            pygame.draw.circle(
-                s,
-                (*self.color, self.alpha),
-                (size // 2, size // 2),
-                int(self.radius),
-                int(self.width),
+            key = (self.color, self.frame)
+            if key not in self._cache:
+                # 캐시에 없으면 생성
+                size = int(self.radius * 2 + self.width * 2)
+                s = pygame.Surface((size, size), pygame.SRCALPHA)
+                pygame.draw.circle(
+                    s,
+                    (*self.color, self.alpha),
+                    (size // 2, size // 2),
+                    int(self.radius),
+                    int(self.width),
+                )
+                self._cache[key] = s
+
+            # 캐시된 이미지 사용
+            img = self._cache[key]
+            surface.blit(
+                img, (self.x - img.get_width() // 2, self.y - img.get_height() // 2)
             )
-            surface.blit(s, (self.x - size // 2, self.y - size // 2))
 
 
 class Explosion:
@@ -430,11 +442,14 @@ class LaserTrail:
     def __init__(self, x, y, color, width=4, height=15):
         self.x = x
         self.y = y
-        self.color = color
         self.width = width
         self.height = height
         self.alpha = 255
         self.fade_speed = 20
+
+        # 최적화: Surface 미리 생성
+        self.image = pygame.Surface((width, height))
+        self.image.fill(color)
 
     def update(self):
         self.alpha = max(0, self.alpha - self.fade_speed)
@@ -444,9 +459,8 @@ class LaserTrail:
 
     def draw(self, surface):
         if self.alpha > 0:
-            s = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            s.fill((*self.color, self.alpha))
-            surface.blit(s, (self.x - self.width // 2, self.y))
+            self.image.set_alpha(self.alpha)
+            surface.blit(self.image, (self.x - self.width // 2, self.y))
 
 
 class Ally:

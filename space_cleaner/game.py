@@ -42,11 +42,12 @@ from enemies import (
     SplitEnemy,
     LaserEnemy,
     KamikazeEnemy,
-    MiniEnemy,
 )
 from weapons import HomingMissile, PiercingLaser, PlasmaWave
 from environment import EnvironmentManager
 from junk import Junk
+from spawn_manager import SpawnManager
+from collision_manager import CollisionManager
 
 
 class Game:
@@ -54,7 +55,6 @@ class Game:
     메인 게임 클래스.
     - 게임 루프 (이벤트 처리, 업데이트, 렌더링)
     - 엔티티 관리 (플레이어, 적, 레이저 등)
-    - 충돌 검사 및 점수/체력 관리
     """
 
     def __init__(self):
@@ -73,6 +73,10 @@ class Game:
 
         # 히트 스탑 (프레임 정지)
         self.hit_stop = 0
+
+        # 매니저 초기화
+        self.spawn_manager = SpawnManager()
+        self.collision_manager = CollisionManager(self)
 
         self.reset_game()
 
@@ -143,358 +147,31 @@ class Game:
         self.env_manager = EnvironmentManager()
         self.game_over = False
         self.game_paused = False
-        self.spawn_timer = 0
+        self.spawn_manager.spawn_timer = 0  # 리셋 시 스폰 타이머 초기화
 
     # ---------------------------
-    # 스폰 로직
+    # 스폰 및 충돌 처리 (위임)
     # ---------------------------
 
     def spawn_junk(self):
-        """적, 아이템, 쓰레기 스폰."""
-        # 환경 스폰 배율 가져오기
-        spawn_mul = self.env_manager.get_spawn_multiplier()
-
-        # 난이도 계산: 60초마다 난이도 1.0 증가 (기존 45초에서 늦춤)
-        # 난이도 계산: 60초마다 난이도 1.0 증가
-        # 일시정지 등을 고려하여 self.game_time 사용
-        difficulty = 1.0 + (self.game_time / 60.0)
-
-        # 난이도가 오를수록 스폰 주기 빨라짐 (더 완만하게 조정)
-        spawn_threshold = max(5, (45 - int((difficulty - 1) * 8)) // int(spawn_mul))
-
-        self.spawn_timer += 1
-        if self.spawn_timer > spawn_threshold:
-            # 지원군 스폰 (2% 확률, 동시 1기 제한)
-            if not self.allies and random.random() < 0.02:
-                self.allies.append(Ally(WIDTH // 2, HEIGHT + 40))
-
-            r = random.random()
-
-            # 난이도가 오를수록 적 생성 확률 증가 (더 완만하게 조정)
-            enemy_prob = min(0.35, 0.12 + (difficulty - 1) * 0.05)
-
-            # 성능 최적화: 화면 내 객체 수 제한
-            if r < enemy_prob and len(self.enemies) < 15:  # 최대 적 15기
-                # HeavyEnemy 발생 빈도 감소 및 등장 시점 조절
-                # 한번에 최대 1개만 출현하도록 제한 추가
-                has_heavy = any(isinstance(e, HeavyEnemy) for e in self.enemies)
-
-                # 모든 종류의 적이 처음부터 출현 가능하도록 변경
-                r2 = random.random()
-                if not has_heavy and r2 < 0.04:
-                    self.enemies.append(HeavyEnemy(difficulty))
-                elif r2 < 0.12:  # 고속 요격기
-                    self.enemies.append(Interceptor(difficulty))
-                elif r2 < 0.20:  # 저격수
-                    self.enemies.append(SniperEnemy(difficulty))
-                elif r2 < 0.28:  # 유령 적
-                    self.enemies.append(GhostEnemy(difficulty))
-                elif r2 < 0.36:  # 분열 적 (신규)
-                    self.enemies.append(SplitEnemy(difficulty))
-                elif r2 < 0.42:  # 회전 레이저 적 (신규)
-                    self.enemies.append(LaserEnemy(difficulty))
-                elif r2 < 0.48:  # 자폭 적 (신규)
-                    self.enemies.append(KamikazeEnemy(difficulty))
-                else:
-                    self.enemies.append(Enemy(difficulty))
-            elif r < enemy_prob + 0.02:
-                self.items.append(Item())
-            elif len(self.junks) < 25:  # 최대 쓰레기 25개
-                self.junks.append(Junk(difficulty))
-            self.spawn_timer = 0
+        """적, 아이템, 쓰레기 스폰 (SpawnManager 위임)."""
+        self.spawn_manager.update(
+            1.0,  # dt (프레임 단위라 1.0)
+            self.game_time,
+            self.env_manager,
+            self.enemies,
+            self.junks,
+            self.items,
+            self.allies,
+        )
 
     # ---------------------------
     # 충돌 검사
     # ---------------------------
 
     def check_collisions(self):
-        """모든 충돌 검사 수행."""
-        self._check_laser_junk_collisions()
-        self._check_player_junk_collisions()
-        self._check_laser_enemy_collisions()
-        self._check_enemy_bullet_player_collisions()
-        self._check_enemy_player_collisions()
-        self._check_item_collisions()
-        self._check_laser_beam_player_collisions()
-
-    def _check_laser_junk_collisions(self):
-        """레이저-쓰레기 충돌: 색상 매칭 시 점수 획득."""
-        for laser in self.lasers[:]:
-            for junk in self.junks[:]:
-                if laser.rect.colliderect(junk.rect):
-                    if laser.color == junk.color:
-                        # 색상 매칭 성공
-                        if laser.color == RED:
-                            self.p1.score += 10
-                        else:
-                            self.p2.score += 10
-                        self.explosions.append(
-                            Explosion(junk.rect.centerx, junk.rect.centery, YELLOW)
-                        )
-                        if self.snd_explosion:
-                            self.snd_explosion.play()
-                    else:
-                        # 색상 불일치 (페널티)
-                        if laser.color == RED:
-                            self.p1.score -= 5
-                        else:
-                            self.p2.score -= 5
-                        self.explosions.append(
-                            Explosion(junk.rect.centerx, junk.rect.centery, GREY)
-                        )
-
-                    if junk in self.junks:
-                        self.junks.remove(junk)
-                    if laser in self.lasers:
-                        self.lasers.remove(laser)
-                    break
-
-    def _check_player_junk_collisions(self):
-        """플레이어-쓰레기 충돌: 체력 감소."""
-        for junk in self.junks[:]:
-            hit_p1 = self.p1.rect.colliderect(junk.rect)
-            hit_p2 = self.p2.rect.colliderect(junk.rect)
-
-            if hit_p1 or hit_p2:
-                if hit_p1:
-                    if self.p1.has_shield:
-                        # 쉴드가 피격 흡수
-                        self.p1.has_shield = False
-                        self.explosions.append(
-                            Explosion(self.p1.rect.centerx, self.p1.rect.centery, CYAN)
-                        )
-                    else:
-                        self.p1.health -= 15
-                if hit_p2:
-                    if self.p2.has_shield:
-                        # 쉴드가 피격 흡수
-                        self.p2.has_shield = False
-                        self.explosions.append(
-                            Explosion(self.p2.rect.centerx, self.p2.rect.centery, CYAN)
-                        )
-                    else:
-                        self.p2.health -= 15
-
-                # 화면 흔들림 (중간 강도)
-                self.screen_shake.trigger(intensity=8, duration=8)
-
-                if junk in self.junks:
-                    self.junks.remove(junk)
-
-                if self.p1.health <= 0 and self.p2.health <= 0:
-                    self.game_over = True
-
-    def _check_laser_enemy_collisions(self):
-        """레이저/특수 무기-적 충돌: 점수 획득 및 폭발."""
-        # 일반 레이저 충돌
-        self._collide_projectiles_with_enemies(self.lasers)
-        # 특수 무기 충돌
-        self._collide_projectiles_with_enemies(
-            self.special_projectiles, is_special=True
-        )
-
-    def _collide_projectiles_with_enemies(self, projectiles, is_special=False):
-        for proj in projectiles[:]:
-            for enemy in self.enemies[:]:
-                if proj.rect.colliderect(enemy.rect):
-                    if enemy in self.enemies:
-                        # 유령 상태일 때 무시
-                        if getattr(enemy, "is_ghost", False):
-                            continue
-
-                        # 관통 레이저인 경우 이미 맞은 적인지 확인
-                        if isinstance(proj, PiercingLaser):
-                            if enemy in proj.hit_enemies:
-                                continue
-                            proj.hit_enemies.add(enemy)
-
-                        # 히트 스파크 생성
-                        self.hit_sparks.append(
-                            HitSpark(proj.rect.centerx, proj.rect.centery, ORANGE)
-                        )
-
-                        # 체력이 있는 적 처리
-                        if hasattr(enemy, "health"):
-                            damage = 20 if is_special else 10
-                            enemy.health -= damage
-                            if enemy.health <= 0:
-                                self.enemies.remove(enemy)
-                                # SplitEnemy 처리
-                                if isinstance(enemy, SplitEnemy):
-                                    self.enemies.extend(enemy.on_death())
-                                # 폭발 및 흔들림
-                                for _ in range(3):
-                                    self.explosions.append(
-                                        Explosion(
-                                            enemy.rect.centerx
-                                            + random.randint(-20, 20),
-                                            enemy.rect.centery
-                                            + random.randint(-20, 20),
-                                            RED,
-                                        )
-                                    )
-                                self.screen_shake.trigger(12, 12)
-                                self.hit_stop = 4  # 강한 타격감
-                                if self.snd_explosion:
-                                    self.snd_explosion.play()
-                                self.p1.score += 100  # 간단하게 P1 점수로 합산 (실제로는 발사자 구분이 필요하지만 일단 단순화)
-                        else:
-                            # 일반 적 원샷
-                            self.enemies.remove(enemy)
-                            self.explosions.append(
-                                Explosion(
-                                    enemy.rect.centerx, enemy.rect.centery, PURPLE
-                                )
-                            )
-                            if self.snd_explosion:
-                                self.snd_explosion.play()
-                            self.p1.score += 20
-
-                    # 투사체 제거 여부 결정
-                    if not isinstance(proj, (PiercingLaser, PlasmaWave)):
-                        if proj in projectiles:
-                            projectiles.remove(proj)
-                        break
-
-    def _check_enemy_bullet_player_collisions(self):
-        """적 총알-플레이어 충돌: 체력 감소."""
-        for bullet in self.enemy_bullets[:]:
-            hit_p1 = self.p1.rect.colliderect(bullet.rect)
-            hit_p2 = self.p2.rect.colliderect(bullet.rect)
-
-            if hit_p1 or hit_p2:
-                if hit_p1:
-                    if self.p1.has_shield:
-                        self.p1.has_shield = False
-                        self.explosions.append(
-                            Explosion(self.p1.rect.centerx, self.p1.rect.centery, CYAN)
-                        )
-                    else:
-                        self.p1.health -= 10
-                if hit_p2:
-                    if self.p2.has_shield:
-                        self.p2.has_shield = False
-                        self.explosions.append(
-                            Explosion(self.p2.rect.centerx, self.p2.rect.centery, CYAN)
-                        )
-                    else:
-                        self.p2.health -= 10
-
-                if bullet in self.enemy_bullets:
-                    self.enemy_bullets.remove(bullet)
-
-                if self.p1.health <= 0 and self.p2.health <= 0:
-                    self.game_over = True
-
-    def _check_enemy_player_collisions(self):
-        """적 기체-플레이어 충돌: 체력 대폭 감소."""
-        for enemy in self.enemies[:]:
-            hit_p1 = self.p1.rect.colliderect(enemy.rect)
-            hit_p2 = self.p2.rect.colliderect(enemy.rect)
-
-            if hit_p1 or hit_p2:
-                if hit_p1:
-                    self.p1.health -= 20
-                if hit_p2:
-                    self.p2.health -= 20
-
-                # 강한 화면 흔들림
-                self.screen_shake.trigger(intensity=15, duration=10)
-                self.hit_stop = 8  # 매우 강한 충돌
-
-                if enemy in self.enemies:
-                    self.enemies.remove(enemy)
-
-                if self.p1.health <= 0 and self.p2.health <= 0:
-                    self.game_over = True
-
-    def _check_item_collisions(self):
-        """아이템 수집: 무기 강화 또는 체력 회복."""
-        for item in self.items[:]:
-            if self.p1.rect.colliderect(item.rect):
-                if item in self.items:
-                    self.items.remove(item)
-                    if self.snd_powerup:
-                        self.snd_powerup.play()
-                    self.explosions.append(
-                        Explosion(item.rect.centerx, item.rect.centery, item.color)
-                    )
-
-                    if item.kind == "weapon":
-                        r_weapon = random.choice(["homing", "piercing", "plasma"])
-                        self.p1.special_weapon = r_weapon
-                        self.p1.special_weapon_timer = 1200  # 20초
-                    elif item.kind == "health":
-                        self.p1.health = min(self.p1.max_health, self.p1.health + 30)
-                    elif item.kind == "bomb":
-                        self.p1.bomb_count = min(
-                            self.p1.max_bombs, self.p1.bomb_count + 1
-                        )
-                    elif item.kind == "shield":
-                        self.p1.has_shield = True
-                    elif item.kind == "slow":
-                        self.p1.slow_timer = 900  # 15초
-                    elif item.kind == "clone":
-                        self.p1.clone_timer = 1200  # 20초
-
-            elif self.p2.rect.colliderect(item.rect):
-                if item in self.items:
-                    self.items.remove(item)
-                    if self.snd_powerup:
-                        self.snd_powerup.play()
-                    self.explosions.append(
-                        Explosion(item.rect.centerx, item.rect.centery, item.color)
-                    )
-
-                    if item.kind == "weapon":
-                        r_weapon = random.choice(["homing", "piercing", "plasma"])
-                        self.p2.special_weapon = r_weapon
-                        self.p2.special_weapon_timer = 1200  # 20초
-                    elif item.kind == "health":
-                        self.p2.health = min(self.p2.max_health, self.p2.health + 30)
-                    elif item.kind == "bomb":
-                        self.p2.bomb_count = min(
-                            self.p2.max_bombs, self.p2.bomb_count + 1
-                        )
-                    elif item.kind == "shield":
-                        self.p2.has_shield = True
-                    elif item.kind == "slow":
-                        self.p2.slow_timer = 900  # 15초
-                    elif item.kind == "clone":
-                        self.p2.clone_timer = 1200  # 20초
-
-    def _check_laser_beam_player_collisions(self):
-        """LaserEnemy의 회전 레이저 빔과 플레이어 충돌 검사."""
-        for enemy in self.enemies:
-            if isinstance(enemy, LaserEnemy):
-                laser_line = enemy.get_laser_line()
-                if laser_line:
-                    # 선분과 플레이어 rect의 충돌 검사
-                    for player in [self.p1, self.p2]:
-                        if player.health > 0:
-                            # 간단한 거리 기반 충돌 검사
-                            if (
-                                point_to_line_distance(
-                                    player.rect.center, laser_line[0], laser_line[1]
-                                )
-                                < 20
-                            ):
-                                # 지속 데미지 (매 프레임 1 데미지)
-                                player.health -= 1
-                                # 약한 화면 흔들림
-                                if random.random() < 0.1:
-                                    self.screen_shake.trigger(intensity=3, duration=3)
-                                # 히트 스파크
-                                if random.random() < 0.3:
-                                    self.hit_sparks.append(
-                                        HitSpark(
-                                            player.rect.centerx,
-                                            player.rect.centery,
-                                            RED,
-                                        )
-                                    )
-                                if self.p1.health <= 0 and self.p2.health <= 0:
-                                    self.game_over = True
+        """모든 충돌 검사 수행 (CollisionManager 위임)."""
+        self.collision_manager.update()
 
     def _draw_hud_bar(self, surface, x, y, width, height, ratio, color):
         """HUD용 반투명 막대 그리기."""
