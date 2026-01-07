@@ -14,7 +14,7 @@ class HomingMissile:
     - 적과 충돌 시 폭발
     """
 
-    def __init__(self, x, y, color, enemies):
+    def __init__(self, x, y, color, enemies, target=None):
         self.rect = pygame.Rect(x - 5, y, 10, 20)
         # 정밀한 이동을 위해 실수형 좌표 사용
         self.pos_x = float(x)
@@ -23,7 +23,7 @@ class HomingMissile:
         self.speed = 8
         self.angle = -90 + random.randint(-20, 20)
         self.enemies = enemies
-        self.target = None
+        self.target = target
         self.turn_speed = 8  # 너무 빠르면 부자연스러우므로 적절히 조정
         self.lifetime = 240  # 4초로 수명 연장
 

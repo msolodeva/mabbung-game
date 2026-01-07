@@ -294,7 +294,19 @@ class Game:
 
         # 특수 무기 우선
         if player.special_weapon == "homing":
-            self.special_projectiles.append(HomingMissile(px, py, color, self.enemies))
+            target = None
+            if self.enemies:
+                # 화면 내의 적 중에서 랜덤 선택
+                candidates = [
+                    e
+                    for e in self.enemies
+                    if 0 < e.rect.centerx < WIDTH and 0 < e.rect.centery < HEIGHT
+                ]
+                if candidates:
+                    target = random.choice(candidates)
+            self.special_projectiles.append(
+                HomingMissile(px, py, color, self.enemies, target)
+            )
         elif player.special_weapon == "piercing":
             self.special_projectiles.append(PiercingLaser(px, py, color))
         elif player.special_weapon == "plasma":
