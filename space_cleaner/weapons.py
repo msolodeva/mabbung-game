@@ -16,42 +16,69 @@ class HomingMissile:
 
     def __init__(self, x, y, color, enemies):
         self.rect = pygame.Rect(x - 5, y, 10, 20)
+        # 정밀한 이동을 위해 실수형 좌표 사용
+        self.pos_x = float(x)
+        self.pos_y = float(y)
         self.color = color
-        self.speed = 7
-        self.angle = -90  # 위쪽 방향 (도 단위)
+        self.speed = 8
+        self.angle = -90 + random.randint(-20, 20)
         self.enemies = enemies
         self.target = None
-        self.turn_speed = 5  # 초당 회전 각도
-        self.lifetime = 180  # 3초 수명
+        self.turn_speed = 8  # 너무 빠르면 부자연스러우므로 적절히 조정
+        self.lifetime = 240  # 4초로 수명 연장
 
     def update(self):
         self.lifetime -= 1
 
-        # 타겟팅 (살아있는 적 중 가장 가까운 것)
-        if not self.target or not self.target in self.enemies:
+        # 타겟 유효성 검사
+        if self.target and self.target not in self.enemies:
+            self.target = None
+
+        # 타겟 탐색
+        if not self.target:
             if self.enemies:
-                self.target = min(
-                    self.enemies,
-                    key=lambda e: (e.rect.centerx - self.rect.centerx) ** 2
-                    + (e.rect.centery - self.rect.centery) ** 2,
-                )
+                # 현재 진행 방향(angle) 전방에 있는 적을 선호하도록 가중치 부여 가능하나,
+                # 일단 가장 가까운 적을 찾되, 화면 밖 너무 멀리 있는 적은 제외
+                px, py = self.pos_x, self.pos_y
+                candidates = [
+                    e
+                    for e in self.enemies
+                    if 0 < e.rect.centerx < WIDTH and 0 < e.rect.centery < HEIGHT
+                ]
+
+                if candidates:
+                    self.target = min(
+                        candidates,
+                        key=lambda e: (e.rect.centerx - px) ** 2
+                        + (e.rect.centery - py) ** 2,
+                    )
 
         if self.target:
             # 타겟 방향 계산
-            target_dx = self.target.rect.centerx - self.rect.centerx
-            target_dy = self.target.rect.centery - self.rect.centery
+            target_dx = self.target.rect.centerx - self.pos_x
+            target_dy = self.target.rect.centery - self.pos_y
             target_angle = math.degrees(math.atan2(target_dy, target_dx))
 
-            # 각도 차이 계산 및 회전
+            # 각도 차이 계산 (-180 ~ 180)
             angle_diff = (target_angle - self.angle + 180) % 360 - 180
-            if angle_diff > 0:
-                self.angle += min(self.turn_speed, angle_diff)
-            else:
-                self.angle -= min(self.turn_speed, abs(angle_diff))
 
-        # 이동
-        self.rect.x = int(self.rect.x + math.cos(math.radians(self.angle)) * self.speed)
-        self.rect.y = int(self.rect.y + math.sin(math.radians(self.angle)) * self.speed)
+            # 부드러운 회전
+            if abs(angle_diff) < self.turn_speed:
+                self.angle = target_angle
+            else:
+                # 타겟 쪽으로 회전
+                if angle_diff > 0:
+                    self.angle += self.turn_speed
+                else:
+                    self.angle -= self.turn_speed
+
+        # 이동 (실수 좌표 업데이트)
+        self.pos_x += math.cos(math.radians(self.angle)) * self.speed
+        self.pos_y += math.sin(math.radians(self.angle)) * self.speed
+
+        # Rect 동기화
+        self.rect.centerx = int(self.pos_x)
+        self.rect.centery = int(self.pos_y)
 
     def draw(self, surface):
         # 회전된 미사일 그리기
