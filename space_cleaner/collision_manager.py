@@ -43,13 +43,17 @@ class CollisionManager:
 
     def _check_laser_junk_collisions(self):
         """레이저-쓰레기 충돌: 색상 매칭 시 점수 획득."""
+        self._collide_projectiles_with_junks(self.game.lasers)
+        self._collide_projectiles_with_junks(self.game.special_projectiles)
+
+    def _collide_projectiles_with_junks(self, projectiles):
         # 복사본을 순회하며 삭제 안전성 확보
-        for laser in self.game.lasers[:]:
+        for proj in projectiles[:]:
             for junk in self.game.junks[:]:
-                if laser.rect.colliderect(junk.rect):
-                    if laser.color == junk.color:
+                if proj.rect.colliderect(junk.rect):
+                    if proj.color == junk.color:
                         # 색상 매칭 성공
-                        if laser.color == RED:
+                        if proj.color == RED:
                             self.game.p1.score += 10
                         else:
                             self.game.p2.score += 10
@@ -60,7 +64,7 @@ class CollisionManager:
                             self.game.snd_explosion.play()
                     else:
                         # 색상 불일치 (페널티)
-                        if laser.color == RED:
+                        if proj.color == RED:
                             self.game.p1.score -= 5
                         else:
                             self.game.p2.score -= 5
@@ -70,9 +74,12 @@ class CollisionManager:
 
                     if junk in self.game.junks:
                         self.game.junks.remove(junk)
-                    if laser in self.game.lasers:
-                        self.game.lasers.remove(laser)
-                    break
+
+                    # 투사체 제거 여부 결정 (관통형은 제거 안 함)
+                    if not isinstance(proj, (PiercingLaser, PlasmaWave)):
+                        if proj in projectiles:
+                            projectiles.remove(proj)
+                        break
 
     def _check_player_junk_collisions(self):
         """플레이어-쓰레기 충돌: 체력 감소."""
