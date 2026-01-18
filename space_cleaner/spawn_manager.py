@@ -67,9 +67,18 @@ class SpawnManager:
         self.spawn_timer += 1  # 프레임 단위 카운트라고 가정
 
         if self.spawn_timer > spawn_threshold:
-            # 지원군 스폰 (PROB_SUPPORT_ALLY 확률, 동시 1기 제한)
-            if not allies and random.random() < PROB_SUPPORT_ALLY:
-                allies.append(Ally(WIDTH // 2, HEIGHT + 40))
+            # 지원군 스폰 (적이 많으면 한 번에 2기 스폰)
+            # 적이 8기 이상일 경우: 최대 2기 동시 스폰, 확률 50%
+            # 그 외: 최대 1기, 확률 2%
+            max_allies = 2 if len(enemies) >= 8 else 1
+            ally_spawn_prob = 0.50 if len(enemies) >= 8 else PROB_SUPPORT_ALLY
+
+            if len(allies) < max_allies and random.random() < ally_spawn_prob:
+                # 필요한 만큼 지원군 스폰 (부족한 수만큼)
+                allies_to_spawn = max_allies - len(allies)
+                spawn_positions = [WIDTH // 3, 2 * WIDTH // 3]  # 좌우 분산 배치
+                for i in range(allies_to_spawn):
+                    allies.append(Ally(spawn_positions[i % 2], HEIGHT + 40))
 
             r = random.random()
 
