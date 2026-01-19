@@ -22,6 +22,7 @@ from constants import (
     ITEM_BOMB_THRESHOLD,
     ITEM_SHIELD_THRESHOLD,
     ITEM_SLOW_THRESHOLD,
+    ITEM_MAGNET_THRESHOLD,
     SHOCKWAVE_SPEED,
     SHOCKWAVE_FADE,
     EXPLOSION_PARTICLE_COUNT,
@@ -58,6 +59,7 @@ class Player:
         self.has_shield = False  # 쉴드 (1회 피격 방어)
         self.slow_timer = 0  # 슬로우 타임 (전역 효과이지만 플레이어가 활성화)
         self.clone_timer = 0  # 분신 지속 시간
+        self.magnet_timer = 0  # 자석 아이템 끌어당김 지속 시간
 
         # 특수 무기 상태
         self.special_weapon = ""  # "", "homing", "piercing", "plasma"
@@ -75,6 +77,8 @@ class Player:
             self.slow_timer -= 1
         if self.clone_timer > 0:
             self.clone_timer -= 1
+        if self.magnet_timer > 0:
+            self.magnet_timer -= 1
         if self.special_weapon_timer > 0:
             self.special_weapon_timer -= 1
             if self.special_weapon_timer <= 0:
@@ -127,6 +131,21 @@ class Player:
                 self.rect.width // 2 + 10,
             )
             surface.blit(shield_surf, (self.rect.x - 10, self.rect.y - 10))
+
+        # 자석 효과 표시
+        if self.magnet_timer > 0:
+            # 마젠타색 끌어당기는 효과 원
+            magnet_surf = pygame.Surface((80, 80), pygame.SRCALPHA)
+            pulse = (self.magnet_timer % 30) / 30  # 맥동 효과
+            alpha = int(50 + 30 * pulse)
+            pygame.draw.circle(
+                magnet_surf,
+                (255, 100, 255, alpha),
+                (40, 40),
+                int(30 + 10 * pulse),
+                2,
+            )
+            surface.blit(magnet_surf, (self.rect.centerx - 40, self.rect.centery - 40))
 
     def _draw_ship(self, surface, cx, top, color):
         """우주선 그리기 (색상 별도 지정 가능)."""
@@ -231,6 +250,10 @@ class Item:
             self.kind = "slow"
             self.color = (100, 100, 255)  # 파란색
             self.label = "T"
+        elif r < ITEM_MAGNET_THRESHOLD:
+            self.kind = "magnet"
+            self.color = (255, 100, 255)  # 마젠타색
+            self.label = "M"
         else:
             self.kind = "clone"
             self.color = (255, 255, 100)  # 노란색

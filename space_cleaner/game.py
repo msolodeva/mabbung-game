@@ -21,6 +21,8 @@ from constants import (
     CYAN,
     DAMAGE_KAMIKAZE_EXPLOSION,
     KAMIKAZE_EXPLOSION_RADIUS,
+    FLOATING_MINE_EXPLOSION_RADIUS,
+    DAMAGE_FLOATING_MINE,
 )
 from utils import ScreenShake, point_to_line_distance
 from sound import generate_sound
@@ -44,6 +46,7 @@ from enemies import (
     SplitEnemy,
     LaserEnemy,
     KamikazeEnemy,
+    FloatingMine,
 )
 from weapons import HomingMissile, PiercingLaser, PlasmaWave
 from environment import EnvironmentManager
@@ -456,6 +459,35 @@ class Game:
                     # 적 제거
                     if enemy in self.enemies:
                         self.enemies.remove(enemy)
+            elif isinstance(enemy, FloatingMine):
+                enemy.update(self.enemy_bullets, [self.p1, self.p2])
+                # 떠다니는 기뢰가 폭발 조건 충족 시
+                if enemy.should_explode():
+                    # 폭발 효과 (더 큰 폭발)
+                    for _ in range(20):
+                        self.explosions.append(
+                            Explosion(
+                                enemy.rect.centerx + random.randint(-40, 40),
+                                enemy.rect.centery + random.randint(-40, 40),
+                                random.choice([GREEN, YELLOW, WHITE]),
+                            )
+                        )
+                    # 화면 흔들림
+                    self.screen_shake.trigger(intensity=18, duration=15)
+                    if self.snd_explosion:
+                        self.snd_explosion.play()
+                    # 범위 데미지
+                    for player in [self.p1, self.p2]:
+                        dx = player.rect.centerx - enemy.rect.centerx
+                        dy = player.rect.centery - enemy.rect.centery
+                        dist = (dx**2 + dy**2) ** 0.5
+                        if dist < FLOATING_MINE_EXPLOSION_RADIUS:
+                            player.health -= DAMAGE_FLOATING_MINE
+                            if self.p1.health <= 0 and self.p2.health <= 0:
+                                self.game_over = True
+                    # 적 제거
+                    if enemy in self.enemies:
+                        self.enemies.remove(enemy)
             else:
                 enemy.update(self.enemy_bullets)
             if enemy.rect.top > HEIGHT:
@@ -470,6 +502,18 @@ class Game:
         # 아이템 업데이트
         for item in self.items[:]:
             item.update()
+
+            # 자석 효과: magnet_timer가 활성화된 플레이어에게 끌려감
+            for player in [self.p1, self.p2]:
+                if player.health > 0 and player.magnet_timer > 0:
+                    dx = player.rect.centerx - item.rect.centerx
+                    dy = player.rect.centery - item.rect.centery
+                    dist = (dx**2 + dy**2) ** 0.5
+                    if dist > 0 and dist < 300:  # 300픽셀 이내 아이템만 끌어당김
+                        # 거리에 반비례하는 끌어당기는 힘
+                        pull_strength = min(8, 200 / max(dist, 1))
+                        item.rect.x += int((dx / dist) * pull_strength)
+                        item.rect.y += int((dy / dist) * pull_strength)
 
             if item.rect.top > HEIGHT:
                 self.items.remove(item)
@@ -547,15 +591,21 @@ class Game:
 
             # HUD (흔들림 영향 없음)
             p1_score_txt = self.font.render(f"P1 (RED): {self.p1.score}", True, RED)
-            p2_score_txt = self.font.render(f"P2 (BLUE): {self.p2.score}", True, BLUE)
+            # P2는 점수가 왼쪽에 오도록 형식 변경
+            p2_score_txt = self.font.render(f"{self.p2.score} :P2 (BLUE)", True, BLUE)
             shake_surface.blit(p1_score_txt, (20, 20))
-            shake_surface.blit(p2_score_txt, (WIDTH - 180, 20))
+            # P2 점수는 오른쪽 정렬 (화면 오른쪽 끝에서 20픽셀 여백)
+            shake_surface.blit(
+                p2_score_txt, (WIDTH - p2_score_txt.get_width() - 20, 20)
+            )
 
             # 폭탄 개수 표시
             p1_bomb_txt = self.font.render(f"Bomb: {self.p1.bomb_count}", True, ORANGE)
-            p2_bomb_txt = self.font.render(f"Bomb: {self.p2.bomb_count}", True, ORANGE)
+            # P2는 숫자가 왼쪽에 오도록 형식 변경
+            p2_bomb_txt = self.font.render(f"{self.p2.bomb_count} :Bomb", True, ORANGE)
             shake_surface.blit(p1_bomb_txt, (20, 50))
-            shake_surface.blit(p2_bomb_txt, (WIDTH - 180, 50))
+            # P2 폭탄도 오른쪽 정렬
+            shake_surface.blit(p2_bomb_txt, (WIDTH - p2_bomb_txt.get_width() - 20, 50))
 
             # 체력바 표시 (HUD) - 작고 반투명하게 변경
             self._draw_hud_bar(
@@ -567,9 +617,10 @@ class Game:
                 self.p1.health / self.p1.max_health,
                 GREEN,
             )
+            # P2 체력바도 오른쪽 정렬
             self._draw_hud_bar(
                 shake_surface,
-                WIDTH - 180,
+                WIDTH - 120 - 20,  # 체력바 너비(120) + 여백(20)
                 80,
                 120,
                 10,

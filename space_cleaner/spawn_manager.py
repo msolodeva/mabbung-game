@@ -16,6 +16,7 @@ from constants import (
     SPAWN_SPLIT_THRESHOLD,
     SPAWN_LASER_THRESHOLD,
     SPAWN_KAMIKAZE_THRESHOLD,
+    SPAWN_FLOATING_MINE_THRESHOLD,
     ITEM_SPAWN_OFFSET,
 )
 from entities import Item, Ally
@@ -29,6 +30,7 @@ from enemies import (
     SplitEnemy,
     LaserEnemy,
     KamikazeEnemy,
+    FloatingMine,
 )
 
 
@@ -105,10 +107,12 @@ class SpawnManager:
                     enemies.append(LaserEnemy(difficulty))
                 elif r2 < SPAWN_KAMIKAZE_THRESHOLD:  # 자폭 적
                     enemies.append(KamikazeEnemy(difficulty))
+                elif r2 < SPAWN_FLOATING_MINE_THRESHOLD:  # 떠다니는 기뢰
+                    enemies.append(FloatingMine(difficulty))
                 else:
                     enemies.append(Enemy(difficulty))
 
-            elif r < enemy_prob + 0.02:
+            elif r < enemy_prob + 0.05:  # 아이템 스폰 확률 8% -> 5%로 감소
                 items.append(Item())
 
             elif len(junks) < MAX_JUNKS:

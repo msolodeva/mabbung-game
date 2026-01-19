@@ -175,7 +175,11 @@ class CollisionManager:
                                 self.game.hit_stop = 4  # 강한 타격감
                                 if self.game.snd_explosion:
                                     self.game.snd_explosion.play()
-                                self.game.p1.score += 100  # P1 점수로 합산
+                                # 레이저 색상으로 플레이어 구분하여 점수 부여
+                                if proj.color == RED:
+                                    self.game.p1.score += 100
+                                else:
+                                    self.game.p2.score += 100
                         else:
                             # 일반 적 원샷
                             self.game.enemies.remove(enemy)
@@ -186,7 +190,11 @@ class CollisionManager:
                             )
                             if self.game.snd_explosion:
                                 self.game.snd_explosion.play()
-                            self.game.p1.score += 20
+                            # 레이저 색상으로 플레이어 구분하여 점수 부여
+                            if proj.color == RED:
+                                self.game.p1.score += 20
+                            else:
+                                self.game.p2.score += 20
 
                     # 투사체 제거 여부 결정
                     if not isinstance(proj, (PiercingLaser, PlasmaWave)):
@@ -285,6 +293,8 @@ class CollisionManager:
                 player.slow_timer = 900  # 15초
             elif item.kind == "clone":
                 player.clone_timer = 1200  # 20초
+            elif item.kind == "magnet":
+                player.magnet_timer = 3600  # 60초 (1분)
 
     def _check_laser_beam_player_collisions(self):
         """LaserEnemy의 회전 레이저 빔과 플레이어 충돌 검사."""

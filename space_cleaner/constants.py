@@ -48,15 +48,17 @@ SPAWN_GHOST_THRESHOLD = 0.28
 SPAWN_SPLIT_THRESHOLD = 0.36
 SPAWN_LASER_THRESHOLD = 0.42
 SPAWN_KAMIKAZE_THRESHOLD = 0.48
+SPAWN_FLOATING_MINE_THRESHOLD = 0.60  # 6% -> 12%로 증가
 
 # 아이템 생성 확률 (누적 임계값)
-# weapon(20%), health(25%), bomb(20%), shield(15%), slow(10%), clone(10%)
-ITEM_WEAPON_THRESHOLD = 0.20
-ITEM_HEALTH_THRESHOLD = 0.45
-ITEM_BOMB_THRESHOLD = 0.65
-ITEM_SHIELD_THRESHOLD = 0.80
-ITEM_SLOW_THRESHOLD = 0.90
-# 나머지는 clone
+# weapon(15%), health(25%), bomb(15%), shield(15%), slow(10%), magnet(12%), clone(8%)
+ITEM_WEAPON_THRESHOLD = 0.15  # 15% - 특수 무기 (공격 강화)
+ITEM_HEALTH_THRESHOLD = 0.40  # 25% - 체력 회복 (가장 중요한 생존 아이템)
+ITEM_BOMB_THRESHOLD = 0.55  # 15% - 폭탄 추가 (긴급 상황용)
+ITEM_SHIELD_THRESHOLD = 0.70  # 15% - 보호막 (생존 보조)
+ITEM_SLOW_THRESHOLD = 0.72  # 2%로 감소 - 슬로우 타임
+ITEM_MAGNET_THRESHOLD = 0.97  # 25%로 증가 - 자석 (아이템 수집 편의)
+# 나머지 3%는 clone (분신 - 강력한 공격 보조)
 
 # --- 데미지 및 회복량 ---
 DAMAGE_PLAYER_BASIC = 10
@@ -103,6 +105,12 @@ LASER_ENEMY_ROTATION_SPEED_BASE = 2
 
 KAMIKAZE_SPEED_BASE = 2
 KAMIKAZE_EXPLOSION_RADIUS = 80
+
+# 기뢰 (Floating Mine)
+FLOATING_MINE_DRIFT_SPEED = 2.5  # 1.5 -> 2.5로 증가
+FLOATING_MINE_DETECTION_RADIUS = 70
+FLOATING_MINE_EXPLOSION_RADIUS = 100
+DAMAGE_FLOATING_MINE = 30
 
 # --- 쓰레기 (Junk) ---
 JUNK_SPEED_Y_MIN = 2

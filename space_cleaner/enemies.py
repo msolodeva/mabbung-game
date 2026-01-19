@@ -32,6 +32,8 @@ from constants import (
     LASER_ENEMY_HEALTH_SCALE,
     LASER_ENEMY_ROTATION_SPEED_BASE,
     KAMIKAZE_SPEED_BASE,
+    FLOATING_MINE_DRIFT_SPEED,
+    FLOATING_MINE_DETECTION_RADIUS,
 )
 
 
@@ -608,3 +610,155 @@ class KamikazeEnemy:
         font = pygame.font.SysFont("Arial", 14, bold=True)
         txt = font.render("!", True, RED)
         surface.blit(txt, txt.get_rect(center=self.rect.center))
+
+
+class FloatingMine:
+    """
+    둥실둥실 떠다니는 기뢰.
+    - 플레이어를 직접 추적하지 않음
+    - 사인파를 활용한 부드러운 부유 움직임
+    - 플레이어가 감지 범위 내에 들어오면 폭발
+    - 맥동하는 시각적 효과
+    """
+
+    def __init__(self, difficulty=1.0):
+        self.width = 35
+        self.height = 35
+        self.x = random.randint(50, WIDTH - 50 - self.width)
+        self.y = -self.height
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        # 부유 속도 (난이도에 따라 약간 증가)
+        self.drift_speed = FLOATING_MINE_DRIFT_SPEED * (1 + (difficulty - 1) * 0.1)
+
+        # 사인파 움직임을 위한 파라미터
+        self.float_timer = random.uniform(0, math.pi * 2)
+        self.float_amplitude_x = random.uniform(1.5, 3.0)  # 좌우 흔들림 폭
+        self.float_amplitude_y = random.uniform(0.3, 0.8)  # 상하 흔들림 폭
+        self.float_speed = random.uniform(0.03, 0.06)  # 흔들림 속도
+
+        # 시각적 효과
+        self.pulse_timer = 0
+        self.pulse_speed = 0.1
+        self.glow_radius = 0
+
+        # 폭발 준비 상태 (플레이어 감지 시)
+        self.triggered = False
+        self.trigger_timer = 0
+        self.trigger_delay = 30  # 감지 후 폭발까지 0.5초
+
+        # 색상
+        self.base_color = (100, 200, 100)  # 연두색
+        self.glow_color = (150, 255, 150)
+
+    def update(self, enemy_bullets, players=None):
+        self.float_timer += self.float_speed
+        self.pulse_timer += self.pulse_speed
+
+        if not self.triggered:
+            # 부유 움직임
+            sway_x = math.sin(self.float_timer) * self.float_amplitude_x
+            sway_y = math.sin(self.float_timer * 1.5) * self.float_amplitude_y
+
+            self.rect.x = int(self.rect.x + sway_x)
+            self.rect.y = int(self.rect.y + self.drift_speed + sway_y)
+
+            # 화면 경계 처리
+            if self.rect.left < 10:
+                self.rect.left = 10
+            if self.rect.right > WIDTH - 10:
+                self.rect.right = WIDTH - 10
+
+            # 플레이어 감지
+            if players:
+                for player in players:
+                    if player.health > 0:
+                        dx = player.rect.centerx - self.rect.centerx
+                        dy = player.rect.centery - self.rect.centery
+                        dist = (dx**2 + dy**2) ** 0.5
+                        if dist < FLOATING_MINE_DETECTION_RADIUS:
+                            self.triggered = True
+                            break
+        else:
+            # 트리거 후 카운트다운 (제자리에서 진동)
+            self.trigger_timer += 1
+            # 빠른 진동
+            vibrate = random.randint(-2, 2)
+            self.rect.x += vibrate
+
+        # 글로우 효과 업데이트
+        self.glow_radius = int(5 + 3 * math.sin(self.pulse_timer * 2))
+
+    def should_explode(self):
+        """폭발 조건 확인."""
+        return self.triggered and self.trigger_timer >= self.trigger_delay
+
+    def get_nearby_players(self, players, radius):
+        """폭발 범위 내 플레이어 반환."""
+        nearby = []
+        for player in players:
+            if player.health > 0:
+                dx = player.rect.centerx - self.rect.centerx
+                dy = player.rect.centery - self.rect.centery
+                dist = (dx**2 + dy**2) ** 0.5
+                if dist < radius:
+                    nearby.append(player)
+        return nearby
+
+    def draw(self, surface):
+        # 글로우 효과 (외곽 발광)
+        glow_surf = pygame.Surface((self.width + 20, self.height + 20), pygame.SRCALPHA)
+        glow_alpha = 80 + int(40 * math.sin(self.pulse_timer * 2))
+
+        if self.triggered:
+            # 트리거 시 빨간색 점멸
+            blink = self.trigger_timer % 6 < 3
+            glow_color = (
+                (255, 50, 50, glow_alpha) if blink else (255, 150, 50, glow_alpha)
+            )
+            core_color = RED if blink else ORANGE
+        else:
+            glow_color = (*self.glow_color, glow_alpha)
+            core_color = self.base_color
+
+        # 외곽 글로우
+        pygame.draw.circle(
+            glow_surf,
+            glow_color,
+            (self.width // 2 + 10, self.height // 2 + 10),
+            self.width // 2 + self.glow_radius,
+        )
+        surface.blit(glow_surf, (self.rect.x - 10, self.rect.y - 10))
+
+        # 본체 (동그란 기뢰)
+        pygame.draw.circle(surface, core_color, self.rect.center, self.width // 2)
+
+        # 스파이크 (8방향)
+        for i in range(8):
+            angle = i * 45 + self.pulse_timer * 10
+            angle_rad = angle * (math.pi / 180)
+            spike_length = 8 + self.glow_radius
+            start_x = self.rect.centerx + (self.width // 2 - 2) * math.cos(angle_rad)
+            start_y = self.rect.centery + (self.width // 2 - 2) * math.sin(angle_rad)
+            end_x = self.rect.centerx + (self.width // 2 + spike_length) * math.cos(
+                angle_rad
+            )
+            end_y = self.rect.centery + (self.width // 2 + spike_length) * math.sin(
+                angle_rad
+            )
+            pygame.draw.line(
+                surface,
+                YELLOW if not self.triggered else RED,
+                (int(start_x), int(start_y)),
+                (int(end_x), int(end_y)),
+                2,
+            )
+
+        # 중심 코어
+        core_pulse = int(4 + 2 * math.sin(self.pulse_timer * 3))
+        pygame.draw.circle(
+            surface,
+            YELLOW if not self.triggered else WHITE,
+            self.rect.center,
+            core_pulse,
+        )
