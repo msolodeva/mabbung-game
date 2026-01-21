@@ -2,5 +2,16 @@
 .serena
 .DS_Store
 .vscode
+.idea
+*.log
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.egg-info
+dist
+build
+.eggs
 */node_modules
 __pycache__
