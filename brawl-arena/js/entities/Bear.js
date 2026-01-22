@@ -128,20 +128,20 @@ export class Bear extends Entity {
     render(ctx, camera) {
         if (!this.active || !this.isAlive) return;
 
-        const screenX = this.position.x - camera.x;
-        const screenY = this.position.y - camera.y;
+        const wx = this.position.x;
+        const wy = this.position.y;
 
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY + this.radius - 5, this.radius * 0.8, this.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(wx, wy + this.radius - 5, this.radius * 0.8, this.radius * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body
         const bodyColor = this.damageFlashTimer > 0 ? '#ffffff' : '#8B4513';
         ctx.fillStyle = bodyColor;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+        ctx.arc(wx, wy, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
         // Team color outline
@@ -153,18 +153,18 @@ export class Bear extends Entity {
         ctx.font = `${this.radius * 1.5}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🐻', screenX, screenY);
+        ctx.fillText('🐻', wx, wy);
 
         // Health bar
         const barWidth = 40;
         const barHeight = 5;
-        const barY = screenY - this.radius - 15;
+        const barY = wy - this.radius - 15;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(screenX - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
+        ctx.fillRect(wx - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
 
         const healthPercent = this.health / this.maxHealth;
         ctx.fillStyle = COLORS.HEALTH_GREEN;
-        ctx.fillRect(screenX - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+        ctx.fillRect(wx - barWidth / 2, barY, barWidth * healthPercent, barHeight);
     }
 }

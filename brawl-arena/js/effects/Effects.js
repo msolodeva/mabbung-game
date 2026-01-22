@@ -48,6 +48,9 @@ export class Effect {
             case 'gemCollect':
                 this.renderGemCollect(ctx, screenX, screenY, progress);
                 break;
+            case 'explosion':
+                this.renderExplosion(ctx, screenX, screenY, progress);
+                break;
         }
     }
 
@@ -209,6 +212,70 @@ export class Effect {
         ctx.beginPath();
         ctx.arc(x, y + yOffset, size, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    renderExplosion(ctx, x, y, progress) {
+        const size = (this.options.radius || 100) * (0.5 + progress * 0.5);
+        const alpha = 1 - progress;
+
+        // Smoke
+        ctx.fillStyle = `rgba(100, 100, 100, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(x, y - progress * 20, size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fire
+        const fireColors = ['#e74c3c', '#e67e22', '#f1c40f'];
+        const layers = 3;
+
+        for (let i = 0; i < layers; i++) {
+            const layerProgress = (progress + i * 0.1) % 1;
+            const layerSize = size * (1 - i * 0.2);
+            const layerAlpha = alpha * (1 - i * 0.1);
+
+            ctx.fillStyle = fireColors[i].replace(')', `, ${layerAlpha})`).replace('rgb', 'rgba');
+            if (!ctx.fillStyle.startsWith('rgba')) {
+                ctx.fillStyle = this.hexToRgba(fireColors[i], layerAlpha);
+            }
+
+            ctx.beginPath();
+            // Star/Explosion shape
+            const spikes = 8;
+            const outerRadius = layerSize;
+            const innerRadius = layerSize * 0.6;
+
+            for (let j = 0; j < spikes * 2; j++) {
+                const r = j % 2 === 0 ? outerRadius : innerRadius;
+                const angle = (Math.PI / spikes) * j + progress;
+                const px = x + Math.cos(angle) * r;
+                const py = y + Math.sin(angle) * r;
+                if (j === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Debris
+        if (progress < 0.5) {
+            const debrisCount = 8;
+            for (let i = 0; i < debrisCount; i++) {
+                const angle = (Math.PI * 2 / debrisCount) * i;
+                const dist = size * progress * 2;
+                const dx = x + Math.cos(angle) * dist;
+                const dy = y + Math.sin(angle) * dist;
+
+                ctx.fillStyle = `rgba(80, 80, 80, ${alpha})`;
+                ctx.fillRect(dx - 3, dy - 3, 6, 6);
+            }
+        }
+    }
+
+    hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 }
 

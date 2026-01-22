@@ -1,34 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Brawl Arena</title>
+    <title>Brawl Arena - 2 Player</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;900&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div id="game-container">
         <!-- Lobby Screen -->
         <div id="lobby-screen" class="screen">
             <div class="lobby-content">
                 <h1 class="game-title">BRAWL ARENA</h1>
-                <h2 class="mode-title">⚔️ GEM GRAB ⚔️</h2>
-                
-                <div class="brawler-selection">
-                    <h3>SELECT YOUR BRAWLER</h3>
-                    <div class="brawler-grid" id="brawler-grid">
-                        <!-- Brawlers will be added by JS -->
+                <h2 class="mode-title">⚔️ 2 PLAYER GEM GRAB ⚔️</h2>
+
+                <div class="player-selection-container">
+                    <!-- Player 1 Selection -->
+                    <div class="player-selection player1">
+                        <h3 class="player-title">🔵 PLAYER 1</h3>
+                        <div class="control-info"><b>WASD</b> 브롤러 선택/이동 | <b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                        <div class="brawler-grid" id="player1-brawler-grid">
+                            <!-- Brawlers will be added by JS -->
+                        </div>
+                        <div class="player-stats" id="player1-stats"></div>
+                    </div>
+
+                    <div class="vs-divider">VS</div>
+
+                    <!-- Player 2 Selection -->
+                    <div class="player-selection player2">
+                        <h3 class="player-title">🔴 PLAYER 2</h3>
+                        <div class="control-info"><b>방향키</b> 브롤러 선택/이동 | <b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                        <div class="brawler-grid" id="player2-brawler-grid">
+                            <!-- Brawlers will be added by JS -->
+                        </div>
+                        <div class="player-stats" id="player2-stats"></div>
                     </div>
                 </div>
-                
-                <div class="selected-brawler-info" id="selected-info">
-                    <div class="brawler-portrait" id="brawler-portrait"></div>
-                    <div class="brawler-stats" id="brawler-stats"></div>
-                </div>
-                
+
                 <button class="play-button" id="play-button">
-                    <span>PLAY</span>
+                    <span>START BATTLE!</span>
                 </button>
             </div>
         </div>
@@ -36,7 +51,7 @@
         <!-- Game Screen -->
         <div id="game-screen" class="screen hidden">
             <canvas id="game-canvas"></canvas>
-            
+
             <!-- HUD Overlay -->
             <div id="hud">
                 <div class="team-gems">
@@ -50,31 +65,16 @@
                         <span class="gem-icon">💎</span>
                     </div>
                 </div>
-                
+
                 <div class="countdown-display hidden" id="countdown-display">
                     <span>TEAM WINNING IN</span>
                     <span class="countdown-time" id="countdown-time">15</span>
                 </div>
             </div>
-            
-            <!-- Controls -->
+
+            <!-- Controls hint for 2 player -->
             <div id="controls">
-                <div class="joystick-container left" id="move-joystick">
-                    <div class="joystick-base">
-                        <div class="joystick-thumb"></div>
-                    </div>
-                </div>
-                
-                <div class="joystick-container right" id="attack-joystick">
-                    <div class="joystick-base attack">
-                        <div class="joystick-thumb attack"></div>
-                    </div>
-                </div>
-                
-                <button class="super-button" id="super-button" disabled>
-                    <div class="super-fill" id="super-fill"></div>
-                    <span>SUPER</span>
-                </button>
+                <!-- Control hints will be added by InputManager -->
             </div>
         </div>
 
@@ -97,6 +97,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js?v=3"></script>
 </body>
+
 </html>

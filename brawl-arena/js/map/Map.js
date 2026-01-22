@@ -75,8 +75,15 @@ export class GameMap {
         const col = Math.floor(x / this.tileSize);
         const row = Math.floor(y / this.tileSize);
         const key = `${col},${row}`;
+        const tile = this.tiles[row][col];
 
-        if (this.tiles[row][col] === TILE_TYPES.DESTRUCTIBLE) {
+        // Break regular walls if damage is high enough (Super ability)
+        if (tile === TILE_TYPES.WALL && damage >= 4000) {
+            this.tiles[row][col] = TILE_TYPES.GROUND;
+            return true;
+        }
+
+        if (tile === TILE_TYPES.DESTRUCTIBLE) {
             this.destructibleHealth[key] -= damage;
             if (this.destructibleHealth[key] <= 0) {
                 this.tiles[row][col] = TILE_TYPES.GROUND;
@@ -110,8 +117,8 @@ export class GameMap {
         // Draw ground first
         for (let row = startRow; row < endRow; row++) {
             for (let col = startCol; col < endCol; col++) {
-                const x = col * this.tileSize - camera.x;
-                const y = row * this.tileSize - camera.y;
+                const x = col * this.tileSize;
+                const y = row * this.tileSize;
                 const tile = this.getTile(col, row);
 
                 this.renderTile(ctx, x, y, tile, col, row);
@@ -145,8 +152,20 @@ export class GameMap {
                     ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
                     ctx.fillRect(x, y, size, size);
                 } else if (tile === TILE_TYPES.GEM_SPAWN) {
-                    ctx.fillStyle = 'rgba(155, 89, 182, 0.15)';
-                    ctx.fillRect(x, y, size, size);
+                    // Modern Gem Mine Look
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.beginPath();
+                    ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 8);
+                    ctx.fill();
+
+                    // Pulsing Glow for Spawn point
+                    const glowPulse = 0.5 + Math.sin(performance.now() * 0.003) * 0.5;
+                    ctx.strokeStyle = `rgba(155, 89, 182, ${0.4 + glowPulse * 0.4})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    ctx.fillStyle = 'rgba(155, 89, 182, 0.2)';
+                    ctx.fill();
                 }
                 break;
 

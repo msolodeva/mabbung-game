@@ -1,5 +1,5 @@
 // ========================================
-// GAME - Main Game Controller
+// GAME - Main Game Controller (2 Player Mode)
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
@@ -11,35 +11,18 @@ import { AIController } from '../ai/AIController.js';
 import { GemGrabMode } from '../modes/GemGrab.js';
 import { AudioManager } from '../audio/AudioManager.js';
 import { EffectsManager } from '../effects/Effects.js';
-import { renderSpikeField } from '../entities/brawlers/Spike.js';
+import { RenderSystem } from './RenderSystem.js';
 
-// Import brawler classes
-import { Shelly } from '../entities/brawlers/Shelly.js';
-import { Nita } from '../entities/brawlers/Nita.js';
-import { Colt } from '../entities/brawlers/Colt.js';
-import { Poco } from '../entities/brawlers/Poco.js';
-import { Spike } from '../entities/brawlers/Spike.js';
-
-const BRAWLER_CLASSES = {
-    shelly: Shelly,
-    nita: Nita,
-    colt: Colt,
-    poco: Poco,
-    spike: Spike,
-};
+import { BRAWLER_CLASSES } from '../entities/brawlers/index.js';
 
 export class Game {
-    constructor(canvas, selectedBrawler) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.selectedBrawlerId = selectedBrawler;
-
-        // Set canvas size
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
+    constructor(canvas, player1Brawler, player2Brawler) {
+        this.player1BrawlerId = player1Brawler;
+        this.player2BrawlerId = player2Brawler;
 
         // Initialize systems
         this.map = new GameMap(GEM_GRAB_MAP);
+        this.renderSystem = new RenderSystem(canvas, this.map);
         this.inputManager = new InputManager(this);
         this.audioManager = new AudioManager();
         this.effectsManager = new EffectsManager();
@@ -52,17 +35,10 @@ export class Game {
         this.spikeFields = [];
         this.aiControllers = [];
 
-        // Player info
-        this.player = null;
-        this.playerTeam = TEAMS.BLUE;
-
-        // Camera
-        this.camera = {
-            x: 0,
-            y: 0,
-            width: this.canvas.width,
-            height: this.canvas.height,
-        };
+        // Players (2 player mode)
+        this.player1 = null;
+        this.player2 = null;
+        this.player = null; // For compatibility
 
         // Game state
         this.state = GAME_STATES.PLAYING;
@@ -73,43 +49,45 @@ export class Game {
         this.running = false;
     }
 
-    resizeCanvas() {
-        // Use full window size but maintain aspect ratio
-        const maxWidth = Math.min(window.innerWidth, GAME_CONFIG.CANVAS_WIDTH);
-        const maxHeight = Math.min(window.innerHeight, GAME_CONFIG.CANVAS_HEIGHT);
-
-        this.canvas.width = maxWidth;
-        this.canvas.height = maxHeight;
-
-        if (this.camera) {
-            this.camera.width = this.canvas.width;
-            this.camera.height = this.canvas.height;
-        }
+    get camera() {
+        return this.renderSystem.camera;
     }
 
     init() {
         // Create game mode
         this.gameMode = new GemGrabMode(this);
 
-        // Create player
-        const PlayerClass = BRAWLER_CLASSES[this.selectedBrawlerId];
-        const playerSpawn = this.map.getSpawnPosition(TEAMS.BLUE);
-        this.player = new PlayerClass(TEAMS.BLUE, playerSpawn.x, playerSpawn.y);
-        this.player.isPlayer = true;
-        this.brawlers.push(this.player);
+        // Create Player 1 (Blue team)
+        const Player1Class = BRAWLER_CLASSES[this.player1BrawlerId];
+        const player1Spawn = this.map.getSpawnPosition(TEAMS.BLUE);
+        this.player1 = new Player1Class(TEAMS.BLUE, player1Spawn.x, player1Spawn.y);
+        this.player1.isPlayer = true;
+        this.player1.playerNumber = 1;
+        this.brawlers.push(this.player1);
 
-        // Create blue team bots (2 more)
+        // For compatibility with existing code
+        this.player = this.player1;
+        this.playerTeam = TEAMS.BLUE;
+
+        // Create Player 2 (Red team)
+        const Player2Class = BRAWLER_CLASSES[this.player2BrawlerId];
+        const player2Spawn = this.map.getSpawnPosition(TEAMS.RED);
+        this.player2 = new Player2Class(TEAMS.RED, player2Spawn.x, player2Spawn.y);
+        this.player2.isPlayer = true;
+        this.player2.playerNumber = 2;
+        this.brawlers.push(this.player2);
+
+        // Create blue team bots (2 more to make 3 total including player 1)
         this.createTeamBot(TEAMS.BLUE);
         this.createTeamBot(TEAMS.BLUE);
 
-        // Create red team bots (3)
-        this.createTeamBot(TEAMS.RED);
+        // Create red team bots (2 more to make 3 total including player 2)
         this.createTeamBot(TEAMS.RED);
         this.createTeamBot(TEAMS.RED);
 
         // Resume audio context on first interaction
         document.addEventListener('click', () => this.audioManager.resume(), { once: true });
-        document.addEventListener('touchstart', () => this.audioManager.resume(), { once: true });
+        document.addEventListener('keydown', () => this.audioManager.resume(), { once: true });
     }
 
     createTeamBot(team) {
@@ -147,7 +125,7 @@ export class Game {
         this.lastTime = currentTime;
 
         this.update(deltaTime);
-        this.render();
+        this.renderSystem.render(this); // Pass game state (this) to render system
 
         requestAnimationFrame(() => this.gameLoop());
     }
@@ -155,22 +133,49 @@ export class Game {
     update(deltaTime) {
         if (this.state !== GAME_STATES.PLAYING) return;
 
-        // Update player input
-        if (this.player && this.player.isAlive) {
-            this.player.moveDirection = this.inputManager.getMoveDirection();
+        // Update input manager
+        this.inputManager.update();
 
-            // Auto-attack when mouse is held down or attack joystick is active
-            if (this.inputManager.getIsAttacking() && this.player.canAttack()) {
+        // Update Player 1 input
+        if (this.player1 && this.player1.isAlive) {
+            this.player1.moveDirection = this.inputManager.getMoveDirection();
+
+            // Attack when shoot key is pressed
+            if (this.inputManager.getIsAttacking() && this.player1.canAttack()) {
                 const attackDir = this.inputManager.getAttackDirection();
                 if (attackDir.magnitude() > 0) {
-                    this.player.attack(attackDir, this);
+                    this.player1.attack(attackDir, this);
                 }
+            }
+
+            // Super when super key is pressed
+            if (this.inputManager.isSuperPressed() && this.player1.superReady) {
+                const attackDir = this.inputManager.getAttackDirection();
+                const dir = attackDir.magnitude() > 0 ? attackDir : new Vector2(1, 0);
+                this.player1.useSuper(dir, this);
+                this.inputManager.consumeSuper();
             }
         }
 
-        // Update super button state
-        if (this.player) {
-            this.inputManager.updateSuperButton(this.player.superReady);
+        // Update Player 2 input
+        if (this.player2 && this.player2.isAlive) {
+            this.player2.moveDirection = this.inputManager.getPlayer2MoveDirection();
+
+            // Attack when shoot key is pressed
+            if (this.inputManager.getPlayer2IsAttacking() && this.player2.canAttack()) {
+                const attackDir = this.inputManager.getPlayer2AttackDirection();
+                if (attackDir.magnitude() > 0) {
+                    this.player2.attack(attackDir, this);
+                }
+            }
+
+            // Super when super key is pressed
+            if (this.inputManager.isPlayer2SuperPressed() && this.player2.superReady) {
+                const attackDir = this.inputManager.getPlayer2AttackDirection();
+                const dir = attackDir.magnitude() > 0 ? attackDir : new Vector2(1, 0);
+                this.player2.useSuper(dir, this);
+                this.inputManager.consumePlayer2Super();
+            }
         }
 
         // Update AI controllers
@@ -210,74 +215,14 @@ export class Game {
 
         // Update effects
         this.effectsManager.update(deltaTime);
-
-        // Update camera to follow player
-        this.updateCamera();
-    }
-
-    updateCamera() {
-        if (!this.player) return;
-
-        // Center camera on player
-        const targetX = this.player.position.x - this.camera.width / 2;
-        const targetY = this.player.position.y - this.camera.height / 2;
-
-        // Clamp to map bounds
-        this.camera.x = Math.max(0, Math.min(this.map.width - this.camera.width, targetX));
-        this.camera.y = Math.max(0, Math.min(this.map.height - this.camera.height, targetY));
-    }
-
-    render() {
-        // Clear canvas
-        this.ctx.fillStyle = '#1a1a2e';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Render map
-        this.map.render(this.ctx, this.camera);
-
-        // Render gems
-        for (const gem of this.gems) {
-            gem.render(this.ctx, this.camera);
-        }
-
-        // Render spike fields
-        for (const field of this.spikeFields) {
-            renderSpikeField(this.ctx, this.camera, field);
-        }
-
-        // Render projectiles
-        for (const projectile of this.projectiles) {
-            projectile.render(this.ctx, this.camera);
-        }
-
-        // Render bears
-        for (const bear of this.bears) {
-            bear.render(this.ctx, this.camera);
-        }
-
-        // Render brawlers (sort by Y for depth)
-        const sortedBrawlers = [...this.brawlers].sort((a, b) => a.position.y - b.position.y);
-        for (const brawler of sortedBrawlers) {
-            const isPlayerTeam = brawler.team === this.playerTeam;
-            brawler.render(this.ctx, this.camera, isPlayerTeam);
-        }
-
-        // Render effects
-        this.effectsManager.render(this.ctx, this.camera);
     }
 
     onAttackRelease(direction) {
-        if (this.player && this.player.isAlive && this.player.canAttack()) {
-            this.player.attack(direction, this);
-        }
+        // Legacy method - no longer used in 2 player mode
     }
 
     onSuperButtonPressed() {
-        if (this.player && this.player.isAlive && this.player.superReady) {
-            const attackDir = this.inputManager.getAttackDirection();
-            const dir = attackDir.magnitude() > 0 ? attackDir : new Vector2(1, 0);
-            this.player.useSuper(dir, this);
-        }
+        // Legacy method - no longer used in 2 player mode
     }
 
     onGemCollected(brawler) {
@@ -290,6 +235,7 @@ export class Game {
     }
 
     endGame(isVictory) {
+        // In 2 player mode, victory is for the winning team
         this.state = isVictory ? GAME_STATES.VICTORY : GAME_STATES.DEFEAT;
         this.stop();
 
@@ -308,32 +254,36 @@ export class Game {
         gameScreen.classList.add('hidden');
         resultScreen.classList.remove('hidden');
 
-        resultTitle.textContent = isVictory ? 'VICTORY!' : 'DEFEAT';
-        resultTitle.className = 'result-title ' + (isVictory ? 'victory' : 'defeat');
+        // Determine winner
+        const blueWins = stats.blueGems >= 10 || stats.blueGems > stats.redGems;
+        resultTitle.textContent = blueWins ? '🔵 BLUE TEAM WINS!' : '🔴 RED TEAM WINS!';
+        resultTitle.className = 'result-title ' + (blueWins ? 'victory' : 'defeat');
 
-        // Calculate stars based on performance
-        let starCount = isVictory ? 3 : 1;
-        if (isVictory && this.player.gems > 3) starCount = 3;
-        else if (isVictory && this.player.gems > 1) starCount = 2;
-        else if (isVictory) starCount = 1;
+        // Stars based on margin
+        const margin = Math.abs(stats.blueGems - stats.redGems);
+        let starCount = margin >= 5 ? 3 : margin >= 3 ? 2 : 1;
 
         const stars = starsContainer.querySelectorAll('.star');
         stars.forEach((star, index) => {
             star.classList.toggle('empty', index >= starCount);
         });
 
-        // Show stats
+        // Show stats for both players
         resultStats.innerHTML = `
             <div class="stat-row">
-                <span class="label">Your Gems:</span>
-                <span class="value">${this.player.gems}</span>
+                <span class="label">🔵 Player 1 Gems:</span>
+                <span class="value">${this.player1.gems}</span>
             </div>
             <div class="stat-row">
-                <span class="label">Blue Team:</span>
+                <span class="label">🔴 Player 2 Gems:</span>
+                <span class="value">${this.player2.gems}</span>
+            </div>
+            <div class="stat-row">
+                <span class="label">Blue Team Total:</span>
                 <span class="value">💎 ${stats.blueGems}</span>
             </div>
             <div class="stat-row">
-                <span class="label">Red Team:</span>
+                <span class="label">Red Team Total:</span>
                 <span class="value">💎 ${stats.redGems}</span>
             </div>
         `;
@@ -348,5 +298,6 @@ export class Game {
         this.spikeFields = [];
         this.aiControllers = [];
         this.effectsManager.clear();
+        this.renderSystem.cleanup();
     }
 }

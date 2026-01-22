@@ -1,14 +1,33 @@
 // ========================================
-// INPUT MANAGER - Keyboard & Mouse Controls
+// INPUT MANAGER - Simple 2 Player Keyboard Controls
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
 
-export class InputManager {
-    constructor(game) {
-        this.game = game;
+// Key mappings for each player
+const PLAYER1_KEYS = {
+    up: ['KeyW'],
+    down: ['KeyS'],
+    left: ['KeyA'],
+    right: ['KeyD'],
+    shoot: ['KeyF'],
+    super: ['KeyG'],
+};
 
-        // Keyboard state (WASD/Arrow keys)
+const PLAYER2_KEYS = {
+    up: ['ArrowUp'],
+    down: ['ArrowDown'],
+    left: ['ArrowLeft'],
+    right: ['ArrowRight'],
+    shoot: ['ShiftRight'],
+    super: ['Enter'],
+};
+
+class PlayerInput {
+    constructor(keyConfig) {
+        this.keyConfig = keyConfig;
+
+        // Movement state
         this.keys = {
             up: false,
             down: false,
@@ -16,325 +35,46 @@ export class InputManager {
             right: false,
         };
 
-        // Mouse state
-        this.mouse = {
-            position: new Vector2(0, 0),
-            worldPosition: new Vector2(0, 0),
-            isDown: false,
-            button: 0,
-        };
+        // Action state
+        this.shootPressed = false;
+        this.superPressed = false;
 
-        // Attack state
-        this.isAttacking = false;
-        this.attackDirection = new Vector2(1, 0);
-
-        // Super button
-        this.superButton = {
-            element: null,
-            pressed: false,
-        };
-
-        // Touch joysticks (for mobile fallback)
-        this.moveJoystick = {
-            active: false,
-            touchId: null,
-            startPos: new Vector2(0, 0),
-            currentPos: new Vector2(0, 0),
-            direction: new Vector2(0, 0),
-            element: null,
-            thumb: null,
-        };
-
-        this.init();
+        // Direction vectors
+        this.moveDirection = new Vector2(0, 0);
+        this.aimDirection = new Vector2(1, 0); // Current aiming direction
+        this.lastMoveDirection = new Vector2(1, 0); // Remembers last non-zero movement
     }
 
-    init() {
-        // Get DOM elements
-        this.moveJoystick.element = document.getElementById('move-joystick');
-        this.moveJoystick.thumb = this.moveJoystick.element?.querySelector('.joystick-thumb');
-        this.superButton.element = document.getElementById('super-button');
+    handleKeyDown(code) {
+        // Movement
+        if (this.keyConfig.up.includes(code)) this.keys.up = true;
+        if (this.keyConfig.down.includes(code)) this.keys.down = true;
+        if (this.keyConfig.left.includes(code)) this.keys.left = true;
+        if (this.keyConfig.right.includes(code)) this.keys.right = true;
 
-        // Get canvas for mouse position calculations
-        this.canvas = document.getElementById('game-canvas');
+        // Shoot
+        if (this.keyConfig.shoot.includes(code)) this.shootPressed = true;
 
-        // Keyboard events
-        document.addEventListener('keydown', this.onKeyDown.bind(this));
-        document.addEventListener('keyup', this.onKeyUp.bind(this));
-
-        // Mouse events
-        this.canvas?.addEventListener('mousedown', this.onMouseDown.bind(this));
-        this.canvas?.addEventListener('mousemove', this.onMouseMove.bind(this));
-        this.canvas?.addEventListener('mouseup', this.onMouseUp.bind(this));
-        this.canvas?.addEventListener('mouseleave', this.onMouseUp.bind(this));
-
-        // Prevent context menu on right click
-        this.canvas?.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // Touch events (for mobile)
-        document.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
-        document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
-        document.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
-        document.addEventListener('touchcancel', this.onTouchEnd.bind(this), { passive: false });
-
-        // Super button
-        if (this.superButton.element) {
-            this.superButton.element.addEventListener('click', () => {
-                if (!this.superButton.element.disabled) {
-                    this.game.onSuperButtonPressed();
-                }
-            });
-        }
-
-        // Space bar for super
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !e.repeat) {
-                e.preventDefault();
-                if (this.game.player?.superReady) {
-                    this.game.onSuperButtonPressed();
-                }
-            }
-        });
-
-        // Hide mobile joystick on desktop
-        this.detectInputMode();
+        // Super
+        if (this.keyConfig.super.includes(code)) this.superPressed = true;
     }
 
-    detectInputMode() {
-        // Check if touch device
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    handleKeyUp(code) {
+        // Movement
+        if (this.keyConfig.up.includes(code)) this.keys.up = false;
+        if (this.keyConfig.down.includes(code)) this.keys.down = false;
+        if (this.keyConfig.left.includes(code)) this.keys.left = false;
+        if (this.keyConfig.right.includes(code)) this.keys.right = false;
 
-        // Hide/show appropriate controls
-        const attackJoystick = document.getElementById('attack-joystick');
-        if (attackJoystick) {
-            // Always hide attack joystick on desktop - use mouse instead
-            if (!isTouchDevice) {
-                attackJoystick.style.display = 'none';
-            }
-        }
+        // Shoot
+        if (this.keyConfig.shoot.includes(code)) this.shootPressed = false;
 
-        // Show keyboard hint on desktop
-        if (!isTouchDevice && this.moveJoystick.element) {
-            this.moveJoystick.element.innerHTML = `
-                <div style="text-align: center; color: white; font-size: 12px; opacity: 0.8;">
-                    <div style="margin-bottom: 5px;">⌨️ WASD</div>
-                    <div>🖱️ Click to shoot</div>
-                    <div>SPACE for Super</div>
-                </div>
-            `;
-        }
+        // Super
+        if (this.keyConfig.super.includes(code)) this.superPressed = false;
     }
 
-    // ========================================
-    // KEYBOARD HANDLING
-    // ========================================
-
-    onKeyDown(e) {
-        switch (e.code) {
-            case 'KeyW':
-            case 'ArrowUp':
-                this.keys.up = true;
-                break;
-            case 'KeyS':
-            case 'ArrowDown':
-                this.keys.down = true;
-                break;
-            case 'KeyA':
-            case 'ArrowLeft':
-                this.keys.left = true;
-                break;
-            case 'KeyD':
-            case 'ArrowRight':
-                this.keys.right = true;
-                break;
-        }
-    }
-
-    onKeyUp(e) {
-        switch (e.code) {
-            case 'KeyW':
-            case 'ArrowUp':
-                this.keys.up = false;
-                break;
-            case 'KeyS':
-            case 'ArrowDown':
-                this.keys.down = false;
-                break;
-            case 'KeyA':
-            case 'ArrowLeft':
-                this.keys.left = false;
-                break;
-            case 'KeyD':
-            case 'ArrowRight':
-                this.keys.right = false;
-                break;
-        }
-    }
-
-    // ========================================
-    // MOUSE HANDLING
-    // ========================================
-
-    onMouseDown(e) {
-        this.mouse.isDown = true;
-        this.mouse.button = e.button;
-        this.updateMousePosition(e);
-
-        // Start attacking on left click
-        if (e.button === 0) {
-            this.isAttacking = true;
-            this.calculateAttackDirection();
-
-            // Fire immediately on click
-            if (this.game.player?.isAlive && this.game.player?.canAttack()) {
-                this.game.onAttackRelease(this.attackDirection);
-            }
-        }
-    }
-
-    onMouseMove(e) {
-        this.updateMousePosition(e);
-
-        // Update attack direction while mouse is down
-        if (this.mouse.isDown && this.mouse.button === 0) {
-            this.calculateAttackDirection();
-        }
-    }
-
-    onMouseUp(e) {
-        if (e.button === 0) {
-            this.isAttacking = false;
-        }
-        this.mouse.isDown = false;
-    }
-
-    updateMousePosition(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        this.mouse.position.set(
-            e.clientX - rect.left,
-            e.clientY - rect.top
-        );
-
-        // Calculate world position
-        if (this.game.camera) {
-            this.mouse.worldPosition.set(
-                this.mouse.position.x + this.game.camera.x,
-                this.mouse.position.y + this.game.camera.y
-            );
-        }
-    }
-
-    calculateAttackDirection() {
-        if (!this.game.player) return;
-
-        // Direction from player to mouse world position
-        const playerPos = this.game.player.position;
-        this.attackDirection = this.mouse.worldPosition.subtract(playerPos).normalize();
-    }
-
-    // ========================================
-    // TOUCH HANDLING (Mobile Fallback)
-    // ========================================
-
-    onTouchStart(e) {
-        // Only handle touch on game screen
-        if (!this.game || this.game.state !== 'playing') return;
-
-        e.preventDefault();
-
-        for (const touch of e.changedTouches) {
-            const touchPos = new Vector2(touch.clientX, touch.clientY);
-
-            // Check if touch is on left side (movement) or right side (attack)
-            if (touchPos.x < window.innerWidth / 2) {
-                // Movement joystick
-                if (!this.moveJoystick.active) {
-                    this.activateJoystick(this.moveJoystick, touchPos, touch.identifier);
-                }
-            } else {
-                // Attack - treat like mouse click
-                const rect = this.canvas.getBoundingClientRect();
-                this.mouse.position.set(touch.clientX - rect.left, touch.clientY - rect.top);
-                if (this.game.camera) {
-                    this.mouse.worldPosition.set(
-                        this.mouse.position.x + this.game.camera.x,
-                        this.mouse.position.y + this.game.camera.y
-                    );
-                }
-                this.calculateAttackDirection();
-                this.isAttacking = true;
-
-                if (this.game.player?.isAlive && this.game.player?.canAttack()) {
-                    this.game.onAttackRelease(this.attackDirection);
-                }
-            }
-        }
-    }
-
-    onTouchMove(e) {
-        e.preventDefault();
-
-        for (const touch of e.changedTouches) {
-            const touchPos = new Vector2(touch.clientX, touch.clientY);
-
-            if (this.moveJoystick.touchId === touch.identifier) {
-                this.updateJoystick(this.moveJoystick, touchPos);
-            }
-        }
-    }
-
-    onTouchEnd(e) {
-        for (const touch of e.changedTouches) {
-            if (this.moveJoystick.touchId === touch.identifier) {
-                this.deactivateJoystick(this.moveJoystick);
-            }
-        }
-        this.isAttacking = false;
-    }
-
-    // ========================================
-    // JOYSTICK HELPERS (for mobile)
-    // ========================================
-
-    isInsideElement(pos, element) {
-        if (!element) return false;
-        const rect = element.getBoundingClientRect();
-        return pos.x >= rect.left && pos.x <= rect.right &&
-            pos.y >= rect.top && pos.y <= rect.bottom;
-    }
-
-    activateJoystick(joystick, pos, touchId) {
-        joystick.active = true;
-        joystick.touchId = touchId;
-        joystick.startPos = pos.clone();
-        joystick.currentPos = pos.clone();
-    }
-
-    updateJoystick(joystick, pos) {
-        joystick.currentPos = pos.clone();
-
-        const delta = pos.subtract(joystick.startPos);
-        const maxDistance = 50;
-        const distance = Math.min(delta.magnitude(), maxDistance);
-
-        if (distance > 5) {
-            joystick.direction = delta.normalize();
-        } else {
-            joystick.direction = new Vector2(0, 0);
-        }
-    }
-
-    deactivateJoystick(joystick) {
-        joystick.active = false;
-        joystick.touchId = null;
-        joystick.direction = new Vector2(0, 0);
-    }
-
-    // ========================================
-    // PUBLIC METHODS
-    // ========================================
-
-    getMoveDirection() {
-        // Check keyboard first
+    update() {
+        // Calculate move direction
         let x = 0;
         let y = 0;
 
@@ -344,35 +84,123 @@ export class InputManager {
         if (this.keys.down) y += 1;
 
         if (x !== 0 || y !== 0) {
-            return new Vector2(x, y).normalize();
-        }
-
-        // Fall back to touch joystick
-        if (this.moveJoystick.active) {
-            return this.moveJoystick.direction.clone();
-        }
-
-        return new Vector2(0, 0);
-    }
-
-    getAttackDirection() {
-        return this.attackDirection.clone();
-    }
-
-    getIsAttacking() {
-        return this.isAttacking;
-    }
-
-    updateSuperButton(isReady) {
-        if (this.superButton.element) {
-            this.superButton.element.disabled = !isReady;
-        }
-
-        // Update super charge fill
-        const fillElement = document.getElementById('super-fill');
-        if (fillElement && this.game.player) {
-            const chargePercent = (this.game.player.superCharge / this.game.player.superChargeMax) * 100;
-            fillElement.style.height = `${chargePercent}%`;
+            this.moveDirection = new Vector2(x, y).normalize();
+            this.lastMoveDirection = this.moveDirection.clone();
+            // In simplified controls, movement direction is also the aiming direction
+            this.aimDirection = this.moveDirection.clone();
+        } else {
+            this.moveDirection = new Vector2(0, 0);
+            // If not moving, stay aiming in the last moved direction
+            this.aimDirection = this.lastMoveDirection.clone();
         }
     }
+
+    getMoveDirection() {
+        return this.moveDirection.clone();
+    }
+
+    getAimDirection() {
+        return this.aimDirection.clone();
+    }
+
+    isShootPressed() {
+        return this.shootPressed;
+    }
+
+    isSuperPressed() {
+        return this.superPressed;
+    }
+
+    consumeSuper() {
+        this.superPressed = false;
+    }
+}
+
+export class InputManager {
+    constructor(game) {
+        this.game = game;
+
+        // Create input handlers for each player
+        this.player1Input = new PlayerInput(PLAYER1_KEYS);
+        this.player2Input = new PlayerInput(PLAYER2_KEYS);
+
+        this.init();
+    }
+
+    init() {
+        // Hide mobile controls
+        const moveJoystick = document.getElementById('move-joystick');
+        const attackJoystick = document.getElementById('attack-joystick');
+        const superBtn = document.getElementById('super-button');
+
+        if (moveJoystick) moveJoystick.style.display = 'none';
+        if (attackJoystick) attackJoystick.style.display = 'none';
+        if (superBtn) superBtn.style.display = 'none';
+
+        // Keyboard events
+        document.addEventListener('keydown', this.onKeyDown.bind(this));
+        document.addEventListener('keyup', this.onKeyUp.bind(this));
+
+        // Prevent default for game keys
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftRight', 'Enter'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+
+        // Show control hints
+        this.showControlHints();
+    }
+
+    showControlHints() {
+        const controlsContainer = document.getElementById('controls');
+        if (controlsContainer) {
+            controlsContainer.innerHTML = `
+                <div class="control-hints">
+                    <div class="player-controls p1">
+                        <div class="player-label">🔵 P1 (Blue Team)</div>
+                        <div class="keys"><b>WASD</b> 이동/조준</div>
+                        <div class="keys"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                    </div>
+                    <div class="player-controls p2">
+                        <div class="player-label">🔴 P2 (Red Team)</div>
+                        <div class="keys"><b>방향키</b> 이동/조준</div>
+                        <div class="keys"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    onKeyDown(e) {
+        if (e.repeat) return;
+        this.player1Input.handleKeyDown(e.code);
+        this.player2Input.handleKeyDown(e.code);
+    }
+
+    onKeyUp(e) {
+        this.player1Input.handleKeyUp(e.code);
+        this.player2Input.handleKeyUp(e.code);
+    }
+
+    update() {
+        this.player1Input.update();
+        this.player2Input.update();
+    }
+
+    // Player 1
+    getMoveDirection() { return this.player1Input.getMoveDirection(); }
+    getAttackDirection() { return this.player1Input.getAimDirection(); }
+    getIsAttacking() { return this.player1Input.isShootPressed(); }
+    isSuperPressed() { return this.player1Input.isSuperPressed(); }
+    consumeSuper() { this.player1Input.consumeSuper(); }
+
+    // Player 2
+    getPlayer2MoveDirection() { return this.player2Input.getMoveDirection(); }
+    getPlayer2AttackDirection() { return this.player2Input.getAimDirection(); }
+    getPlayer2IsAttacking() { return this.player2Input.isShootPressed(); }
+    isPlayer2SuperPressed() { return this.player2Input.isSuperPressed(); }
+    consumePlayer2Super() { this.player2Input.consumeSuper(); }
+
+    updateSuperButton(isReady) { }
 }

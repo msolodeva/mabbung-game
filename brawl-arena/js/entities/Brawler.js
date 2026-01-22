@@ -55,6 +55,8 @@ export class Brawler extends Entity {
         // Visual
         this.damageFlashTimer = 0;
         this.color = team === TEAMS.BLUE ? COLORS.BLUE_TEAM : COLORS.RED_TEAM;
+        this.moveTrail = [];
+        this.maxTrailLength = 5;
     }
 
     update(deltaTime, game) {
@@ -108,6 +110,14 @@ export class Brawler extends Entity {
 
         // Update visibility
         this.updateVisibility(game);
+
+        // Update movement trail
+        if (this.velocity.magnitude() > 50) {
+            this.moveTrail.unshift({ x: this.position.x, y: this.position.y, angle: this.facingAngle });
+            if (this.moveTrail.length > this.maxTrailLength) this.moveTrail.pop();
+        } else {
+            if (this.moveTrail.length > 0) this.moveTrail.pop();
+        }
     }
 
     handleWallCollision(map) {
@@ -249,126 +259,233 @@ export class Brawler extends Entity {
     render(ctx, camera, isPlayerTeam) {
         if (!this.active) return;
 
-        const screenX = this.position.x - camera.x;
-        const screenY = this.position.y - camera.y;
+        const x = this.position.x;
+        const y = this.position.y;
+
+        // Render Movement Trail
+        if (this.moveTrail.length > 0 && this.isAlive && (this.isVisible || isPlayerTeam)) {
+            ctx.save();
+            for (let i = 0; i < this.moveTrail.length; i++) {
+                const p = this.moveTrail[i];
+                const alpha = 0.3 * (1 - i / this.moveTrail.length);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, this.radius * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
 
         // Don't render if not visible (enemy in bush)
         if (!this.isVisible && !isPlayerTeam) return;
 
-        // Shadow
+        const time = performance.now() * 0.005;
+        const bobOffset = Math.sin(time) * 5; // Balanced bobbing
+        const breathingScale = 1 + Math.sin(time * 0.4) * 0.04; // Smooth breathing
+
+        // 1. Enhanced Ground Ring (Aura)
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = this.color;
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(x, y + this.radius - 5, this.radius * 1.1, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner soft glow
+        const innerGlow = ctx.createRadialGradient(x, y + this.radius - 5, 0, x, y + this.radius - 5, this.radius * 1.4);
+        innerGlow.addColorStop(0, `${this.color}44`);
+        innerGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = innerGlow;
+        ctx.fill();
+        ctx.restore();
+
+        // 2. Dynamic Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY + this.radius - 5, this.radius * 0.8, this.radius * 0.4, 0, 0, Math.PI * 2);
+        const shadowW = this.radius * 1.0 * breathingScale;
+        const shadowH = this.radius * 0.4 * breathingScale;
+        ctx.ellipse(x, y + this.radius - 2, shadowW, shadowH, 0, 0, Math.PI * 2);
         ctx.fill();
 
         if (!this.isAlive) {
-            // Death indicator
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.font = '24px Arial';
+            // Death indicator (Ghostly emoji)
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.font = '32px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('💀', screenX, screenY + 8);
+            ctx.fillText('👻', x, y + bobOffset);
+            ctx.restore();
             return;
         }
 
-        // Body with team color
-        const bodyColor = this.damageFlashTimer > 0 ? '#ffffff' : this.color;
+        // 3. Directional Pointer (Premium Look)
+        ctx.save();
+        ctx.translate(x, y + bobOffset);
+        ctx.rotate(this.facingAngle);
 
-        // Draw body circle
-        ctx.fillStyle = bodyColor;
+        // Pointer shadow
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+        ctx.moveTo(this.radius + 18, 0);
+        ctx.lineTo(this.radius + 4, -10);
+        ctx.lineTo(this.radius + 4, 10);
+        ctx.fill();
+        ctx.restore();
+
+        // 4. Character Body with Premium Gradients
+        ctx.save();
+        ctx.translate(x, y + bobOffset);
+        ctx.scale(breathingScale, breathingScale);
+
+        const bodyGrad = ctx.createRadialGradient(
+            -this.radius * 0.3,
+            -this.radius * 0.3,
+            this.radius * 0.1,
+            0,
+            0,
+            this.radius
+        );
+
+        if (this.damageFlashTimer > 0) {
+            bodyGrad.addColorStop(0, '#ffffff');
+            bodyGrad.addColorStop(1, '#ff8888');
+        } else {
+            bodyGrad.addColorStop(0, this.color);
+            bodyGrad.addColorStop(0.7, this.color);
+            bodyGrad.addColorStop(1, this.team === TEAMS.BLUE ? '#154360' : '#641e16');
+        }
+
+        // Body Outer Glow
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Outline
-        ctx.strokeStyle = this.team === TEAMS.BLUE ? '#2d5a8a' : '#a93226';
+        // Stylish White Outline
+        ctx.strokeStyle = 'white';
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Character emoji/icon
-        ctx.font = `${this.radius * 1.2}px Arial`;
+        // Character Emoji / Icon
+        ctx.shadowBlur = 0; // Clear for text
+        ctx.font = `bold ${this.radius * 1.4}px "Lilita One", Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.config.emoji, screenX, screenY);
+        ctx.fillText(this.config.emoji, 0, 2);
 
-        // Direction indicator
-        const dirX = screenX + Math.cos(this.facingAngle) * (this.radius + 10);
-        const dirY = screenY + Math.sin(this.facingAngle) * (this.radius + 10);
-        ctx.fillStyle = '#ffffff';
+        ctx.restore();
+
+        // 5. Polished HUD (Health/Ammo)
+        this.renderPolishedHealthBar(ctx, x, y);
+        this.renderPolishedAmmo(ctx, x, y);
+
+        if (this.gems > 0) {
+            this.renderPremiumGemsIndicator(ctx, x, y);
+        }
+
+        // 6. Super Ready Pulse
+        if (this.superReady) {
+            ctx.save();
+            ctx.translate(x, y + bobOffset);
+            ctx.rotate(time * 0.5);
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 10]);
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius + 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    renderPolishedHealthBar(ctx, x, y) {
+        const barWidth = 70;
+        const barHeight = 10;
+        const barY = y - this.radius - 30;
+
+        // Black Border/Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.beginPath();
-        ctx.arc(dirX, dirY, 5, 0, Math.PI * 2);
+        ctx.roundRect(x - barWidth / 2 - 3, barY - 3, barWidth + 6, barHeight + 6, 5);
         ctx.fill();
 
-        // Health bar
-        this.renderHealthBar(ctx, screenX, screenY);
-
-        // Ammo indicators
-        this.renderAmmo(ctx, screenX, screenY);
-
-        // Gem count
-        if (this.gems > 0) {
-            this.renderGems(ctx, screenX, screenY);
-        }
-
-        // Super ready indicator
-        if (this.superReady) {
-            ctx.strokeStyle = COLORS.SUPER_GOLD;
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, this.radius + 5, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-    }
-
-    renderHealthBar(ctx, x, y) {
-        const barWidth = 50;
-        const barHeight = 6;
-        const barY = y - this.radius - 20;
-
-        // Background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(x - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
-
-        // Health fill
-        const healthPercent = this.health / this.maxHealth;
-        let healthColor = COLORS.HEALTH_GREEN;
-        if (healthPercent < 0.3) healthColor = COLORS.HEALTH_RED;
-        else if (healthPercent < 0.6) healthColor = COLORS.HEALTH_YELLOW;
+        // Health Fill
+        const healthPercent = Math.max(0, this.health / this.maxHealth);
+        let healthColor = '#2ecc71';
+        if (healthPercent < 0.35) healthColor = '#e74c3c';
+        else if (healthPercent < 0.65) healthColor = '#f1c40f';
 
         ctx.fillStyle = healthColor;
-        ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+        ctx.beginPath();
+        ctx.roundRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight, 4);
+        ctx.fill();
+
+        // Gloss Effect
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight / 2);
+
+        // Health Text
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.ceil(this.health), x, barY + barHeight - 1);
     }
 
-    renderAmmo(ctx, x, y) {
-        const ammoY = y + this.radius + 15;
-        const ammoSize = 8;
-        const spacing = 12;
-        const startX = x - (this.ammoMax * spacing) / 2 + spacing / 2;
+    renderPolishedAmmo(ctx, x, y) {
+        const ammoY = y + this.radius + 25;
+        const spacing = 16;
+        const width = 12;
+        const height = 5;
+        const totalWidth = this.ammoMax * spacing;
+        const startX = x - totalWidth / 2 + spacing / 2;
 
         for (let i = 0; i < this.ammoMax; i++) {
-            ctx.fillStyle = i < this.ammo ? '#ffd700' : 'rgba(100, 100, 100, 0.5)';
-            ctx.beginPath();
-            ctx.arc(startX + i * spacing, ammoY, ammoSize / 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
+            const isLoaded = i < this.ammo;
 
-        // Reload progress
-        if (this.ammo < this.ammoMax) {
-            const reloadProgress = this.reloadTimer / this.ammoReloadTime;
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.beginPath();
-            ctx.arc(startX + this.ammo * spacing, ammoY, ammoSize / 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * reloadProgress);
-            ctx.lineTo(startX + this.ammo * spacing, ammoY);
+            ctx.roundRect(startX + i * spacing - width / 2, ammoY, width, height, 2);
             ctx.fill();
+
+            if (isLoaded) {
+                const grad = ctx.createLinearGradient(0, ammoY, 0, ammoY + height);
+                grad.addColorStop(0, '#f1c40f');
+                grad.addColorStop(1, '#d68910');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.roundRect(startX + i * spacing - width / 2, ammoY, width, height, 2);
+                ctx.fill();
+            } else if (i === this.ammo) {
+                const reloadProgress = this.reloadTimer / this.ammoReloadTime;
+                ctx.fillStyle = 'rgba(241, 196, 15, 0.4)';
+                ctx.beginPath();
+                ctx.roundRect(startX + i * spacing - width / 2, ammoY, width * reloadProgress, height, 2);
+                ctx.fill();
+            }
         }
     }
 
-    renderGems(ctx, x, y) {
-        const gemY = y - this.radius - 35;
-        ctx.fillStyle = COLORS.GEM;
-        ctx.font = 'bold 14px Arial';
+    renderPremiumGemsIndicator(ctx, x, y) {
+        const gemY = y - this.radius - 50;
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#9b59b6';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px "Lilita One", Arial';
         ctx.textAlign = 'center';
         ctx.fillText(`💎 ${this.gems}`, x, gemY);
+        ctx.restore();
     }
 }

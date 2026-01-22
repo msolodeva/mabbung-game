@@ -110,8 +110,8 @@ export class Projectile extends Entity {
     render(ctx, camera) {
         if (!this.active) return;
 
-        const screenX = this.position.x - camera.x;
-        const screenY = this.position.y - camera.y;
+        const x = this.position.x;
+        const y = this.position.y;
 
         // Draw trail
         for (let i = 0; i < this.trail.length; i++) {
@@ -121,7 +121,7 @@ export class Projectile extends Entity {
 
             ctx.fillStyle = this.color.replace(')', `, ${alpha * 0.5})`).replace('rgb', 'rgba');
             ctx.beginPath();
-            ctx.arc(trailPos.x - camera.x, trailPos.y - camera.y, size, 0, Math.PI * 2);
+            ctx.arc(trailPos.x, trailPos.y, size, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -130,7 +130,7 @@ export class Projectile extends Entity {
             // Draw wave shape
             ctx.fillStyle = this.color;
             ctx.save();
-            ctx.translate(screenX, screenY);
+            ctx.translate(x, y);
             ctx.rotate(this.direction.angle());
             ctx.fillRect(-10, -this.width / 2, 20, this.width);
             ctx.restore();
@@ -138,7 +138,7 @@ export class Projectile extends Entity {
             // Draw bullet
             ctx.fillStyle = this.color;
             ctx.beginPath();
-            ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+            ctx.arc(x, y, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
             // Glow effect
