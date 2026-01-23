@@ -585,6 +585,14 @@ body {
     filter: drop-shadow(3px 3px 0 var(--red-team-dark));
 }
 
+.result-title.draw {
+    background: linear-gradient(180deg, #bdc3c7 0%, #7f8c8d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(3px 3px 0 #2c3e50);
+}
+
 @keyframes resultBounce {
     0% {
         transform: scale(0);
@@ -639,29 +647,144 @@ body {
     }
 }
 
+/* Adjusted for new team columns layout */
 .result-stats {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 20px 40px;
+    background: transparent;
+    padding: 0;
     margin-bottom: 30px;
-    display: inline-block;
+    display: block;
 }
 
-.result-stats .stat-row {
+/* Result Team Stats Premium UI */
+.result-teams-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.result-team {
+    padding: 25px 35px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    min-width: 220px;
+    border: 3px solid transparent;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.result-team:hover {
+    transform: translateY(-5px);
+}
+
+.result-team::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.result-team.blue {
+    border-color: var(--blue-team);
+    background: linear-gradient(180deg, rgba(74, 144, 217, 0.2) 0%, rgba(74, 144, 217, 0.1) 100%);
+    box-shadow: 0 10px 30px rgba(74, 144, 217, 0.2), inset 0 0 20px rgba(74, 144, 217, 0.1);
+}
+
+.result-team.red {
+    border-color: var(--red-team);
+    background: linear-gradient(180deg, rgba(231, 76, 60, 0.2) 0%, rgba(231, 76, 60, 0.1) 100%);
+    box-shadow: 0 10px 30px rgba(231, 76, 60, 0.2), inset 0 0 20px rgba(231, 76, 60, 0.1);
+}
+
+.team-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+    text-transform: uppercase;
+}
+
+.result-team.blue .team-title {
+    color: var(--blue-team);
+}
+
+.result-team.red .team-title {
+    color: var(--red-team);
+}
+
+.team-score-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.team-score-display .gem-icon {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 0 15px rgba(155, 89, 182, 0.8));
+    animation: gemPulse 2s infinite ease-in-out;
+}
+
+@keyframes gemPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 15px rgba(155, 89, 182, 0.8));
+    }
+
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 25px rgba(155, 89, 182, 1));
+    }
+}
+
+.team-score-display .gem-count {
+    font-size: 3.5rem;
+    font-family: 'Lilita One', cursive;
+    color: white;
+    text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+    line-height: 1;
+}
+
+.player-stat-row {
     display: flex;
     justify-content: space-between;
-    gap: 40px;
-    color: white;
+    align-items: center;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
     font-size: 1.1rem;
-    margin: 10px 0;
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.stat-row .label {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.stat-row .value {
+.player-stat-row .player-gems {
+    color: var(--gold);
     font-weight: bold;
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.matches-divider {
+    font-family: 'Lilita One', cursive;
+    font-size: 3rem;
+    color: rgba(255, 255, 255, 0.1);
+    font-style: italic;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
 }
 
 .play-again-button {

@@ -129,8 +129,8 @@ export class GemGrabMode {
         } else if (redGems > blueGems) {
             this.declareWinner(TEAMS.RED);
         } else {
-            // Tie - sudden death or random? Let's say blue wins ties
-            this.declareWinner(TEAMS.BLUE);
+            // Tie
+            this.game.endGame('draw');
         }
     }
 

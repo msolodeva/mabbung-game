@@ -9,7 +9,7 @@ import { BRAWLERS } from '../../utils/constants.js';
 
 export class ElPrimo extends Brawler {
     constructor(team, x, y) {
-        super(BRAWLERS.EL_PRIMO, team, x, y);
+        super(BRAWLERS.ELPRIMO, team, x, y);
         this.isJumping = false;
         this.jumpProgress = 0;
         this.jumpStart = new Vector2(0, 0);

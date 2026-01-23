@@ -91,11 +91,76 @@ export class Game {
     }
 
     createTeamBot(team) {
-        // Pick a random brawler that's not already in use
-        const availableBrawlers = Object.keys(BRAWLER_CLASSES);
-        const randomBrawlerId = availableBrawlers[Math.floor(Math.random() * availableBrawlers.length)];
+        // Get current team members
+        const teamMembers = this.brawlers.filter(b => b.team === team);
 
-        const BrawlerClass = BRAWLER_CLASSES[randomBrawlerId];
+        // Analyze current team composition
+        const hasTank = teamMembers.some(b => ['TANK', 'FIGHTER'].includes(b.config.role));
+        const hasDamage = teamMembers.some(b => ['MARKSMAN', 'CONTROLLER', 'FIGHTER'].includes(b.config.role));
+        const hasSupport = teamMembers.some(b => b.config.role === 'SUPPORT');
+
+        // Count roles for diversity
+        const roleCounts = {};
+        teamMembers.forEach(b => {
+            const r = b.config.role;
+            roleCounts[r] = (roleCounts[r] || 0) + 1;
+        });
+
+        // Calculate scores for each available brawler
+        const candidates = Object.values(BRAWLER_CLASSES).map(BrawlerClass => {
+            // Find the config for this class
+            const brawlerId = Object.keys(BRAWLER_CLASSES).find(key => BRAWLER_CLASSES[key] === BrawlerClass);
+            const config = BRAWLERS[brawlerId]; // Config keys are BRAWLER_ID usually
+
+            // Helper: Find config by matching class name to BRAWLERS values if ID lookup is tricky
+            // But BRAWLER_CLASSES keys are like 'SHELLY', 'NITA' which match BRAWLERS keys.
+            // Let's assume keys match.
+
+            if (!config) return { id: 'unknown', score: -999, Class: BrawlerClass };
+
+            let score = 0;
+
+            // 1. Avoid Duplicates (Strong negative)
+            if (teamMembers.some(m => m.config.id === config.id)) {
+                score -= 1000;
+            }
+
+            // 2. Role Needs
+            if (!hasTank && ['TANK', 'FIGHTER'].includes(config.role)) {
+                score += 50; // Strong need for frontline
+            }
+            if (!hasDamage && ['MARKSMAN', 'CONTROLLER', 'FIGHTER'].includes(config.role)) {
+                score += 50; // Strong need for damage
+            }
+            if (!hasSupport && config.role === 'SUPPORT') {
+                score += 30; // Moderate need for support
+            }
+
+            // 3. Balance Factors
+            // If we have a tank, we probably want ranged damage
+            if (hasTank && config.role === 'MARKSMAN') {
+                score += 20;
+            }
+
+            // 4. Role Diversity (Penalty for too many of same role)
+            if ((roleCounts[config.role] || 0) > 0) {
+                score -= 20;
+            }
+
+            // 5. Randomness
+            score += Math.random() * 10;
+
+            return { id: config.id, score, Class: BrawlerClass };
+        });
+
+        // Sort by score descending
+        candidates.sort((a, b) => b.score - a.score);
+
+        // Pick the best one (or top 3 random for variety if scores are close)
+        // Let's just pick the absolute best for now to ensure balance.
+        const bestCandidate = candidates[0];
+        const BrawlerClass = bestCandidate.Class;
+
         const spawnPos = this.map.getSpawnPosition(team);
 
         const bot = new BrawlerClass(team, spawnPos.x, spawnPos.y);
@@ -255,9 +320,16 @@ export class Game {
         resultScreen.classList.remove('hidden');
 
         // Determine winner
-        const blueWins = stats.blueGems >= 10 || stats.blueGems > stats.redGems;
-        resultTitle.textContent = blueWins ? '🔵 BLUE TEAM WINS!' : '🔴 RED TEAM WINS!';
-        resultTitle.className = 'result-title ' + (blueWins ? 'victory' : 'defeat');
+        if (isVictory === 'draw') {
+            resultTitle.textContent = '🤝 DRAW!';
+            resultTitle.className = 'result-title draw';
+        } else if (isVictory) {
+            resultTitle.textContent = '🔵 BLUE TEAM WINS!';
+            resultTitle.className = 'result-title victory';
+        } else {
+            resultTitle.textContent = '🔴 RED TEAM WINS!';
+            resultTitle.className = 'result-title defeat';
+        }
 
         // Stars based on margin
         const margin = Math.abs(stats.blueGems - stats.redGems);
@@ -269,22 +341,34 @@ export class Game {
         });
 
         // Show stats for both players
+        // Show stats for both players with team coloring
         resultStats.innerHTML = `
-            <div class="stat-row">
-                <span class="label">🔵 Player 1 Gems:</span>
-                <span class="value">${this.player1.gems}</span>
-            </div>
-            <div class="stat-row">
-                <span class="label">🔴 Player 2 Gems:</span>
-                <span class="value">${this.player2.gems}</span>
-            </div>
-            <div class="stat-row">
-                <span class="label">Blue Team Total:</span>
-                <span class="value">💎 ${stats.blueGems}</span>
-            </div>
-            <div class="stat-row">
-                <span class="label">Red Team Total:</span>
-                <span class="value">💎 ${stats.redGems}</span>
+            <div class="result-teams-container">
+                <div class="result-team blue">
+                    <h3 class="team-title">BLUE TEAM</h3>
+                    <div class="team-score-display">
+                        <div class="gem-icon">💎</div>
+                        <div class="gem-count">${stats.blueGems}</div>
+                    </div>
+                    <div class="player-stat-row">
+                        <span class="player-label">🔵 Player 1</span>
+                        <span class="player-gems">+${this.player1.gems}</span>
+                    </div>
+                </div>
+                
+                <div class="matches-divider">VS</div>
+
+                <div class="result-team red">
+                    <h3 class="team-title">RED TEAM</h3>
+                    <div class="team-score-display">
+                        <div class="gem-icon">💎</div>
+                        <div class="gem-count">${stats.redGems}</div>
+                    </div>
+                    <div class="player-stat-row">
+                        <span class="player-label">🔴 Player 2</span>
+                        <span class="player-gems">+${this.player2.gems}</span>
+                    </div>
+                </div>
             </div>
         `;
     }

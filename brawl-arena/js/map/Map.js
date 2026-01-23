@@ -74,6 +74,11 @@ export class GameMap {
     damageWallAtPosition(x, y, damage) {
         const col = Math.floor(x / this.tileSize);
         const row = Math.floor(y / this.tileSize);
+
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return false;
+        }
+
         const key = `${col},${row}`;
         const tile = this.tiles[row][col];
 

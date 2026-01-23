@@ -64,4 +64,11 @@ export class Nita extends Brawler {
             this.bear = null;
         }
     }
+
+    die() {
+        if (this.bear && this.bear.isAlive) {
+            this.bear.die();
+        }
+        return super.die();
+    }
 }

@@ -9,7 +9,7 @@ export const GAME_CONFIG = {
     FPS: 60,
     MATCH_DURATION: 180, // 3 minutes
     WIN_GEM_COUNT: 3, // Now only 3 gems needed!
-    WIN_COUNTDOWN: 15,
+    WIN_COUNTDOWN: 25,
     RESPAWN_TIME: 3000,
 };
 
@@ -78,9 +78,10 @@ export const BRAWLERS = {
     SHELLY: {
         id: 'shelly',
         name: 'Shelly',
+        role: 'FIGHTER',
         emoji: '🔫',
         color: '#9b59b6',
-        health: 4400,          // Buffed HP
+        health: 6000,          // Buffed HP (was 4400)
         speed: 250,            // Increased speed (from 200)
         attackDamage: 450,     // Buffed damage
         attackProjectiles: 5,
@@ -106,10 +107,11 @@ export const BRAWLERS = {
     NITA: {
         id: 'nita',
         name: 'Nita',
+        role: 'TANK',
         emoji: '🐻',
         color: '#e74c3c',
-        health: 5500,          // Buffed tankiness
-        speed: 220,            // Buffed speed (from 170)
+        health: 7500,          // Buffed tankiness (was 5500)
+        speed: 240,            // Buffed speed (was 220)
         attackDamage: 900,     // Buffed damage
         attackProjectiles: 1,
         attackSpread: 0,
@@ -132,9 +134,10 @@ export const BRAWLERS = {
     COLT: {
         id: 'colt',
         name: 'Colt',
+        role: 'MARKSMAN',
         emoji: '🤠',
         color: '#4a90d9',
-        health: 2800,          // Buffed HP
+        health: 3800,          // Buffed HP (was 2800)
         speed: 280,            // Buffed speed (from 240)
         attackDamage: 400,     // Buffed damage
         attackProjectiles: 6,
@@ -159,11 +162,12 @@ export const BRAWLERS = {
     POCO: {
         id: 'poco',
         name: 'Poco',
+        role: 'SUPPORT',
         emoji: '🎸',
         color: '#2ecc71',
-        health: 4600,
+        health: 6000,
         speed: 230,
-        attackDamage: 600,
+        attackDamage: 700,
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 400,      // Good range
@@ -188,11 +192,12 @@ export const BRAWLERS = {
     SPIKE: {
         id: 'spike',
         name: 'Spike',
+        role: 'CONTROLLER',
         emoji: '🌵',
         color: '#27ae60',
-        health: 3200,
+        health: 4200,
         speed: 240,
-        attackDamage: 520,
+        attackDamage: 560,
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 420,      // Medium-long
@@ -219,10 +224,11 @@ export const BRAWLERS = {
     ELPRIMO: {
         id: 'elprimo',
         name: 'El Primo',
+        role: 'TANK',
         emoji: '👊',
         color: '#e67e22',
-        health: 7000,
-        speed: 280,
+        health: 9500,
+        speed: 265,
         attackDamage: 360,     // Per punch (4 punches total)
         attackProjectiles: 4,
         attackRange: 150,      // Very short melee range
@@ -246,9 +252,10 @@ export const BRAWLERS = {
     BULL: {
         id: 'bull',
         name: 'Bull',
+        role: 'TANK',
         emoji: '🐂',
         color: '#2c3e50',
-        health: 5200,
+        health: 8000,
         speed: 260,
         attackDamage: 400,     // Per pellet (5 pellets total)
         attackProjectiles: 5,
@@ -273,9 +280,10 @@ export const BRAWLERS = {
     BROCK: {
         id: 'brock',
         name: 'Brock',
+        role: 'MARKSMAN',
         emoji: '🕶️',
         color: '#e74c3c',
-        health: 2600,
+        health: 3600,
         speed: 240,
         attackDamage: 1100,
         attackProjectiles: 1,
@@ -283,7 +291,7 @@ export const BRAWLERS = {
         attackRange: 650,       // Very long range
         attackSpeed: 900,       // Slow fire rate
         ammoMax: 3,
-        ammoReloadTime: 2100,   // Very slow reload
+        ammoReloadTime: 1900,   // Slightly faster reload (was 2100)
         superCharge: 8,
         superDamage: 1000,
         description: '로켓 레인 - 춤추는 폭발',
