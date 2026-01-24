@@ -106,9 +106,9 @@ export class ElPrimo extends Brawler {
                 if (dist < impactRadius) {
                     brawler.takeDamage(impactDamage, this);
 
-                    // Add knockback
+                    // Add knockback smoothly
                     const kbDir = brawler.position.subtract(this.position).normalize();
-                    brawler.position.addInPlace(kbDir.multiply(this.config.superKnockback));
+                    brawler.applyKnockback(kbDir, this.config.superKnockback);
                 }
             }
         }

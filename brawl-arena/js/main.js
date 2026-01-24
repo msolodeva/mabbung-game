@@ -4,6 +4,7 @@
 
 import { Game } from './game/Game.js';
 import { BRAWLERS } from './utils/constants.js';
+import { MAPS } from './map/mapData.js';
 
 class BrawlArena {
     constructor() {
@@ -11,6 +12,7 @@ class BrawlArena {
         this.player1Brawler = 'shelly';
         this.player2Brawler = 'colt';
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
+        this.selectedMapId = 'open'; // Default map
 
         this.init();
     }
@@ -18,9 +20,58 @@ class BrawlArena {
     init() {
         console.log('Brawl Arena Initializing...');
         this.setupLobby();
+        this.setupMapSelection();
         this.setupEventListeners();
     }
 
+    setupMapSelection() {
+        const mapSelector = document.getElementById('map-selector');
+        if (!mapSelector) return;
+
+        mapSelector.innerHTML = '';
+        Object.values(MAPS).forEach(map => {
+            const el = document.createElement('div');
+            el.className = `map-option ${map.id === this.selectedMapId ? 'selected' : ''}`;
+            el.dataset.mapId = map.id;
+            el.onclick = () => this.selectMap(map.id);
+
+            el.innerHTML = `
+                <div class="map-preview ${map.id}"></div>
+                <div class="map-option-name">${map.name}</div>
+            `;
+            mapSelector.appendChild(el);
+        });
+
+        this.updateMapInfo();
+    }
+
+    selectMap(mapId) {
+        this.selectedMapId = mapId;
+
+        // Update UI
+        document.querySelectorAll('.map-option').forEach(el => {
+            el.classList.toggle('selected', el.dataset.mapId === mapId);
+        });
+
+        this.updateMapInfo();
+    }
+
+    updateMapInfo() {
+        const map = MAPS[this.selectedMapId];
+        document.getElementById('selected-map-name').textContent = map.name;
+        document.getElementById('selected-map-desc').textContent = map.description;
+    }
+
+    startGame() {
+        document.getElementById('lobby-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+
+        const canvas = document.getElementById('game-canvas');
+        const mapData = MAPS[this.selectedMapId];
+        this.game = new Game(canvas, this.player1Brawler, this.player2Brawler, mapData);
+        this.game.init();
+        this.game.start();
+    }
     setupLobby() {
         const player1Grid = document.getElementById('player1-brawler-grid');
         const player2Grid = document.getElementById('player2-brawler-grid');
@@ -195,15 +246,7 @@ class BrawlArena {
         }
     }
 
-    startGame() {
-        document.getElementById('lobby-screen').classList.add('hidden');
-        document.getElementById('game-screen').classList.remove('hidden');
-
-        const canvas = document.getElementById('game-canvas');
-        this.game = new Game(canvas, this.player1Brawler, this.player2Brawler);
-        this.game.init();
-        this.game.start();
-    }
+    // Old startGame replaced by the one above
 
     returnToLobby() {
         if (this.game) {

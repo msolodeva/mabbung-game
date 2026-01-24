@@ -66,9 +66,7 @@ export class Nita extends Brawler {
     }
 
     die() {
-        if (this.bear && this.bear.isAlive) {
-            this.bear.die();
-        }
+        // Bear no longer dies with Nita - it survives independently
         return super.die();
     }
 }

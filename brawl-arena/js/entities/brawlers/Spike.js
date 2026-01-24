@@ -37,10 +37,9 @@ export class Spike extends Brawler {
         game.audioManager?.play('shoot');
     }
 
-    activateSuper(direction, game) {
-        // Create spike field at aimed position
-        const fieldDistance = 200;
-        const fieldPos = this.position.add(direction.normalize().multiply(fieldDistance));
+    // Create spike field at current position
+    const fieldPos = this.position.clone();
+        console.log(`Spike activateSuper - Spike Pos: ${this.position.x}, ${ this.position.y }, Field Pos: ${ fieldPos.x }, ${ fieldPos.y } `);
 
         // Remove existing spike field
         if (this.spikeField) {
@@ -60,6 +59,25 @@ export class Spike extends Brawler {
         };
 
         game.spikeFields.push(this.spikeField);
+        console.log(`Spike Field added to game.spikeFields.Count: ${ game.spikeFields.length } `);
+
+        // Radial spike attack - fired from current position
+        const spikeCount = 8;
+        const angleStep = (Math.PI * 2) / spikeCount;
+        for (let i = 0; i < spikeCount; i++) {
+            const angle = angleStep * i;
+            const dir = Vector2.fromAngle(angle);
+            const spike = new Projectile(this.position.x, this.position.y, dir, {
+                speed: 400,
+                damage: this.config.explodeSpikeDamage || 300,
+                size: 8,
+                range: 300,
+                owner: this,
+                team: this.team,
+                color: '#27ae60',
+            });
+            game.projectiles.push(spike);
+        }
 
         game.audioManager?.play('super');
         game.createEffect('spikeField', fieldPos.x, fieldPos.y, { radius: this.config.superRadius });
@@ -109,13 +127,13 @@ export function renderSpikeField(ctx, camera, field) {
     const alpha = 1 - progress * 0.5;
 
     // Ground effect
-    ctx.fillStyle = `rgba(39, 174, 96, ${alpha * 0.3})`;
+    ctx.fillStyle = `rgba(39, 174, 96, ${ alpha * 0.3})`;
     ctx.beginPath();
     ctx.arc(screenX, screenY, field.radius, 0, Math.PI * 2);
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = `rgba(39, 174, 96, ${alpha * 0.8})`;
+    ctx.strokeStyle = `rgba(39, 174, 96, ${ alpha * 0.8})`;
     ctx.lineWidth = 3;
     ctx.stroke();
 
@@ -126,7 +144,7 @@ export function renderSpikeField(ctx, camera, field) {
         const spikeX = screenX + Math.cos(angle) * field.radius * 0.6;
         const spikeY = screenY + Math.sin(angle) * field.radius * 0.6;
 
-        ctx.fillStyle = `rgba(39, 174, 96, ${alpha})`;
+        ctx.fillStyle = `rgba(39, 174, 96, ${ alpha })`;
         ctx.beginPath();
         ctx.moveTo(spikeX, spikeY - 10);
         ctx.lineTo(spikeX + 5, spikeY + 5);

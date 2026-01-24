@@ -71,9 +71,9 @@ export class Bull extends Brawler {
                 if (brawler.team !== this.team && brawler.isAlive) {
                     if (this.distanceTo(brawler) < this.radius + brawler.radius) {
                         brawler.takeDamage(this.chargeDamage, this);
-                        // Knockback
+                        // Knockback smoothly
                         const kbDir = this.chargeDir.clone();
-                        brawler.position.addInPlace(kbDir.multiply(this.config.superKnockback));
+                        brawler.applyKnockback(kbDir, this.config.superKnockback);
                     }
                 }
             }

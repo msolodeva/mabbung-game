@@ -1,0 +1,226 @@
+// ========================================
+// FLOW FIELD - Pre-computed Navigation
+// ========================================
+
+import { Vector2 } from '../utils/Vector2.js';
+import { TILE_TYPES, GAME_CONFIG } from '../utils/constants.js';
+
+/**
+ * FlowField provides pre-computed navigation directions for AI.
+ * Instead of calculating paths at runtime, the AI looks up the 
+ * optimal direction from any tile to reach the destination.
+ */
+export class FlowField {
+    constructor(map) {
+        this.map = map;
+        this.tileSize = GAME_CONFIG.TILE_SIZE;
+        this.cols = map.cols;
+        this.rows = map.rows;
+
+        // Cache of flow fields by destination key
+        this.fieldCache = new Map();
+    }
+
+    /**
+     * Generate or retrieve a flow field for a destination.
+     * @param {string} key - Cache key (e.g., "center", "gem_5_8")
+     * @param {number} targetX - World X coordinate
+     * @param {number} targetY - World Y coordinate
+     * @returns {Int8Array[][]} 2D array of direction indices
+     */
+    getOrCreateField(key, targetX, targetY) {
+        if (this.fieldCache.has(key)) {
+            return this.fieldCache.get(key);
+        }
+
+        const field = this.generateField(targetX, targetY);
+        this.fieldCache.set(key, field);
+        return field;
+    }
+
+    /**
+     * Generate a flow field using BFS from the target.
+     * Each cell stores the direction to move towards the target.
+     */
+    generateField(targetWorldX, targetWorldY) {
+        const targetCol = Math.floor(targetWorldX / this.tileSize);
+        const targetRow = Math.floor(targetWorldY / this.tileSize);
+
+        // Direction vectors: 0=none, 1-8 = 8 directions
+        // We'll store dx, dy pairs encoded as index
+        const directions = [
+            { dx: 0, dy: 0 },   // 0: at target
+            { dx: 1, dy: 0 },   // 1: right
+            { dx: -1, dy: 0 },  // 2: left
+            { dx: 0, dy: 1 },   // 3: down
+            { dx: 0, dy: -1 },  // 4: up
+            { dx: 1, dy: 1 },   // 5: down-right
+            { dx: -1, dy: 1 },  // 6: down-left
+            { dx: 1, dy: -1 },  // 7: up-right
+            { dx: -1, dy: -1 }, // 8: up-left
+        ];
+
+        // Initialize arrays
+        const costField = [];
+        const directionField = [];
+        for (let row = 0; row < this.rows; row++) {
+            costField[row] = new Array(this.cols).fill(Infinity);
+            directionField[row] = new Array(this.cols).fill(-1); // -1 = unreachable
+        }
+
+        // BFS from target
+        const queue = [];
+
+        // Handle target in wall - find nearest walkable
+        let actualTarget = { col: targetCol, row: targetRow };
+        if (!this.isWalkable(targetCol, targetRow)) {
+            actualTarget = this.findNearestWalkable(targetCol, targetRow);
+            if (!actualTarget) {
+                return directionField; // Can't reach, return empty field
+            }
+        }
+
+        queue.push({ col: actualTarget.col, row: actualTarget.row, cost: 0 });
+        costField[actualTarget.row][actualTarget.col] = 0;
+        directionField[actualTarget.row][actualTarget.col] = 0; // At target
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            // Check all 8 neighbors
+            for (let i = 1; i <= 8; i++) {
+                const dir = directions[i];
+                const newCol = current.col + dir.dx;
+                const newRow = current.row + dir.dy;
+
+                if (!this.isWalkable(newCol, newRow)) continue;
+
+                // Diagonal movement cost is slightly higher
+                const moveCost = (Math.abs(dir.dx) + Math.abs(dir.dy) === 2) ? 1.414 : 1;
+                const newCost = current.cost + moveCost;
+
+                if (newCost < costField[newRow][newCol]) {
+                    costField[newRow][newCol] = newCost;
+
+                    // Direction points TOWARDS the target (opposite of movement from target)
+                    // Find direction index that points from newCol,newRow to current.col,current.row
+                    const pointDx = current.col - newCol;
+                    const pointDy = current.row - newRow;
+                    directionField[newRow][newCol] = this.getDirectionIndex(pointDx, pointDy, directions);
+
+                    queue.push({ col: newCol, row: newRow, cost: newCost });
+                }
+            }
+        }
+
+        return directionField;
+    }
+
+    /**
+     * Get the direction index for a dx, dy pair
+     */
+    getDirectionIndex(dx, dy, directions) {
+        for (let i = 0; i < directions.length; i++) {
+            if (directions[i].dx === dx && directions[i].dy === dy) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Get the movement direction at a world position.
+     * @returns {Vector2} Normalized direction vector
+     */
+    getDirection(fieldKey, worldX, worldY, targetX, targetY) {
+        const field = this.getOrCreateField(fieldKey, targetX, targetY);
+
+        const col = Math.floor(worldX / this.tileSize);
+        const row = Math.floor(worldY / this.tileSize);
+
+        if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
+            return new Vector2(0, 0);
+        }
+
+        const dirIndex = field[row][col];
+
+        if (dirIndex <= 0) {
+            // At target or unreachable - move directly
+            const toTarget = new Vector2(targetX - worldX, targetY - worldY);
+            return toTarget.magnitude() > 0 ? toTarget.normalize() : new Vector2(0, 0);
+        }
+
+        // Convert direction index to vector
+        const directions = [
+            new Vector2(0, 0),    // 0
+            new Vector2(1, 0),    // 1: right
+            new Vector2(-1, 0),   // 2: left
+            new Vector2(0, 1),    // 3: down
+            new Vector2(0, -1),   // 4: up
+            new Vector2(1, 1).normalize(),    // 5: down-right
+            new Vector2(-1, 1).normalize(),   // 6: down-left
+            new Vector2(1, -1).normalize(),   // 7: up-right
+            new Vector2(-1, -1).normalize(),  // 8: up-left
+        ];
+
+        return directions[dirIndex] || new Vector2(0, 0);
+    }
+
+    isWalkable(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return false;
+        }
+        const tile = this.map.getTile(col, row);
+        return tile !== TILE_TYPES.WALL && tile !== TILE_TYPES.DESTRUCTIBLE;
+    }
+
+    findNearestWalkable(col, row) {
+        for (let r = 1; r <= 5; r++) {
+            for (let dx = -r; dx <= r; dx++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    if (Math.abs(dx) === r || Math.abs(dy) === r) {
+                        if (this.isWalkable(col + dx, row + dy)) {
+                            return { col: col + dx, row: row + dy };
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Clear the cache (call when map changes, e.g., wall destroyed)
+     */
+    clearCache() {
+        this.fieldCache.clear();
+    }
+
+    /**
+     * Pre-generate common flow fields at map load
+     */
+    pregenerate() {
+        // Generate field for map center (gem area)
+        const centerX = this.map.width / 2;
+        const centerY = this.map.height / 2;
+        this.getOrCreateField('center', centerX, centerY);
+
+        // Generate fields for spawn areas
+        if (this.map.spawnPoints) {
+            if (this.map.spawnPoints.blue && this.map.spawnPoints.blue.length > 0) {
+                const spawn = this.map.spawnPoints.blue[0];
+                const spawnX = spawn.x * this.tileSize + this.tileSize / 2;
+                const spawnY = spawn.y * this.tileSize + this.tileSize / 2;
+                this.getOrCreateField('spawn_blue', spawnX, spawnY);
+            }
+            if (this.map.spawnPoints.red && this.map.spawnPoints.red.length > 0) {
+                const spawn = this.map.spawnPoints.red[0];
+                const spawnX = spawn.x * this.tileSize + this.tileSize / 2;
+                const spawnY = spawn.y * this.tileSize + this.tileSize / 2;
+                this.getOrCreateField('spawn_red', spawnX, spawnY);
+            }
+        }
+
+        console.log('[FlowField] Pre-generated flow fields for center and spawns');
+    }
+}

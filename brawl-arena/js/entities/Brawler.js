@@ -52,6 +52,10 @@ export class Brawler extends Entity {
         this.moveDirection = new Vector2(0, 0);
         this.aimDirection = new Vector2(1, 0);
 
+        // Knockback system - smooth knockback over multiple frames
+        this.knockbackVelocity = new Vector2(0, 0);
+        this.knockbackFriction = 0.85; // How quickly knockback slows down (lower = faster decay)
+
         // Visual
         this.damageFlashTimer = 0;
         this.color = team === TEAMS.BLUE ? COLORS.BLUE_TEAM : COLORS.RED_TEAM;
@@ -75,6 +79,31 @@ export class Brawler extends Entity {
             this.facingAngle = this.moveDirection.angle();
         } else {
             this.velocity = new Vector2(0, 0);
+        }
+
+        // Apply knockback velocity (smooth over multiple frames)
+        if (this.knockbackVelocity.magnitude() > 1) {
+            // Apply knockback movement with wall collision check
+            const knockbackMove = this.knockbackVelocity.multiply(deltaTime);
+            const newPosX = this.position.x + knockbackMove.x;
+            const newPosY = this.position.y + knockbackMove.y;
+
+            // Check if new position would be in a wall
+            if (!game.map.isPositionSolid(newPosX, this.position.y)) {
+                this.position.x = newPosX;
+            } else {
+                this.knockbackVelocity.x = 0; // Stop horizontal knockback on wall hit
+            }
+            if (!game.map.isPositionSolid(this.position.x, newPosY)) {
+                this.position.y = newPosY;
+            } else {
+                this.knockbackVelocity.y = 0; // Stop vertical knockback on wall hit
+            }
+
+            // Apply friction to slow down knockback
+            this.knockbackVelocity = this.knockbackVelocity.multiply(this.knockbackFriction);
+        } else {
+            this.knockbackVelocity = new Vector2(0, 0);
         }
 
         super.update(deltaTime);
@@ -121,15 +150,80 @@ export class Brawler extends Entity {
     }
 
     handleWallCollision(map) {
-        const tile = map.getTileAtPosition(this.position.x, this.position.y);
-        if (tile && tile.solid) {
-            // Push back from wall
+        // Check multiple points around the brawler's edge for more accurate collision
+        const checkRadius = this.radius * 0.9; // Slightly smaller for smoother feel
+        const checkPoints = [
+            { x: 0, y: -1 },  // top
+            { x: 0, y: 1 },   // bottom
+            { x: -1, y: 0 },  // left
+            { x: 1, y: 0 },   // right
+            { x: -0.7, y: -0.7 }, // top-left
+            { x: 0.7, y: -0.7 },  // top-right
+            { x: -0.7, y: 0.7 },  // bottom-left
+            { x: 0.7, y: 0.7 },   // bottom-right
+        ];
+
+        for (const point of checkPoints) {
+            const checkX = this.position.x + point.x * checkRadius;
+            const checkY = this.position.y + point.y * checkRadius;
+
+            const tile = map.getTileAtPosition(checkX, checkY);
+            if (tile && tile.solid) {
+                // Calculate the tile boundaries
+                const tileCol = Math.floor(checkX / map.tileSize);
+                const tileRow = Math.floor(checkY / map.tileSize);
+                const tileLeft = tileCol * map.tileSize;
+                const tileRight = tileLeft + map.tileSize;
+                const tileTop = tileRow * map.tileSize;
+                const tileBottom = tileTop + map.tileSize;
+
+                // Calculate penetration depth for each axis
+                let pushX = 0;
+                let pushY = 0;
+
+                // Horizontal push
+                if (point.x > 0) {
+                    // Colliding from left, push left
+                    pushX = tileLeft - (this.position.x + checkRadius) - 1;
+                } else if (point.x < 0) {
+                    // Colliding from right, push right
+                    pushX = tileRight - (this.position.x - checkRadius) + 1;
+                }
+
+                // Vertical push
+                if (point.y > 0) {
+                    // Colliding from top, push up
+                    pushY = tileTop - (this.position.y + checkRadius) - 1;
+                } else if (point.y < 0) {
+                    // Colliding from bottom, push down
+                    pushY = tileBottom - (this.position.y - checkRadius) + 1;
+                }
+
+                // Apply the smaller push (to slide along walls)
+                if (Math.abs(pushX) < Math.abs(pushY) && pushX !== 0) {
+                    this.position.x += pushX;
+                } else if (pushY !== 0) {
+                    this.position.y += pushY;
+                } else if (pushX !== 0) {
+                    this.position.x += pushX;
+                }
+            }
+        }
+
+        // Final safety check - if center is still in a wall, forcefully push out
+        const centerTile = map.getTileAtPosition(this.position.x, this.position.y);
+        if (centerTile && centerTile.solid) {
             const tileCenter = map.getTileCenter(
                 Math.floor(this.position.x / map.tileSize),
                 Math.floor(this.position.y / map.tileSize)
             );
-            const pushDir = this.position.subtract(tileCenter).normalize();
-            this.position.addInPlace(pushDir.multiply(5));
+            const pushDir = this.position.subtract(tileCenter);
+            if (pushDir.magnitude() > 0) {
+                this.position.addInPlace(pushDir.normalize().multiply(map.tileSize * 0.6));
+            } else {
+                // Edge case: exactly at center, push in a default direction
+                this.position.y -= map.tileSize * 0.6;
+            }
         }
     }
 
@@ -211,9 +305,22 @@ export class Brawler extends Entity {
             attacker.addSuperCharge(1);
         }
 
+        // Check if dead
         if (this.health <= 0) {
             this.die();
         }
+    }
+
+    /**
+     * Apply knockback smoothly over multiple frames
+     * @param {Vector2} direction - Direction of knockback (normalized)
+     * @param {number} force - Knockback force/distance
+     */
+    applyKnockback(direction, force) {
+        if (!this.isAlive) return;
+        // Convert instant knockback to velocity (spread over ~0.15 seconds)
+        const knockbackSpeed = force / 0.15;
+        this.knockbackVelocity = direction.normalize().multiply(knockbackSpeed);
     }
 
     heal(amount) {
@@ -323,7 +430,11 @@ export class Brawler extends Entity {
             return;
         }
 
-        // 3. Directional Pointer (Premium Look)
+        // 2.5 Render Hands (Before body so they can be behind if needed, but usually on sides)
+        // We render hands relative to the body transform usually, but let's do it here
+        // this.renderHands(ctx, x, y + bobOffset, this.radius, this.facingAngle, time);
+
+        // 3. Directional Pointer (Premium Look) - Rounded for cuteness
         ctx.save();
         ctx.translate(x, y + bobOffset);
         ctx.rotate(this.facingAngle);
@@ -333,10 +444,18 @@ export class Brawler extends Entity {
         ctx.shadowColor = 'rgba(0,0,0,0.5)';
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(this.radius + 18, 0);
-        ctx.lineTo(this.radius + 4, -10);
-        ctx.lineTo(this.radius + 4, 10);
+        // Rounded pointer
+        ctx.moveTo(this.radius + 15, 0);
+        ctx.arc(this.radius + 15, 0, 6, 0, Math.PI * 2);
         ctx.fill();
+
+        // Small directional arrow/triangle
+        ctx.beginPath();
+        ctx.moveTo(this.radius + 22, -4);
+        ctx.lineTo(this.radius + 28, 0);
+        ctx.lineTo(this.radius + 22, 4);
+        ctx.fill();
+
         ctx.restore();
 
         // 4. Character Body with Premium Gradients
@@ -376,14 +495,17 @@ export class Brawler extends Entity {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Character Emoji / Icon
+        // Character Emoji / Icon - MOVED DOWN
         ctx.shadowBlur = 0; // Clear for text
-        ctx.font = `bold ${this.radius * 1.4}px "Lilita One", Arial`;
+        ctx.font = `bold ${this.radius * 0.8}px "Lilita One", Arial`; // Smaller emoji
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.config.emoji, 0, 2);
+        ctx.fillText(this.config.emoji, 0, this.radius * 0.4); // Moved down to chest
 
         ctx.restore();
+
+        // 4.5 Render Face (Eyes) - On top of body
+        this.renderFace(ctx, x, y + bobOffset, this.radius, this.aimDirection, time);
 
         // 5. Polished HUD (Health/Ammo)
         this.renderPolishedHealthBar(ctx, x, y);
@@ -408,6 +530,116 @@ export class Brawler extends Entity {
             ctx.stroke();
             ctx.restore();
         }
+    }
+
+    renderHands(ctx, x, y, radius, angle, time) {
+        const handRadius = radius * 0.3;
+        const handDist = radius * 1.1;
+        const handBob = Math.sin(time * 2) * 3;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+
+        // Left Hand
+        ctx.save();
+        ctx.translate(handDist, -radius * 0.8 + handBob);
+        ctx.beginPath();
+        ctx.arc(0, 0, handRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Right Hand
+        ctx.save();
+        ctx.translate(handDist, radius * 0.8 - handBob);
+        ctx.beginPath();
+        ctx.arc(0, 0, handRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+    }
+
+    renderFace(ctx, x, y, radius, aimDir, time) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        // Face offset (slightly up)
+        ctx.translate(0, -radius * 0.2);
+
+        // Blinking logic
+        const blinkCycle = (time * 0.5) % 10; // Blink every ~2 seconds
+        let eyeScaleY = 1;
+        if (blinkCycle > 9.5) { // Blink duration
+            eyeScaleY = 0.1;
+        }
+
+        // Eyes
+        const eyeX = radius * 0.35;
+        const eyeY = -radius * 0.1;
+        const eyeRadius = radius * 0.25;
+
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 1;
+
+        // Left Eye
+        ctx.save();
+        ctx.translate(-eyeX, eyeY);
+        ctx.scale(1, eyeScaleY);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, eyeRadius, eyeRadius * 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pupil
+        if (eyeScaleY > 0.5) {
+            const pupilOffset = aimDir.clone().multiply(3); // Look at aim
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(pupilOffset.x, pupilOffset.y, eyeRadius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shinies (Cute reflection)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(pupilOffset.x + 2, pupilOffset.y - 2, eyeRadius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Right Eye
+        ctx.save();
+        ctx.translate(eyeX, eyeY);
+        ctx.scale(1, eyeScaleY);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, eyeRadius, eyeRadius * 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pupil
+        if (eyeScaleY > 0.5) {
+            const pupilOffset = aimDir.clone().multiply(3);
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(pupilOffset.x, pupilOffset.y, eyeRadius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shinies
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(pupilOffset.x + 2, pupilOffset.y - 2, eyeRadius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        ctx.restore();
     }
 
     renderPolishedHealthBar(ctx, x, y) {

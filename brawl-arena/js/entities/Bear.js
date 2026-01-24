@@ -42,7 +42,7 @@ export class Bear extends Entity {
         // Find nearest enemy
         this.findTarget(game);
 
-        // Move towards target or follow owner
+        // Move towards target or follow owner (if owner is alive)
         if (this.target && this.target.isAlive) {
             const toTarget = this.target.position.subtract(this.position);
             const distance = toTarget.magnitude();
@@ -55,14 +55,18 @@ export class Bear extends Entity {
                 this.velocity = new Vector2(0, 0);
                 this.attack(game);
             }
-        } else {
-            // Follow owner
+        } else if (this.owner && this.owner.isAlive) {
+            // Follow owner only if owner is alive
             const toOwner = this.owner.position.subtract(this.position);
             if (toOwner.magnitude() > 100) {
                 this.velocity = toOwner.normalize().multiply(this.speed);
             } else {
                 this.velocity = new Vector2(0, 0);
             }
+        } else {
+            // Owner is dead - roam and look for enemies aggressively
+            // If no target, slow down but keep looking
+            this.velocity = this.velocity.multiply(0.95);
         }
 
         super.update(deltaTime);

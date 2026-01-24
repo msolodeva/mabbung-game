@@ -97,10 +97,10 @@ export class Projectile extends Entity {
         brawler.takeDamage(this.damage, this.owner);
         this.hitTargets.add(brawler.id);
 
-        // Apply knockback
+        // Apply knockback smoothly
         if (this.knockback > 0) {
             const knockbackDir = this.direction.clone();
-            brawler.position.addInPlace(knockbackDir.multiply(this.knockback));
+            brawler.applyKnockback(knockbackDir, this.knockback);
         }
 
         // Create hit effect

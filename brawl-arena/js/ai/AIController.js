@@ -1,9 +1,11 @@
 // ========================================
-// AI CONTROLLER - Bot Behavior
+// AI CONTROLLER - Bot Behavior (Enhanced Pathfinding)
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
 import { AI_CONFIG, TEAMS } from '../utils/constants.js';
+import { Pathfinder } from './Pathfinder.js';
+import { FlowField } from './FlowField.js';
 
 export class AIController {
     constructor(brawler, game) {
@@ -16,14 +18,46 @@ export class AIController {
         this.aggression = AI_CONFIG.AGGRESSION_LEVELS.NORMAL;
 
         // Pathfinding
+        this.pathfinder = new Pathfinder(game.map);
+        this.flowField = game.flowField; // Shared flow field from game
         this.currentPath = [];
         this.pathIndex = 0;
+        this.lastTargetPos = null;
+        this.pathRecalcTimer = 0;
+
+        // Stuck detection
+        this.lastPosition = null;
+        this.stuckTimer = 0;
+        this.stuckThreshold = 500; // ms before considered stuck
+        this.stuckDistance = 10; // minimum movement to not be stuck
+        this.forceRecalcTimer = 0;
+
+        // Alternative movement
+        this.alternativeDir = null;
+        this.alternativeTimer = 0;
+
+        // Debug mode (set to true to visualize paths)
+        this.debugMode = false;
     }
 
     update(deltaTime) {
-        if (!this.brawler.isAlive) return;
+        if (!this.brawler.isAlive) {
+            this.resetPathfinding();
+            return;
+        }
 
-        this.decisionTimer += deltaTime * 1000;
+        const deltaMs = deltaTime * 1000;
+
+        // Stuck detection
+        this.detectStuck(deltaMs);
+
+        // Update timers
+        this.decisionTimer += deltaMs;
+        this.forceRecalcTimer += deltaMs;
+
+        if (this.alternativeTimer > 0) {
+            this.alternativeTimer -= deltaMs;
+        }
 
         if (this.decisionTimer >= AI_CONFIG.DECISION_INTERVAL) {
             this.decisionTimer = 0;
@@ -31,6 +65,51 @@ export class AIController {
         }
 
         this.executeState(deltaTime);
+    }
+
+    detectStuck(deltaMs) {
+        const currentPos = this.brawler.position.clone();
+
+        if (this.lastPosition) {
+            const moved = currentPos.distanceTo(this.lastPosition);
+
+            if (moved < this.stuckDistance && this.brawler.moveDirection.magnitude() > 0.1) {
+                // We're trying to move but not moving much
+                this.stuckTimer += deltaMs;
+
+                if (this.stuckTimer > this.stuckThreshold) {
+                    this.onStuck();
+                    this.stuckTimer = 0;
+                }
+            } else {
+                // Moving fine
+                this.stuckTimer = 0;
+                this.alternativeDir = null;
+            }
+        }
+
+        this.lastPosition = currentPos;
+    }
+
+    onStuck() {
+        // Force path recalculation
+        this.currentPath = [];
+        this.pathIndex = 0;
+        this.pathfinder.clearCache();
+
+        // Try alternative direction - random perpendicular movement
+        const randomAngle = Math.random() * Math.PI * 2;
+        this.alternativeDir = Vector2.fromAngle(randomAngle);
+        this.alternativeTimer = 300; // Use alternative for 300ms
+    }
+
+    resetPathfinding() {
+        this.currentPath = [];
+        this.pathIndex = 0;
+        this.lastTargetPos = null;
+        this.stuckTimer = 0;
+        this.alternativeDir = null;
+        this.alternativeTimer = 0;
     }
 
     makeDecision() {
@@ -133,19 +212,19 @@ export class AIController {
     }
 
     patrol() {
-        // Random movement towards center or nearby areas
-        if (Math.random() < 0.02) {
+        // Periodically pick a new patrol target near center
+        if (Math.random() < 0.02 || !this.patrolTarget) {
             const centerX = this.game.map.width / 2;
             const centerY = this.game.map.height / 2;
-            const toCenter = new Vector2(centerX - this.brawler.position.x, centerY - this.brawler.position.y);
 
-            // Add some randomness
-            const randomOffset = Vector2.random(100);
-            this.brawler.moveDirection = toCenter.add(randomOffset).normalize();
+            // Add randomness to patrol target
+            const randomX = centerX + (Math.random() - 0.5) * 400;
+            const randomY = centerY + (Math.random() - 0.5) * 400;
+            this.patrolTarget = new Vector2(randomX, randomY);
         }
 
-        // Avoid walls
-        this.avoidWalls();
+        // Use pathfinding to navigate to patrol target
+        this.moveToTarget(this.patrolTarget);
     }
 
     chase() {
@@ -154,16 +233,147 @@ export class AIController {
             return;
         }
 
-        const toTarget = this.currentTarget.position.subtract(this.brawler.position);
-        this.brawler.moveDirection = toTarget.normalize();
+        // Use pathfinding to navigate to target
+        this.moveToTarget(this.currentTarget.position);
 
         // Try to attack while chasing
+        const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
         if (distance <= this.brawler.attackRange && this.brawler.canAttack()) {
             this.brawler.attack(toTarget.normalize(), this.game);
         }
+    }
 
-        this.avoidWalls();
+    // Helper: Move towards a target position using Flow Field (pre-computed navigation)
+    moveToTarget(targetPos, useFlowField = true) {
+        // If using alternative direction due to being stuck
+        if (this.alternativeTimer > 0 && this.alternativeDir) {
+            this.brawler.moveDirection = this.alternativeDir;
+            this.avoidWallsEnhanced();
+            return;
+        }
+
+        const distToTarget = this.brawler.position.distanceTo(targetPos);
+
+        // If very close, just move directly
+        if (distToTarget < 40) {
+            const toTarget = targetPos.subtract(this.brawler.position);
+            if (toTarget.magnitude() > 0) {
+                this.brawler.moveDirection = toTarget.normalize();
+            }
+            return;
+        }
+
+        // Use Flow Field for navigation (instant lookup, no pathfinding)
+        if (useFlowField && this.flowField) {
+            // Generate cache key based on target tile
+            const tileSize = this.game.map.tileSize;
+            const targetTileX = Math.floor(targetPos.x / tileSize);
+            const targetTileY = Math.floor(targetPos.y / tileSize);
+            const fieldKey = `dynamic_${targetTileX}_${targetTileY}`;
+
+            // Get pre-computed direction from flow field
+            const direction = this.flowField.getDirection(
+                fieldKey,
+                this.brawler.position.x,
+                this.brawler.position.y,
+                targetPos.x,
+                targetPos.y
+            );
+
+            if (direction.magnitude() > 0) {
+                this.brawler.moveDirection = direction;
+                this.avoidWallsEnhanced();
+                return;
+            }
+        }
+
+        // Fallback to A* if flow field fails
+        this.moveToTargetAStar(targetPos);
+    }
+
+    // A* fallback for when Flow Field doesn't work
+    moveToTargetAStar(targetPos) {
+        const distToTarget = this.brawler.position.distanceTo(targetPos);
+
+        // Check if we need to recalculate path
+        const needsRecalc =
+            this.currentPath.length === 0 ||
+            this.pathIndex >= this.currentPath.length ||
+            !this.lastTargetPos ||
+            this.lastTargetPos.distanceTo(targetPos) > 80 ||
+            this.forceRecalcTimer > 2000;
+
+        if (needsRecalc) {
+            this.currentPath = this.pathfinder.findPath(this.brawler.position, targetPos);
+            this.pathIndex = 0;
+            this.lastTargetPos = targetPos.clone();
+            this.forceRecalcTimer = 0;
+        }
+
+        // Follow path
+        if (this.currentPath.length > 0 && this.pathIndex < this.currentPath.length) {
+            const waypoint = this.currentPath[this.pathIndex];
+            const toWaypoint = waypoint.subtract(this.brawler.position);
+            const distToWaypoint = toWaypoint.magnitude();
+
+            if (distToWaypoint < 20) {
+                this.pathIndex++;
+            }
+
+            if (this.pathIndex < this.currentPath.length) {
+                const nextWp = this.currentPath[this.pathIndex];
+                this.brawler.moveDirection = nextWp.subtract(this.brawler.position).normalize();
+                this.avoidWallsEnhanced();
+            }
+        } else {
+            this.handleNoPath(targetPos);
+        }
+    }
+
+    // Enhanced fallback when no path is found
+    handleNoPath(targetPos) {
+        const toTarget = targetPos.subtract(this.brawler.position);
+
+        // Try to find the nearest walkable position towards target
+        const nearestWalkable = this.findNearestWalkableTowards(targetPos);
+
+        if (nearestWalkable) {
+            const toWalkable = nearestWalkable.subtract(this.brawler.position);
+            if (toWalkable.magnitude() > 0) {
+                this.brawler.moveDirection = toWalkable.normalize();
+            }
+        } else if (toTarget.magnitude() > 0) {
+            // Last resort: move towards target with wall avoidance
+            this.brawler.moveDirection = toTarget.normalize();
+        }
+
+        this.avoidWallsEnhanced();
+    }
+
+    // Find nearest walkable position in the direction of target
+    findNearestWalkableTowards(targetPos) {
+        const toTarget = targetPos.subtract(this.brawler.position);
+        if (toTarget.magnitude() === 0) return null;
+
+        const baseAngle = toTarget.angle();
+        const checkDistance = 80;
+
+        // Try multiple angles, preferring the direction to target
+        const angleOffsets = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, Math.PI];
+
+        for (const offset of angleOffsets) {
+            const checkAngle = baseAngle + offset;
+            const checkPos = this.brawler.position.add(
+                Vector2.fromAngle(checkAngle).multiply(checkDistance)
+            );
+
+            if (!this.game.map.isPositionSolid(checkPos.x, checkPos.y)) {
+                return checkPos;
+            }
+        }
+
+        return null;
     }
 
     attack() {
@@ -204,7 +414,7 @@ export class AIController {
             this.brawler.moveDirection = strafeDir;
         }
 
-        this.avoidWalls();
+        this.avoidWallsEnhanced();
     }
 
     collectGem() {
@@ -216,8 +426,8 @@ export class AIController {
             }
         }
 
-        const toGem = this.targetGem.position.subtract(this.brawler.position);
-        this.brawler.moveDirection = toGem.normalize();
+        // Use pathfinding to navigate to gem
+        this.moveToTarget(this.targetGem.position);
 
         // Attack enemies in the way
         const nearestEnemy = this.findNearestEnemy();
@@ -228,15 +438,12 @@ export class AIController {
                 this.brawler.attack(toEnemy.normalize(), this.game);
             }
         }
-
-        this.avoidWalls();
     }
 
     retreat() {
-        // Move back to spawn area
+        // Move back to spawn area using pathfinding
         const spawnPos = this.game.map.getSpawnPosition(this.brawler.team);
-        const toSpawn = spawnPos.subtract(this.brawler.position);
-        this.brawler.moveDirection = toSpawn.normalize();
+        this.moveToTarget(spawnPos);
 
         // Shoot at enemies while retreating
         const nearestEnemy = this.findNearestEnemy();
@@ -250,11 +457,10 @@ export class AIController {
 
         // Check if safe
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
+        const toSpawn = spawnPos.subtract(this.brawler.position);
         if (healthPercent > 0.6 || toSpawn.magnitude() < 100) {
             this.state = 'patrol';
         }
-
-        this.avoidWalls();
     }
 
     avoidWalls() {
@@ -278,5 +484,137 @@ export class AIController {
         if (this.brawler.moveDirection.magnitude() > 0) {
             this.brawler.moveDirection.normalizeInPlace();
         }
+    }
+
+    // Enhanced wall avoidance with diagonal checks and raycast-style detection
+    avoidWallsEnhanced() {
+        const moveDir = this.brawler.moveDirection;
+        if (moveDir.magnitude() < 0.1) return;
+
+        const checkDistances = [40, 60, 80];
+        const pos = this.brawler.position;
+
+        // Check in the direction of movement
+        for (const dist of checkDistances) {
+            const checkPos = pos.add(moveDir.multiply(dist));
+            if (this.game.map.isPositionSolid(checkPos.x, checkPos.y)) {
+                // Wall ahead! Find best alternative direction
+                const alternatives = this.findAlternativeDirections(moveDir);
+                if (alternatives.length > 0) {
+                    // Blend with best alternative
+                    const bestAlt = alternatives[0];
+                    this.brawler.moveDirection = moveDir.multiply(0.3).add(bestAlt.multiply(0.7));
+                    if (this.brawler.moveDirection.magnitude() > 0) {
+                        this.brawler.moveDirection.normalizeInPlace();
+                    }
+                }
+                break;
+            }
+        }
+
+        // Additional side checks
+        const sideCheckDist = 35;
+        const perpLeft = moveDir.rotate(Math.PI / 2).multiply(sideCheckDist);
+        const perpRight = moveDir.rotate(-Math.PI / 2).multiply(sideCheckDist);
+
+        const leftBlocked = this.game.map.isPositionSolid(pos.x + perpLeft.x, pos.y + perpLeft.y);
+        const rightBlocked = this.game.map.isPositionSolid(pos.x + perpRight.x, pos.y + perpRight.y);
+
+        if (leftBlocked && !rightBlocked) {
+            // Nudge right
+            this.brawler.moveDirection = moveDir.rotate(-0.2);
+        } else if (rightBlocked && !leftBlocked) {
+            // Nudge left
+            this.brawler.moveDirection = moveDir.rotate(0.2);
+        }
+
+        if (this.brawler.moveDirection.magnitude() > 0) {
+            this.brawler.moveDirection.normalizeInPlace();
+        }
+    }
+
+    // Find alternative directions when path is blocked
+    findAlternativeDirections(blockedDir) {
+        const alternatives = [];
+        const pos = this.brawler.position;
+        const checkDist = 60;
+
+        // Check angles from -90 to +90 degrees relative to blocked direction
+        const angleOffsets = [
+            Math.PI / 4,   // 45 degrees right
+            -Math.PI / 4,  // 45 degrees left
+            Math.PI / 2,   // 90 degrees right
+            -Math.PI / 2,  // 90 degrees left
+            Math.PI / 6,   // 30 degrees right
+            -Math.PI / 6,  // 30 degrees left
+        ];
+
+        for (const offset of angleOffsets) {
+            const testDir = blockedDir.rotate(offset);
+            const testPos = pos.add(testDir.multiply(checkDist));
+
+            if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
+                alternatives.push(testDir);
+            }
+        }
+
+        return alternatives;
+    }
+
+    // Debug rendering for path visualization
+    renderDebug(ctx) {
+        if (!this.debugMode || !this.brawler.isAlive) return;
+
+        const pos = this.brawler.position;
+
+        // Draw current path
+        if (this.currentPath.length > 0) {
+            ctx.strokeStyle = this.brawler.team === 'blue' ? '#00aaff' : '#ff6666';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+
+            for (let i = this.pathIndex; i < this.currentPath.length; i++) {
+                const wp = this.currentPath[i];
+                ctx.lineTo(wp.x, wp.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw waypoints
+            for (let i = this.pathIndex; i < this.currentPath.length; i++) {
+                const wp = this.currentPath[i];
+                ctx.fillStyle = i === this.pathIndex ? '#ffff00' : '#ffffff';
+                ctx.beginPath();
+                ctx.arc(wp.x, wp.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Draw movement direction
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(
+            pos.x + this.brawler.moveDirection.x * 40,
+            pos.y + this.brawler.moveDirection.y * 40
+        );
+        ctx.stroke();
+
+        // Draw stuck indicator
+        if (this.stuckTimer > 200) {
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '12px Arial';
+            ctx.fillText('STUCK!', pos.x - 20, pos.y - 50);
+        }
+
+        // Draw state
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.state, pos.x, pos.y + 50);
     }
 }

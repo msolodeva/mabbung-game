@@ -1,0 +1,101 @@
+/* ========================================
+   MAP SELECTION
+   ======================================== */
+
+.map-selection-section {
+    margin-bottom: 30px;
+    width: 90%;
+    max-width: 800px;
+}
+
+.map-selector {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.map-option {
+    width: 140px;
+    height: 90px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.map-option:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.map-option.selected {
+    border-color: var(--gold);
+    background: rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.map-preview {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.map-option:hover .map-preview,
+.map-option.selected .map-preview {
+    opacity: 1;
+}
+
+/* Procedural previews for now */
+.map-preview.open {
+    background: linear-gradient(45deg, #4a7c23 25%, #3d6620 25%, #3d6620 50%, #4a7c23 50%, #4a7c23 75%, #3d6620 75%, #3d6620 100%);
+    background-size: 20px 20px;
+}
+
+.map-preview.maze {
+    background: repeating-linear-gradient(45deg, #5d4e37, #5d4e37 10px, #2c3e50 10px, #2c3e50 20px);
+}
+
+.map-option-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 0.8rem;
+    padding: 5px;
+    font-weight: bold;
+}
+
+.map-info {
+    text-align: center;
+    color: var(--text-white);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.map-name {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.5rem;
+    color: var(--gold);
+    margin-bottom: 5px;
+}
+
+.map-desc {
+    font-size: 1rem;
+    opacity: 0.8;
+}

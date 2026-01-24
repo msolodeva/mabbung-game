@@ -8,6 +8,7 @@ import { GameMap } from '../map/Map.js';
 import { GEM_GRAB_MAP } from '../map/mapData.js';
 import { InputManager } from '../input/InputManager.js';
 import { AIController } from '../ai/AIController.js';
+import { FlowField } from '../ai/FlowField.js';
 import { GemGrabMode } from '../modes/GemGrab.js';
 import { AudioManager } from '../audio/AudioManager.js';
 import { EffectsManager } from '../effects/Effects.js';
@@ -16,12 +17,12 @@ import { RenderSystem } from './RenderSystem.js';
 import { BRAWLER_CLASSES } from '../entities/brawlers/index.js';
 
 export class Game {
-    constructor(canvas, player1Brawler, player2Brawler) {
+    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP) {
         this.player1BrawlerId = player1Brawler;
         this.player2BrawlerId = player2Brawler;
 
         // Initialize systems
-        this.map = new GameMap(GEM_GRAB_MAP);
+        this.map = new GameMap(mapData);
         this.renderSystem = new RenderSystem(canvas, this.map);
         this.inputManager = new InputManager(this);
         this.audioManager = new AudioManager();
@@ -34,6 +35,9 @@ export class Game {
         this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];
+
+        // Pre-computed navigation
+        this.flowField = new FlowField(this.map);
 
         // Players (2 player mode)
         this.player1 = null;
@@ -56,6 +60,9 @@ export class Game {
     init() {
         // Create game mode
         this.gameMode = new GemGrabMode(this);
+
+        // Pre-generate flow fields for common destinations
+        this.flowField.pregenerate();
 
         // Create Player 1 (Blue team)
         const Player1Class = BRAWLER_CLASSES[this.player1BrawlerId];
