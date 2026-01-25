@@ -67,14 +67,28 @@
             <!-- HUD Overlay -->
             <div id="hud">
                 <div class="team-gems">
-                    <div class="gem-counter blue-team" id="blue-gems">
-                        <span class="gem-icon">💎</span>
-                        <span class="gem-count">0</span>
+                    <div class="team-hud-group blue-team">
+                        <div class="gem-counter blue-team" id="blue-gems">
+                            <span class="gem-icon">💎</span>
+                            <span class="gem-count">0</span>
+                        </div>
+                        <div class="score-counter blue-team" id="blue-score">
+                            <span class="score-icon">💀</span>
+                            <span class="score-count">0</span>
+                        </div>
                     </div>
+
                     <div class="match-timer" id="match-timer">2:30</div>
-                    <div class="gem-counter red-team" id="red-gems">
-                        <span class="gem-count">0</span>
-                        <span class="gem-icon">💎</span>
+
+                    <div class="team-hud-group red-team">
+                        <div class="score-counter red-team" id="red-score">
+                            <span class="score-count">0</span>
+                            <span class="score-icon">💀</span>
+                        </div>
+                        <div class="gem-counter red-team" id="red-gems">
+                            <span class="gem-count">0</span>
+                            <span class="gem-icon">💎</span>
+                        </div>
                     </div>
                 </div>
 

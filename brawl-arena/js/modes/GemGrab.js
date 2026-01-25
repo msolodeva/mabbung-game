@@ -14,6 +14,10 @@ export class GemGrabMode {
             [TEAMS.BLUE]: 0,
             [TEAMS.RED]: 0,
         };
+        this.teamScores = {
+            [TEAMS.BLUE]: 0,
+            [TEAMS.RED]: 0,
+        };
 
         this.gemSpawnTimer = 0;
         this.gemSpawnInterval = GEM_CONFIG.SPAWN_INTERVAL;
@@ -120,34 +124,41 @@ export class GemGrabMode {
     }
 
     endMatch() {
-        // Time's up - team with more gems wins
-        const blueGems = this.teamGems[TEAMS.BLUE];
-        const redGems = this.teamGems[TEAMS.RED];
+        // Time's up - team with more KILLS (Score) wins
+        // If scores are tied, then team with more gems wins
+        const blueScore = this.teamScores[TEAMS.BLUE];
+        const redScore = this.teamScores[TEAMS.RED];
 
-        if (blueGems > redGems) {
+        if (blueScore > redScore) {
             this.declareWinner(TEAMS.BLUE);
-        } else if (redGems > blueGems) {
+        } else if (redScore > blueScore) {
             this.declareWinner(TEAMS.RED);
         } else {
-            // Tie
-            this.game.endGame('draw');
+            // Scores are tied, fallback to gems
+            const blueGems = this.teamGems[TEAMS.BLUE];
+            const redGems = this.teamGems[TEAMS.RED];
+
+            if (blueGems > redGems) {
+                this.declareWinner(TEAMS.BLUE);
+            } else if (redGems > blueGems) {
+                this.declareWinner(TEAMS.RED);
+            } else {
+                // Total Tie
+                this.game.endGame('draw');
+            }
         }
     }
 
     onBrawlerDeath(brawler, game) {
-        // Drop gems at death location
-        const droppedGems = brawler.gems;
-        if (droppedGems > 0) {
-            for (let i = 0; i < droppedGems; i++) {
-                const offset = Vector2.random(GEM_CONFIG.DROP_SPREAD);
-                const gem = new Gem(
-                    brawler.position.x + offset.x,
-                    brawler.position.y + offset.y
-                );
-                this.gems.push(gem);
-                game.gems.push(gem);
-            }
+        // Increment score for the opposing team
+        if (brawler.team === TEAMS.BLUE) {
+            this.teamScores[TEAMS.RED]++;
+        } else {
+            this.teamScores[TEAMS.BLUE]++;
         }
+
+        // Gems are lost on death (not dropped)
+        // brawler.gems was already cleared in brawler.die()
     }
 
     updateUI() {
@@ -157,6 +168,13 @@ export class GemGrabMode {
 
         if (blueGemsEl) blueGemsEl.textContent = this.teamGems[TEAMS.BLUE];
         if (redGemsEl) redGemsEl.textContent = this.teamGems[TEAMS.RED];
+
+        // Update score counters
+        const blueScoreEl = document.querySelector('#blue-score .score-count');
+        const redScoreEl = document.querySelector('#red-score .score-count');
+
+        if (blueScoreEl) blueScoreEl.textContent = this.teamScores[TEAMS.BLUE];
+        if (redScoreEl) redScoreEl.textContent = this.teamScores[TEAMS.RED];
 
         // Update timer
         const timerEl = document.getElementById('match-timer');
@@ -184,6 +202,8 @@ export class GemGrabMode {
         return {
             blueGems: this.teamGems[TEAMS.BLUE],
             redGems: this.teamGems[TEAMS.RED],
+            blueScore: this.teamScores[TEAMS.BLUE],
+            redScore: this.teamScores[TEAMS.RED],
             matchTime: GAME_CONFIG.MATCH_DURATION - this.matchTimer,
         };
     }

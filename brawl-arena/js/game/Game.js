@@ -273,8 +273,9 @@ export class Game {
 
         // Check brawler deaths
         for (const brawler of this.brawlers) {
-            if (!brawler.isAlive && brawler.gems > 0) {
+            if (brawler.justDied) {
                 this.gameMode.onBrawlerDeath(brawler, this);
+                brawler.justDied = false;
             }
         }
 
@@ -353,10 +354,6 @@ export class Game {
                         <div class="gem-icon">💎</div>
                         <div class="gem-count">${stats.blueGems}</div>
                     </div>
-                    <div class="player-stat-row">
-                        <span class="player-label">🔵 Player 1</span>
-                        <span class="player-gems">+${this.player1.gems}</span>
-                    </div>
                 </div>
                 
                 <div class="matches-divider">VS</div>
@@ -367,10 +364,16 @@ export class Game {
                         <div class="gem-icon">💎</div>
                         <div class="gem-count">${stats.redGems}</div>
                     </div>
-                    <div class="player-stat-row">
-                        <span class="player-label">🔴 Player 2</span>
-                        <span class="player-gems">+${this.player2.gems}</span>
-                    </div>
+                </div>
+            </div>
+            <div class="score-summary">
+                <div class="score-item blue">
+                    <span class="score-label">KILLS:</span>
+                    <span class="score-value">${stats.blueScore}</span>
+                </div>
+                <div class="score-item red">
+                    <span class="score-label">KILLS:</span>
+                    <span class="score-value">${stats.redScore}</span>
                 </div>
             </div>
         `;

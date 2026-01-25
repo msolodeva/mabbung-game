@@ -42,6 +42,8 @@ export class Brawler extends Entity {
 
         // State
         this.isAlive = true;
+        this.justDied = false;
+        this.droppedGems = 0;
         this.respawnTimer = 0;
         this.isInBush = false;
         this.isVisible = true;
@@ -364,14 +366,15 @@ export class Brawler extends Entity {
 
     die() {
         this.isAlive = false;
+        this.justDied = true;
         this.respawnTimer = 3000;
         this.health = 0;
 
         // Drop gems
-        const droppedGems = this.gems;
+        this.droppedGems = this.gems;
         this.gems = 0;
 
-        return droppedGems;
+        return this.droppedGems;
     }
 
     respawn(game) {

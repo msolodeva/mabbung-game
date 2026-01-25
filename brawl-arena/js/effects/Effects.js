@@ -55,24 +55,38 @@ export class Effect {
     }
 
     renderHit(ctx, x, y, progress) {
-        const size = 20 + progress * 20;
+        const size = 20 + progress * 25;
         const alpha = 1 - progress;
 
+        // 1. High Impact Flash (Short lived)
+        if (progress < 0.2) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 2. Expanding Ring
         ctx.strokeStyle = `rgba(255, 200, 100, ${alpha})`;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4 * (1 - progress);
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Sparks
-        for (let i = 0; i < 4; i++) {
-            const angle = (Math.PI * 2 / 4) * i + progress * 2;
-            const sparkX = x + Math.cos(angle) * size;
-            const sparkY = y + Math.sin(angle) * size;
+        // 3. Debris / Sparks
+        const sparkCount = 6;
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = (Math.PI * 2 / sparkCount) * i + Math.random() * 0.5;
+            const dist = size * (0.5 + progress * 1.5);
+            const sparkX = x + Math.cos(angle) * dist;
+            const sparkY = y + Math.sin(angle) * dist;
 
-            ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`;
+            // Randomize spark size slightly
+            const sparkSize = (3 - progress * 2) * (0.8 + Math.random() * 0.4);
+
+            ctx.fillStyle = `rgba(255, 255, 150, ${alpha})`;
             ctx.beginPath();
-            ctx.arc(sparkX, sparkY, 3, 0, Math.PI * 2);
+            ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -140,35 +154,62 @@ export class Effect {
     }
 
     renderSummon(ctx, x, y, progress) {
-        const size = 40;
+        const size = 50;
         const alpha = 1 - progress;
+        const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease out
 
-        // Summoning circle
+        // 1. Magic Circle (Spinning)
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(progress * Math.PI); // Spin
+
         ctx.strokeStyle = `rgba(231, 76, 60, ${alpha})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(x, y, size * (1 - progress * 0.3), 0, Math.PI * 2);
+        const circleSize = size * (0.5 + easeOut * 0.5);
+        ctx.arc(0, 0, circleSize, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Spinning runes
-        const runeCount = 6;
-        for (let i = 0; i < runeCount; i++) {
-            const angle = (Math.PI * 2 / runeCount) * i + progress * 5;
-            const runeX = x + Math.cos(angle) * size * 0.6;
-            const runeY = y + Math.sin(angle) * size * 0.6;
+        // Inner polygon
+        const sides = 5;
+        ctx.beginPath();
+        for (let i = 0; i <= sides; i++) {
+            const ang = (i / sides) * Math.PI * 2;
+            const r = circleSize * 0.7;
+            if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+            else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
 
-            ctx.fillStyle = `rgba(231, 76, 60, ${alpha})`;
+        // 2. Rising Pillar of Light
+        if (progress < 0.6) {
+            const pillarHeight = 150 * (1 - progress); // Shrinks down
+            const pillarWidth = size * 0.8 * (1 - progress);
+
+            const grad = ctx.createLinearGradient(x, y, x, y - pillarHeight);
+            grad.addColorStop(0, `rgba(231, 76, 60, ${alpha * 0.8})`);
+            grad.addColorStop(1, 'rgba(231, 76, 60, 0)');
+
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(runeX, runeY, 4, 0, Math.PI * 2);
+            ctx.ellipse(x, y, pillarWidth, pillarWidth * 0.3, 0, 0, Math.PI * 2); // Base
+            ctx.rect(x - pillarWidth, y - pillarHeight, pillarWidth * 2, pillarHeight);
             ctx.fill();
         }
 
-        // Rising energy
-        if (progress < 0.5) {
-            const energyAlpha = (0.5 - progress) * 2;
-            ctx.fillStyle = `rgba(231, 76, 60, ${energyAlpha * 0.5})`;
+        // 3. Upward Particles
+        const pCount = 8;
+        for (let i = 0; i < pCount; i++) {
+            const pProg = (progress + i / pCount) % 1;
+            const pY = y - pProg * 100;
+            const pX = x + Math.sin(pProg * 10 + i) * 20;
+            const pAlpha = 1 - pProg;
+
+            ctx.fillStyle = `rgba(255, 200, 200, ${pAlpha})`;
             ctx.beginPath();
-            ctx.arc(x, y, size * (1 + progress), 0, Math.PI * 2);
+            ctx.arc(pX, pY, 3, 0, Math.PI * 2);
             ctx.fill();
         }
     }
