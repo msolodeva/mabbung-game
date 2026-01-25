@@ -560,8 +560,8 @@ export class Brawler extends Entity {
 
         // 5. Polished HUD (Health/Ammo)
         this.renderPolishedHealthBar(ctx, x, y);
-        this.renderSuperChargeBar(ctx, x, y);
         this.renderPolishedAmmo(ctx, x, y);
+        this.renderSuperChargeBar(ctx, x, y);
 
         if (this.gems > 0) {
             this.renderPremiumGemsIndicator(ctx, x, y);
@@ -584,9 +584,9 @@ export class Brawler extends Entity {
     }
 
     renderSuperChargeBar(ctx, x, y) {
-        const barWidth = 70;
+        const barWidth = 50;
         const barHeight = 4;
-        const barY = y - this.radius - 18;
+        const barY = y + this.radius + 35;
 
         // Black background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
