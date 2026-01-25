@@ -119,114 +119,245 @@ export class GameMap {
         const startRow = Math.max(0, Math.floor(camera.y / this.tileSize));
         const endRow = Math.min(this.rows, Math.ceil((camera.y + camera.height) / this.tileSize));
 
-        // Draw ground first
+        // 1. Draw ground first (background layer)
         for (let row = startRow; row < endRow; row++) {
             for (let col = startCol; col < endCol; col++) {
                 const x = col * this.tileSize;
                 const y = row * this.tileSize;
                 const tile = this.getTile(col, row);
 
-                this.renderTile(ctx, x, y, tile, col, row);
+                // Always draw ground as base
+                this.renderGround(ctx, x, y, col, row);
+
+                if (tile === TILE_TYPES.WATER) {
+                    this.renderWater(ctx, x, y, col, row);
+                }
+            }
+        }
+
+        // 2. Shadows Layer
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                const tile = this.getTile(col, row);
+                if (tile === TILE_TYPES.WALL || tile === TILE_TYPES.DESTRUCTIBLE) {
+                    this.renderShadow(ctx, col * this.tileSize, row * this.tileSize);
+                }
+            }
+        }
+
+        // 3. Objects Layer (Walls, Bushes, Spawns)
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                const x = col * this.tileSize;
+                const y = row * this.tileSize;
+                const tile = this.getTile(col, row);
+
+                if (tile !== TILE_TYPES.GROUND && tile !== TILE_TYPES.WATER) {
+                    this.renderTileObject(ctx, x, y, tile, col, row);
+                }
             }
         }
     }
 
-    renderTile(ctx, x, y, tile, col, row) {
+    renderGround(ctx, x, y, col, row) {
+        const size = this.tileSize;
+        // Subtle checkerboard base
+        ctx.fillStyle = (col + row) % 2 === 0 ? COLORS.GROUND : COLORS.GROUND_DARK;
+        ctx.fillRect(x, y, size, size);
+
+        // Deterministic noise for grass/props based on coordinates
+        const seed = (col * 73 + row * 37);
+        const rand = (s) => (Math.sin(s) * 10000) % 1;
+
+        if (Math.abs(rand(seed)) > 0.8) {
+            // Grass Tuff
+            ctx.fillStyle = COLORS.GROUND_DETAIL;
+            const tx = x + size * 0.2 + rand(seed + 1) * size * 0.5;
+            const ty = y + size * 0.2 + rand(seed + 2) * size * 0.5;
+            ctx.fillRect(tx, ty, 3, 6);
+            ctx.fillRect(tx - 3, ty + 2, 3, 4);
+        }
+
+        if (Math.abs(rand(seed + 10)) > 0.96) {
+            // Small Flower
+            ctx.fillStyle = rand(seed) > 0 ? COLORS.FLOWER_YELLOW : COLORS.FLOWER_RED;
+            const fx = x + size * 0.3 + rand(seed + 3) * size * 0.4;
+            const fy = y + size * 0.3 + rand(seed + 4) * size * 0.4;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    renderWater(ctx, x, y, col, row) {
+        const size = this.tileSize;
+        const time = performance.now() * 0.002;
+
+        ctx.fillStyle = COLORS.WATER;
+        ctx.fillRect(x, y, size, size);
+
+        // Water ripples
+        ctx.strokeStyle = COLORS.WATER_SHALLOW;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.3;
+
+        const rippleOffset = (Math.sin(time + col + row) * 5);
+        ctx.beginPath();
+        ctx.moveTo(x + 5, y + size / 2 + rippleOffset);
+        ctx.lineTo(x + size - 5, y + size / 2 - rippleOffset);
+        ctx.stroke();
+
+        ctx.globalAlpha = 1.0;
+    }
+
+    renderShadow(ctx, x, y) {
+        ctx.fillStyle = COLORS.SHADOW;
+        // Offset shadow for depth
+        ctx.fillRect(x + 6, y + 6, this.tileSize, this.tileSize);
+    }
+
+    renderTileObject(ctx, x, y, tile, col, row) {
         const size = this.tileSize;
 
         switch (tile) {
-            case TILE_TYPES.GROUND:
             case TILE_TYPES.SPAWN_BLUE:
             case TILE_TYPES.SPAWN_RED:
             case TILE_TYPES.GEM_SPAWN:
-                // Grass pattern
-                ctx.fillStyle = (col + row) % 2 === 0 ? COLORS.GROUND : COLORS.GROUND_DARK;
-                ctx.fillRect(x, y, size, size);
-
-                // Grass detail
-                if (Math.random() > 0.7) {
-                    ctx.fillStyle = '#5c8a2e';
-                    ctx.fillRect(x + size * 0.3, y + size * 0.3, 3, 3);
-                }
-
-                // Spawn zone indicator
-                if (tile === TILE_TYPES.SPAWN_BLUE) {
-                    ctx.fillStyle = 'rgba(74, 144, 217, 0.2)';
-                    ctx.fillRect(x, y, size, size);
-                } else if (tile === TILE_TYPES.SPAWN_RED) {
-                    ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
-                    ctx.fillRect(x, y, size, size);
-                } else if (tile === TILE_TYPES.GEM_SPAWN) {
-                    // Modern Gem Mine Look
-                    ctx.fillStyle = '#2c3e50';
-                    ctx.beginPath();
-                    ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 8);
-                    ctx.fill();
-
-                    // Pulsing Glow for Spawn point
-                    const glowPulse = 0.5 + Math.sin(performance.now() * 0.003) * 0.5;
-                    ctx.strokeStyle = `rgba(155, 89, 182, ${0.4 + glowPulse * 0.4})`;
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-
-                    ctx.fillStyle = 'rgba(155, 89, 182, 0.2)';
-                    ctx.fill();
-                }
+                this.renderSpecialTile(ctx, x, y, tile, size);
                 break;
 
             case TILE_TYPES.WALL:
-                // Solid wall base
-                ctx.fillStyle = COLORS.WALL;
-                ctx.fillRect(x, y, size, size);
-                // Top highlight
-                ctx.fillStyle = COLORS.WALL_TOP;
-                ctx.fillRect(x, y, size, size * 0.4);
-                // Border
-                ctx.strokeStyle = '#4a3c2a';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
-                break;
-
-            case TILE_TYPES.BUSH:
-                // Ground underneath
-                ctx.fillStyle = (col + row) % 2 === 0 ? COLORS.GROUND : COLORS.GROUND_DARK;
-                ctx.fillRect(x, y, size, size);
-                // Bush overlay
-                ctx.fillStyle = COLORS.BUSH;
-                ctx.beginPath();
-                ctx.arc(x + size / 2, y + size / 2, size * 0.45, 0, Math.PI * 2);
-                ctx.fill();
-                // Bush detail
-                ctx.fillStyle = COLORS.BUSH_DARK;
-                ctx.beginPath();
-                ctx.arc(x + size * 0.35, y + size * 0.35, size * 0.2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(x + size * 0.65, y + size * 0.55, size * 0.15, 0, Math.PI * 2);
-                ctx.fill();
+                this.renderWall(ctx, x, y, size, COLORS.WALL, COLORS.WALL_TOP);
                 break;
 
             case TILE_TYPES.DESTRUCTIBLE:
-                // Destructible wall
                 const health = this.destructibleHealth[`${col},${row}`] || 2000;
                 const healthPercent = health / 2000;
-
-                ctx.fillStyle = COLORS.DESTRUCTIBLE;
-                ctx.fillRect(x, y, size, size);
-                // Damage cracks
-                if (healthPercent < 0.5) {
-                    ctx.strokeStyle = '#5d4037';
+                this.renderWall(ctx, x, y, size, COLORS.DESTRUCTIBLE, COLORS.DESTRUCTIBLE_TOP);
+                // Cracks if damaged
+                if (healthPercent < 0.7) {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(x + 5, y + 5);
+                    ctx.moveTo(x + 10, y + 10);
                     ctx.lineTo(x + size - 10, y + size - 10);
+                    if (healthPercent < 0.4) {
+                        ctx.moveTo(x + size - 10, y + 10);
+                        ctx.lineTo(x + 10, y + size - 10);
+                    }
                     ctx.stroke();
                 }
-                // Border
-                ctx.strokeStyle = '#6d5545';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+                break;
+
+            case TILE_TYPES.BUSH:
+                this.renderBush(ctx, x, y, size, col, row);
                 break;
         }
     }
+
+    renderWall(ctx, x, y, size, color, topColor) {
+        // Base Side (Depth)
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, size, size);
+
+        // Top Face (Raised)
+        ctx.fillStyle = topColor;
+        ctx.fillRect(x + 2, y + 2, size - 4, size - 10);
+
+        // Edge Highlights
+        ctx.strokeStyle = COLORS.WALL_EDGE;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 2, y + size - 8);
+        ctx.lineTo(x + 2, y + 2);
+        ctx.lineTo(x + size - 2, y + 2);
+        ctx.stroke();
+
+        // Darker bottom edge
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.moveTo(x + 2, y + size - 8);
+        ctx.lineTo(x + size - 2, y + size - 8);
+        ctx.lineTo(x + size - 2, y + 2);
+        ctx.stroke();
+    }
+
+    renderBush(ctx, x, y, size, col, row) {
+        const time = performance.now() * 0.001;
+        const sway = Math.sin(time + col) * 2;
+
+        ctx.save();
+        ctx.translate(sway, 0);
+
+        // Large organic leafy look
+        ctx.fillStyle = COLORS.BUSH;
+
+        // Multiple overlapping circles for a "bushy" look
+        const centers = [
+            { rx: 0.3, ry: 0.3, r: 0.35 },
+            { rx: 0.7, ry: 0.3, r: 0.35 },
+            { rx: 0.5, ry: 0.6, r: 0.4 },
+            { rx: 0.3, ry: 0.8, r: 0.3 },
+            { rx: 0.7, ry: 0.8, r: 0.3 }
+        ];
+
+        centers.forEach(c => {
+            ctx.beginPath();
+            ctx.arc(x + size * c.rx, y + size * c.ry, size * c.r, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Subtle highlight on each leaf bundle
+            ctx.fillStyle = COLORS.BUSH_GLOW;
+            ctx.globalAlpha = 0.2;
+            ctx.beginPath();
+            ctx.arc(x + size * c.rx - 2, y + size * c.ry - 2, size * c.r * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = COLORS.BUSH;
+        });
+
+        // Small dark details
+        ctx.fillStyle = COLORS.BUSH_DARK;
+        ctx.fillRect(x + size * 0.45, y + size * 0.45, 4, 4);
+
+        ctx.restore();
+    }
+
+    renderSpecialTile(ctx, x, y, tile, size) {
+        if (tile === TILE_TYPES.SPAWN_BLUE) {
+            ctx.fillStyle = 'rgba(74, 144, 217, 0.3)';
+            ctx.beginPath();
+            ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 10);
+            ctx.fill();
+        } else if (tile === TILE_TYPES.SPAWN_RED) {
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            ctx.beginPath();
+            ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 10);
+            ctx.fill();
+        } else if (tile === TILE_TYPES.GEM_SPAWN) {
+            // Premium Gem Mine (Hole-style to avoid confusion with actual gem items)
+            ctx.fillStyle = '#1a1a1a'; // Deep dark hole
+            ctx.beginPath();
+            ctx.roundRect(x + 4, y + 4, size - 8, size - 8, 12);
+            ctx.fill();
+
+            // Inner crater look
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.roundRect(x + 10, y + 10, size - 20, size - 20, 8);
+            ctx.fill();
+
+            const glow = 0.6 + Math.sin(performance.now() * 0.004) * 0.4;
+            ctx.strokeStyle = `rgba(155, 89, 182, ${glow})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Minimalist indicator instead of gem emoji
+            ctx.fillStyle = `rgba(155, 89, 182, ${glow * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(x + size / 2, y + size / 2, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
 }

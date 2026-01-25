@@ -34,17 +34,31 @@ export const TILE_TYPES = {
     SPAWN_BLUE: 4,
     SPAWN_RED: 5,
     GEM_SPAWN: 6,
+    WATER: 7,
 };
 
 export const COLORS = {
-    GROUND: '#4a7c23',
-    GROUND_DARK: '#3d6620',
-    WALL: '#5d4e37',
-    WALL_TOP: '#7a6548',
+    GROUND: '#5c8a2e',
+    GROUND_DARK: '#4e7a24',
+    GROUND_DETAIL: '#6ead36',
+    FLOWER_YELLOW: '#f1c40f',
+    FLOWER_RED: '#e74c3c',
+
+    WALL: '#6d5545',
+    WALL_TOP: '#8d735b',
+    WALL_EDGE: '#a68a71',
+    WALL_SHADOW: 'rgba(0, 0, 0, 0.3)',
+
     BUSH: '#2d5016',
-    BUSH_DARK: '#1f3810',
-    DESTRUCTIBLE: '#8b7355',
+    BUSH_DARK: '#1a320d',
+    BUSH_GLOW: '#3d6b1e',
+
+    DESTRUCTIBLE: '#a68b6d',
+    DESTRUCTIBLE_TOP: '#c5ae95',
+
     WATER: '#3498db',
+    WATER_DARK: '#2980b9',
+    WATER_SHALLOW: '#5dade2',
 
     BLUE_TEAM: '#4a90d9',
     RED_TEAM: '#e74c3c',
@@ -57,6 +71,7 @@ export const COLORS = {
     GEM_GLOW: '#bb8fce',
 
     SUPER_GOLD: '#ffd700',
+    SHADOW: 'rgba(0, 0, 0, 0.25)',
 };
 
 // ========================================

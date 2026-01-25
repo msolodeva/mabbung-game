@@ -40,7 +40,8 @@ export class Nita extends Brawler {
 
     activateSuper(direction, game) {
         // Remove existing bear if any
-        if (this.bear && this.bear.isAlive) {
+        if (this.bear) {
+            this.bear.isAlive = false;
             this.bear.active = false;
         }
 
@@ -48,6 +49,7 @@ export class Nita extends Brawler {
         const spawnDistance = 100;
         const spawnPos = this.position.add(direction.normalize().multiply(spawnDistance));
 
+        // Create and register the new bear
         this.bear = new Bear(spawnPos.x, spawnPos.y, this);
         this.bear.game = game;
         game.bears.push(this.bear);

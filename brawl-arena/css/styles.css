@@ -399,29 +399,39 @@ body {
 
 .countdown-display {
     position: absolute;
-    top: 70px;
+    top: 65px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--gradient-gold);
-    padding: 10px 30px;
-    border-radius: 10px;
-    text-align: center;
-    animation: pulseGlow 0.5s ease-in-out infinite alternate;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    padding: 2px 20px;
+    border-radius: 40px;
+    border: 2px solid var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
 }
 
 .countdown-display.hidden {
     display: none;
 }
 
-.countdown-display span {
-    display: block;
-    font-weight: bold;
-    color: #333;
+.countdown-display span:first-child {
+    font-size: 0.8rem;
+    color: var(--gold);
+    font-family: 'Lilita One', cursive;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .countdown-time {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    color: white;
     font-family: 'Lilita One', cursive;
+    text-shadow: 0 0 10px var(--gold);
 }
 
 @keyframes pulseGlow {

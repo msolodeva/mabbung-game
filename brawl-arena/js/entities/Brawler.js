@@ -61,6 +61,11 @@ export class Brawler extends Entity {
         this.color = team === TEAMS.BLUE ? COLORS.BLUE_TEAM : COLORS.RED_TEAM;
         this.moveTrail = [];
         this.maxTrailLength = 5;
+
+        // Visual Polish
+        this.recoilOffset = 0;
+        this.spawnScale = 0; // For pop-in effect
+        this.spawnTimer = 0;
     }
 
     update(deltaTime, game) {
@@ -146,6 +151,21 @@ export class Brawler extends Entity {
             if (this.moveTrail.length > this.maxTrailLength) this.moveTrail.pop();
         } else {
             if (this.moveTrail.length > 0) this.moveTrail.pop();
+        }
+
+        // Apply visual recoil decay
+        if (this.recoilOffset > 0) {
+            this.recoilOffset *= 0.8; // Fast snappy recovery
+            if (this.recoilOffset < 0.5) this.recoilOffset = 0;
+        }
+
+        // Spawn pop-in animation
+        if (this.spawnScale < 1) {
+            this.spawnTimer += deltaTime * 10;
+            // Elastic ease out
+            const x = Math.min(this.spawnTimer, 1);
+            this.spawnScale = x === 1 ? 1 : 1 - Math.pow(2, -10 * x) * Math.cos((x * 10 - 0.75) * (2 * Math.PI) / 3);
+            if (this.spawnTimer > 1) this.spawnScale = 1;
         }
     }
 
@@ -262,6 +282,7 @@ export class Brawler extends Entity {
         this.aimDirection = direction.normalize();
         this.facingAngle = direction.angle();
         this.isAttacking = true;
+        this.recoilOffset = 8; // Visual kickback distance
 
         // Create projectiles (override in subclass)
         this.createAttackProjectiles(direction, game);
@@ -357,6 +378,13 @@ export class Brawler extends Entity {
         // Find spawn position
         const spawnPos = game.map.getSpawnPosition(this.team);
         this.position.set(spawnPos.x, spawnPos.y);
+
+        // Reset spawn animation
+        this.spawnScale = 0;
+        this.spawnTimer = 0;
+
+        // Add spawn shield/effect
+        game.createEffect('heal', spawnPos.x, spawnPos.y, { lifetime: 1000 });
     }
 
     collectGem() {
@@ -393,14 +421,19 @@ export class Brawler extends Entity {
 
         // 1. Enhanced Ground Ring (Aura)
         ctx.save();
-        ctx.globalAlpha = 0.6;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = this.color;
+        ctx.globalAlpha = 0.8; // Increased from 0.6
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'white'; // Glow white for contrast
 
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 7; // Thicker ring
         ctx.beginPath();
-        ctx.arc(x, y + this.radius - 5, this.radius * 1.1, 0, Math.PI * 2);
+        ctx.arc(x, y + this.radius - 5, this.radius * 1.15, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // White outer edge for the ring
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         // Inner soft glow
@@ -460,8 +493,16 @@ export class Brawler extends Entity {
 
         // 4. Character Body with Premium Gradients
         ctx.save();
-        ctx.translate(x, y + bobOffset);
-        ctx.scale(breathingScale, breathingScale);
+
+        // Apply recoil visual offset locally to the body/hands/face group
+        const recoilX = -Math.cos(this.facingAngle) * this.recoilOffset;
+        const recoilY = -Math.sin(this.facingAngle) * this.recoilOffset;
+
+        ctx.translate(x + recoilX, y + bobOffset + recoilY);
+
+        // Apply spawn scale and breathing
+        const currentScale = breathingScale * this.spawnScale;
+        ctx.scale(currentScale, currentScale);
 
         const bodyGrad = ctx.createRadialGradient(
             -this.radius * 0.3,
@@ -490,13 +531,19 @@ export class Brawler extends Entity {
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Stylish White Outline
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 3;
+        // Stylish White Outline (Inner Rim Light)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Secondary Outer Black Border for extreme contrast
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Character Emoji / Icon - FILL BODY
-        ctx.shadowBlur = 0;
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
         ctx.font = `bold ${this.radius * 1.6}px "Lilita One", Arial`; // Large emoji to fill body
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -513,13 +560,13 @@ export class Brawler extends Entity {
 
         // 5. Polished HUD (Health/Ammo)
         this.renderPolishedHealthBar(ctx, x, y);
+        this.renderSuperChargeBar(ctx, x, y);
         this.renderPolishedAmmo(ctx, x, y);
 
         if (this.gems > 0) {
             this.renderPremiumGemsIndicator(ctx, x, y);
         }
 
-        // 6. Super Ready Pulse
         if (this.superReady) {
             ctx.save();
             ctx.translate(x, y + bobOffset);
@@ -532,6 +579,41 @@ export class Brawler extends Entity {
             ctx.beginPath();
             ctx.arc(0, 0, this.radius + 12, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    renderSuperChargeBar(ctx, x, y) {
+        const barWidth = 70;
+        const barHeight = 4;
+        const barY = y - this.radius - 18;
+
+        // Black background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(x - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2, 2);
+        ctx.fill();
+
+        // Charge Fill
+        const chargePercent = this.superReady ? 1.0 : Math.max(0, this.superCharge / this.superChargeMax);
+
+        if (chargePercent > 0) {
+            ctx.save();
+            // Pulse effect when ready
+            if (this.superReady) {
+                const time = performance.now() * 0.01;
+                const pulse = 0.8 + Math.sin(time) * 0.2;
+                ctx.globalAlpha = pulse;
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#ffff00';
+            } else {
+                ctx.fillStyle = '#f1c40f'; // Yellowish orange for super charge
+            }
+
+            ctx.beginPath();
+            ctx.roundRect(x - barWidth / 2, barY, barWidth * chargePercent, barHeight, 2);
+            ctx.fill();
             ctx.restore();
         }
     }

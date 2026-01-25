@@ -66,14 +66,12 @@ export class Poco extends Brawler {
 
         // Draw healing aura when super is ready
         if (this.superReady && this.isAlive) {
-            const screenX = this.position.x - camera.x;
-            const screenY = this.position.y - camera.y;
-
-            ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
-            ctx.lineWidth = 2;
+            // No need to subtract camera coordinates as the context is already translated globally
+            ctx.strokeStyle = 'rgba(46, 204, 113, 0.4)';
+            ctx.lineWidth = 3;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            ctx.arc(screenX, screenY, this.config.superRadius, 0, Math.PI * 2);
+            ctx.arc(this.position.x, this.position.y, this.config.superRadius, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
         }

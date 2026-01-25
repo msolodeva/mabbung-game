@@ -82,12 +82,20 @@ export class Projectile extends Entity {
     checkHit(brawler) {
         if (this.projectileType === 'wave') {
             // Wide wave attack (like Poco)
+            // 1. Distance check: Is the brawler within the wave's actual body?
             const toBrawler = brawler.position.subtract(this.position);
-            const dot = toBrawler.dot(this.direction);
-            if (dot < 0 || dot > this.width) return false;
+            const dist = toBrawler.magnitude();
 
-            const perpDist = Math.abs(toBrawler.cross(this.direction));
-            return perpDist < this.width / 2 + brawler.radius;
+            // The 'radius' of the wave acts as its length/thickness in the travel direction
+            if (dist > this.radius + brawler.radius) return false;
+
+            // 2. Angle/Width check: Is the brawler within the angular spread of the wave?
+            const dot = toBrawler.normalize().dot(this.direction);
+            // Convert width (in pixels) to an approximate angular threshold
+            // Poco's wave is more of an arc.
+            const angleThreshold = 0.5; // Roughly 60 degrees spread
+
+            return dot > angleThreshold;
         }
 
         return this.collidesWith(brawler);
@@ -127,24 +135,42 @@ export class Projectile extends Entity {
 
         // Draw projectile
         if (this.projectileType === 'wave') {
-            // Draw wave shape
-            ctx.fillStyle = this.color;
+            // Draw actual sound wave arc (Poco style)
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(this.direction.angle());
-            ctx.fillRect(-10, -this.width / 2, 20, this.width);
+
+            // Draw a stylish arc that represents the hitbox
+            ctx.beginPath();
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 4;
+            const arcAngle = Math.PI / 3; // 60 degrees matching the collision logic
+            ctx.arc(0, 0, this.radius, -arcAngle / 2, arcAngle / 2);
+            ctx.stroke();
+
+            // Inner fill for better visibility
+            ctx.globalAlpha = 0.3;
+            ctx.lineTo(0, 0);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+
             ctx.restore();
         } else {
-            // Draw bullet
-            ctx.fillStyle = this.color;
+            // Draw bullet / pellet
+            ctx.fillStyle = 'white'; // Core for better visibility
             ctx.beginPath();
             ctx.arc(x, y, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Glow effect
+            // Glow / Outer part
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Flashy glow effect
             ctx.shadowColor = this.color;
-            ctx.shadowBlur = 10;
-            ctx.fill();
+            ctx.shadowBlur = 8;
+            ctx.stroke();
             ctx.shadowBlur = 0;
         }
     }

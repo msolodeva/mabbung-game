@@ -117,25 +117,45 @@ export class AIController {
 
     makeDecision() {
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
-
-        // Check if should retreat
-        if (healthPercent < AI_CONFIG.RETREAT_HEALTH_THRESHOLD && this.brawler.gems > 0) {
-            this.state = 'retreat';
-            return;
-        }
+        const ammoPercent = this.brawler.ammo / this.brawler.ammoMax;
 
         // Find nearest gem
         const nearestGem = this.findNearestGem();
 
-        // Find nearest enemy
-        const nearestEnemy = this.findNearestEnemy();
+        // Find Best target based on counter relationships and synergy
+        const bestTarget = this.findBestStrategicTarget();
+        const nearestEnemy = bestTarget.enemy;
+        const helpAlly = bestTarget.allyToHelp;
 
-        // Decision logic
-        if (nearestGem && (!nearestEnemy ||
+        // --- 1. Tactical Retreat Evaluation ---
+        // ... (same as before)
+        const isVeryLowHealth = healthPercent < 0.25;
+        const hasGems = this.brawler.gems > 0;
+        const hasManyGems = this.brawler.gems >= 5;
+        const outOfAmmo = this.brawler.ammo === 0;
+
+        const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
+        const enemyTooClose = distToEnemy < 200;
+
+        if ((isVeryLowHealth && hasGems) || (hasManyGems && healthPercent < 0.45) || (outOfAmmo && enemyTooClose && healthPercent < 0.5)) {
+            this.state = 'retreat';
+            return;
+        }
+
+        // --- 2. Normal Decision logic ---
+        // Priority 1: Help teammate in trouble
+        if (helpAlly && helpAlly.enemy && helpAlly.dist < 500) {
+            this.currentTarget = helpAlly.enemy;
+            this.state = 'chase'; // Go help ally
+        }
+        // Priority 2: Collect Gems
+        else if (nearestGem && (!nearestEnemy ||
             this.brawler.position.distanceTo(nearestGem.position) < AI_CONFIG.GEM_PRIORITY_DISTANCE)) {
             this.targetGem = nearestGem;
             this.state = 'collectGem';
-        } else if (nearestEnemy) {
+        }
+        // Priority 3: Attack / Chase best target
+        else if (nearestEnemy) {
             this.currentTarget = nearestEnemy;
 
             const distanceToEnemy = this.brawler.position.distanceTo(nearestEnemy.position);
@@ -153,6 +173,86 @@ export class AIController {
         }
     }
 
+    // New strategic target finding method
+    findBestStrategicTarget() {
+        let bestEnemy = null;
+        let highestScore = -Infinity;
+        let allyToHelp = null;
+
+        // Counter relationship map (who beats who)
+        const counters = {
+            'shelly': ['poco', 'spike', 'nita'],
+            'colt': ['shelly', 'spike'],
+            'nita': ['colt'],
+            'poco': ['nita'],
+            'spike': ['nita', 'poco'],
+            'bull': ['poco', 'spike', 'colt'],
+            'elprimo': ['colt', 'spike']
+        };
+
+        const myId = this.brawler.config.id;
+
+        // 1. Evaluate enemies
+        for (const enemy of this.game.brawlers) {
+            if (enemy.team === this.brawler.team || !enemy.isAlive) continue;
+
+            let score = 1000; // Base score
+            const dist = this.brawler.position.distanceTo(enemy.position);
+
+            // Distance penalty
+            score -= dist * 1.5;
+
+            // Counter bonus
+            if (counters[myId] && counters[myId].includes(enemy.config.id)) {
+                score += 500; // I counter this enemy
+            }
+
+            // Vulnerability bonus (low health)
+            if (enemy.health < enemy.maxHealth * 0.4) {
+                score += 300;
+            }
+
+            // High value target (has gems)
+            score += enemy.gems * 100;
+
+            if (score > highestScore) {
+                highestScore = score;
+                bestEnemy = enemy;
+            }
+        }
+
+        // 2. Evaluate if allies need help
+        let highestAllyTrouble = -Infinity;
+        for (const ally of this.game.brawlers) {
+            if (ally.team !== this.brawler.team || ally === this.brawler || !ally.isAlive) continue;
+
+            const allyDist = this.brawler.position.distanceTo(ally.position);
+            const allyHealth = ally.health / ally.maxHealth;
+
+            // Find who is attacking this ally
+            let threateningEnemy = null;
+            let minDistToAlly = Infinity;
+            for (const enemy of this.game.brawlers) {
+                if (enemy.team !== this.brawler.team && enemy.isAlive) {
+                    const eDist = enemy.position.distanceTo(ally.position);
+                    if (eDist < 300 && eDist < minDistToAlly) {
+                        minDistToAlly = eDist;
+                        threateningEnemy = enemy;
+                    }
+                }
+            }
+
+            if (threateningEnemy && allyHealth < 0.5) {
+                const troubleScore = (1 - allyHealth) * 1000 - allyDist;
+                if (troubleScore > highestAllyTrouble) {
+                    highestAllyTrouble = troubleScore;
+                    allyToHelp = { ally, enemy: threateningEnemy, dist: allyDist };
+                }
+            }
+        }
+
+        return { enemy: bestEnemy, allyToHelp };
+    }
     executeState(deltaTime) {
         switch (this.state) {
             case 'idle':
@@ -502,24 +602,36 @@ export class AIController {
     }
 
     retreat() {
+        // Find nearest enemy to potentially face them while retreating
+        const nearestEnemy = this.findNearestEnemy();
+        const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
+
         // Move back to spawn area using pathfinding
         const spawnPos = this.game.map.getSpawnPosition(this.brawler.team);
-        this.moveToTarget(spawnPos);
 
-        // Shoot at enemies while retreating
-        const nearestEnemy = this.findNearestEnemy();
+        // If enemy is too close, prioritize moving away from enemy over moving precisely to spawn
+        if (nearestEnemy && distToEnemy < 250) {
+            const awayFromEnemy = this.brawler.position.subtract(nearestEnemy.position).normalize();
+            this.brawler.moveDirection = awayFromEnemy;
+            this.avoidWallsEnhanced();
+        } else {
+            this.moveToTarget(spawnPos);
+        }
+
+        // Shoot at enemies while retreating (Kiting)
         if (nearestEnemy && this.brawler.canAttack()) {
-            const distToEnemy = this.brawler.position.distanceTo(nearestEnemy.position);
-            if (distToEnemy <= this.brawler.attackRange) {
+            if (distToEnemy <= this.brawler.attackRange * 1.1) {
                 const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
                 this.brawler.attack(toEnemy.normalize(), this.game);
             }
         }
 
-        // Check if safe
+        // --- Faster recovery back to battle ---
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const toSpawn = spawnPos.subtract(this.brawler.position);
-        if (healthPercent > 0.6 || toSpawn.magnitude() < 100) {
+
+        // Return to battle if health is > 75% (was 60%) or arrived at safe zone
+        if (healthPercent > 0.75 || toSpawn.magnitude() < 150) {
             this.state = 'patrol';
         }
     }
