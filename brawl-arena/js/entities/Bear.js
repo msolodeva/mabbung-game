@@ -29,12 +29,42 @@ export class Bear extends Entity {
         this.damageFlashTimer = 0;
     }
 
+    handleWallCollision(map) {
+        // Simple wall collision (similar to Brawler but simplified for AI)
+        const checkRadius = this.radius;
+        const checkPoints = [
+            { x: 0, y: -1 }, { x: 0, y: 1 },
+            { x: -1, y: 0 }, { x: 1, y: 0 }
+        ];
+
+        for (const point of checkPoints) {
+            const checkX = this.position.x + point.x * checkRadius;
+            const checkY = this.position.y + point.y * checkRadius;
+            const tile = map.getTileAtPosition(checkX, checkY);
+
+            if (tile && tile.solid) {
+                // Simple push back
+                const tileCenter = map.getTileCenter(
+                    Math.floor(checkX / map.tileSize),
+                    Math.floor(checkY / map.tileSize)
+                );
+
+                // Vector from tile center to bear
+                const pushDir = this.position.subtract(tileCenter).normalize();
+                this.position.addInPlace(pushDir.multiply(2)); // Push out
+            }
+        }
+    }
+
     update(deltaTime, game) {
         if (!this.active || !this.isAlive) return;
 
-        // Lifetime countdown
-        this.lifetime -= deltaTime * 1000;
-        if (this.lifetime <= 0) {
+        // Health Decay (Simulate lifetime visually)
+        // Decays over ~20 seconds (100 health per second if max is 2000)
+        const decayRate = this.maxHealth / 20;
+        this.health -= decayRate * deltaTime;
+
+        if (this.health <= 0) {
             this.die(game);
             return;
         }
@@ -64,12 +94,14 @@ export class Bear extends Entity {
                 this.velocity = new Vector2(0, 0);
             }
         } else {
-            // Owner is dead - roam and look for enemies aggressively
-            // If no target, slow down but keep looking
+            // Owner is dead - roam/idle
             this.velocity = this.velocity.multiply(0.95);
         }
 
         super.update(deltaTime);
+
+        // Wall collision
+        this.handleWallCollision(game.map);
 
         // Clamp to map bounds
         this.position.x = Math.max(this.radius, Math.min(game.map.width - this.radius, this.position.x));
@@ -90,8 +122,14 @@ export class Bear extends Entity {
         let nearestEnemy = null;
         let nearestDistance = Infinity;
 
+        // Also check for boxes/safes if no brawlers nearby? For now just brawlers
         for (const brawler of game.brawlers) {
             if (brawler.team === this.team || !brawler.isAlive) continue;
+
+            // Check if brawler is visible (not in bush or revealed)
+            // Bear has "smell" so maybe it can find hidden enemies? 
+            // Standard behavior: Bear tracks hidden enemies too (usually). 
+            // Let's assume bear can smell enemies.
 
             const distance = this.distanceTo(brawler);
             if (distance < nearestDistance) {
@@ -107,8 +145,12 @@ export class Bear extends Entity {
         if (this.attackCooldown > 0 || !this.target) return;
 
         this.attackCooldown = this.attackSpeed;
-        this.target.takeDamage(this.attackDamage, this);
+        this.target.takeDamage(this.attackDamage, this); // 'this' is the attacker (Bear)
+
+        // Visual hit effect
         game.createEffect('hit', this.target.position.x, this.target.position.y);
+
+        // Bear roar/swiping sound could go here
     }
 
     takeDamage(amount, attacker) {
@@ -119,6 +161,18 @@ export class Bear extends Entity {
             attacker.addSuperCharge(1);
         }
 
+        // Nita charges super when bear deals damage (handled in Brawler.js takeDamage? or needs modification?)
+        // Wait, standard mechanics: Bear damage charges Nita's super.
+        // I should check if 'this.target.takeDamage' calls 'takeDamage' on brawler and if that handles super charge.
+        // It does: `attacker.addSuperCharge(1)` in Brawler.js.
+        // But here `attacker` is Bear. Bear is not a brawler instance (type='bear').
+        // So Brawler.js line 325: `if (attacker && attacker.type === 'brawler')` might fail.
+        // I should update Brawler.js or handle it here?
+        // Actually, if Bear deals damage, Nita should get charge.
+
+        // Let's handle the charging here in attack() or fix Brawler.js.
+        // I will fix local render method here mainly.
+
         if (this.health <= 0) {
             this.die();
         }
@@ -127,6 +181,7 @@ export class Bear extends Entity {
     die(game) {
         this.isAlive = false;
         this.active = false;
+        // Death effect?
     }
 
     render(ctx, camera) {

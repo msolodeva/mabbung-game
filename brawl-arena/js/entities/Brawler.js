@@ -322,8 +322,12 @@ export class Brawler extends Entity {
         this.damageFlashTimer = 100;
 
         // Charge attacker's super
-        if (attacker && attacker.type === 'brawler') {
-            attacker.addSuperCharge(1);
+        if (attacker) {
+            if (attacker.type === 'brawler') {
+                attacker.addSuperCharge(1);
+            } else if (attacker.type === 'bear' && attacker.owner) {
+                attacker.owner.addSuperCharge(1);
+            }
         }
 
         // Check if dead
