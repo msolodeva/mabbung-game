@@ -77,6 +77,22 @@ export class Projectile extends Entity {
                 }
             }
         }
+
+        // Check bear collision
+        for (const bear of game.bears) {
+            if (!bear.isAlive) continue;
+            if (bear.team === this.team) continue;
+            // Bears use Entity IDs which are unique
+            if (this.hitTargets.has(bear.id)) continue;
+
+            if (this.collidesWith(bear)) {
+                this.onHit(bear, game);
+                if (!this.piercing) {
+                    this.destroy();
+                    return;
+                }
+            }
+        }
     }
 
     checkHit(brawler) {
@@ -120,59 +136,99 @@ export class Projectile extends Entity {
 
         const x = this.position.x;
         const y = this.position.y;
+        const angle = this.direction.angle();
 
-        // Draw trail
-        for (let i = 0; i < this.trail.length; i++) {
-            const trailPos = this.trail[i];
-            const alpha = 1 - (i / this.trail.length);
-            const size = this.radius * (1 - i / this.trail.length * 0.5);
-
-            ctx.fillStyle = this.color.replace(')', `, ${alpha * 0.5})`).replace('rgb', 'rgba');
+        // 1. Draw Trail (Tapering)
+        if (this.trail.length > 0) {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            // Draw as a continuous line for smoothness
             ctx.beginPath();
-            ctx.arc(trailPos.x, trailPos.y, size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(x, y);
+            for (let i = 0; i < this.trail.length; i++) {
+                ctx.lineTo(this.trail[i].x, this.trail[i].y);
+            }
+
+            // Gradient trail
+            const trailGrad = ctx.createLinearGradient(x, y, this.trail[this.trail.length - 1].x, this.trail[this.trail.length - 1].y);
+            trailGrad.addColorStop(0, this.color);
+            trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+            ctx.strokeStyle = trailGrad;
+            ctx.lineWidth = this.radius * 1.5;
+            ctx.globalAlpha = 0.6;
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
         }
 
-        // Draw projectile
+        // 2. Draw Projectile Body
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
         if (this.projectileType === 'wave') {
-            // Draw actual sound wave arc (Poco style)
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(this.direction.angle());
+            // Enhanced Sound Wave (Poco/Nita Style)
+            const arcAngle = Math.PI / 3; // 60 degrees
 
-            // Draw a stylish arc that represents the hitbox
+            // Multiple arcs for "echo" effect
+            for (let i = 0; i < 3; i++) {
+                const offset = i * 10;
+                const alpha = 1 - (i * 0.3);
+
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.lineWidth = 4 - i;
+                ctx.arc(-offset, 0, this.radius, -arcAngle / 2, arcAngle / 2);
+                ctx.stroke();
+            }
+
+            // Energy Field Fan
             ctx.beginPath();
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 4;
-            const arcAngle = Math.PI / 3; // 60 degrees matching the collision logic
+            ctx.moveTo(0, 0);
             ctx.arc(0, 0, this.radius, -arcAngle / 2, arcAngle / 2);
-            ctx.stroke();
-
-            // Inner fill for better visibility
-            ctx.globalAlpha = 0.3;
-            ctx.lineTo(0, 0);
+            ctx.closePath();
             ctx.fillStyle = this.color;
+            ctx.globalAlpha = 0.2;
             ctx.fill();
 
-            ctx.restore();
-        } else {
-            // Draw bullet / pellet
-            ctx.fillStyle = 'white'; // Core for better visibility
+        } else if (this.owner && this.owner.config.id === 'spike') {
+            // Spike Thorns
+            ctx.fillStyle = this.color;
             ctx.beginPath();
-            ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+            // Thorn shape
+            ctx.moveTo(this.radius, 0);
+            ctx.lineTo(-this.radius, this.radius * 0.6);
+            ctx.lineTo(-this.radius * 0.5, 0);
+            ctx.lineTo(-this.radius, -this.radius * 0.6);
+            ctx.closePath();
             ctx.fill();
 
-            // Glow / Outer part
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // Spin animation for spikes
+            const time = performance.now() * 0.02;
+            ctx.rotate(time); // Add extra spin on top of direction
 
-            // Flashy glow effect
+        } else {
+            // Standard Bullet / Plasmoid
+            // Elongated Capsule Shape
+            ctx.fillStyle = '#ffffff'; // White hot core
+            ctx.shadowBlur = 10;
             ctx.shadowColor = this.color;
-            ctx.shadowBlur = 8;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            // Draw a teardrop/capsule shape
+            ctx.ellipse(0, 0, this.radius * 1.5, this.radius * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Colored Aura
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.ellipse(-5, 0, this.radius * 1.8, this.radius, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
+
+        ctx.restore();
     }
 }
 
