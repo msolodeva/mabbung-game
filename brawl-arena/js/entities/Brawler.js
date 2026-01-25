@@ -495,16 +495,20 @@ export class Brawler extends Entity {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Character Emoji / Icon - MOVED DOWN
-        ctx.shadowBlur = 0; // Clear for text
-        ctx.font = `bold ${this.radius * 0.8}px "Lilita One", Arial`; // Smaller emoji
+        // Character Emoji / Icon - FILL BODY
+        ctx.shadowBlur = 0;
+        ctx.font = `bold ${this.radius * 1.6}px "Lilita One", Arial`; // Large emoji to fill body
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.config.emoji, 0, this.radius * 0.4); // Moved down to chest
+
+        // Render slightly semi-transparent to blend with body color
+        ctx.globalAlpha = 0.8;
+        ctx.fillText(this.config.emoji, 0, 0);
+        ctx.globalAlpha = 1.0;
 
         ctx.restore();
 
-        // 4.5 Render Face (Eyes) - On top of body
+        // 4.5 Render Face (Eyes) - On top of body and emoji
         this.renderFace(ctx, x, y + bobOffset, this.radius, this.aimDirection, time);
 
         // 5. Polished HUD (Health/Ammo)
@@ -570,74 +574,53 @@ export class Brawler extends Entity {
         ctx.save();
         ctx.translate(x, y);
 
-        // Face offset (slightly up)
-        ctx.translate(0, -radius * 0.2);
+        // Face rotation based on aim direction (facingAngle)
+        ctx.rotate(this.facingAngle);
 
         // Blinking logic
-        const blinkCycle = (time * 0.5) % 10; // Blink every ~2 seconds
+        const blinkCycle = (time * 0.5) % 10;
         let eyeScaleY = 1;
-        if (blinkCycle > 9.5) { // Blink duration
+        if (blinkCycle > 9.5) {
             eyeScaleY = 0.1;
         }
 
-        // Eyes
-        const eyeX = radius * 0.35;
-        const eyeY = -radius * 0.1;
+        // Eyes position (offset to the edge of the body in the facing direction)
+        const faceForwardOffset = radius * 0.7; // Closer to the edge
+        const eyeSpacing = radius * 0.4;
         const eyeRadius = radius * 0.25;
 
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'rgba(0,0,0,0.1)';
         ctx.lineWidth = 1;
 
-        // Left Eye
-        ctx.save();
-        ctx.translate(-eyeX, eyeY);
-        ctx.scale(1, eyeScaleY);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, eyeRadius, eyeRadius * 1.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        // Render both eyes
+        for (let side of [-1, 1]) {
+            ctx.save();
+            // Position eyes on the front arc of the brawler
+            ctx.translate(faceForwardOffset, side * eyeSpacing);
+            ctx.scale(1, eyeScaleY);
 
-        // Pupil
-        if (eyeScaleY > 0.5) {
-            const pupilOffset = aimDir.clone().multiply(3); // Look at aim
-            ctx.fillStyle = 'black';
+            // White of the eye
             ctx.beginPath();
-            ctx.arc(pupilOffset.x, pupilOffset.y, eyeRadius * 0.4, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, eyeRadius, eyeRadius * 1.2, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.stroke();
 
-            // Shinies (Cute reflection)
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(pupilOffset.x + 2, pupilOffset.y - 2, eyeRadius * 0.15, 0, Math.PI * 2);
-            ctx.fill();
+            // Pupil
+            if (eyeScaleY > 0.5) {
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(2, 0, eyeRadius * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Shiny reflection
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(4, -2, eyeRadius * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
-        ctx.restore();
-
-        // Right Eye
-        ctx.save();
-        ctx.translate(eyeX, eyeY);
-        ctx.scale(1, eyeScaleY);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, eyeRadius, eyeRadius * 1.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Pupil
-        if (eyeScaleY > 0.5) {
-            const pupilOffset = aimDir.clone().multiply(3);
-            ctx.fillStyle = 'black';
-            ctx.beginPath();
-            ctx.arc(pupilOffset.x, pupilOffset.y, eyeRadius * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Shinies
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(pupilOffset.x + 2, pupilOffset.y - 2, eyeRadius * 0.15, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.restore();
 
         ctx.restore();
     }

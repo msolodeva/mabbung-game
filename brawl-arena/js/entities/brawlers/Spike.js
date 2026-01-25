@@ -38,16 +38,44 @@ export class Spike extends Brawler {
     }
 
     // Create spike field at current position
-    const fieldPos = this.position.clone();
-        console.log(`Spike activateSuper - Spike Pos: ${this.position.x}, ${ this.position.y }, Field Pos: ${ fieldPos.x }, ${ fieldPos.y } `);
+    activateSuper(direction, game) {
+        // Throw a "Seed" projectile that triggers the field on impact
+        const projectile = new ExplosiveProjectile(
+            this.position.x + direction.x * 25,
+            this.position.y + direction.y * 25,
+            direction,
+            {
+                speed: 700, // Fast throw
+                damage: 0, // The seed itself does no contact damage
+                size: 15,
+                range: this.config.attackRange * 1.2, // Throws slightly further than normal attack
+                owner: this,
+                team: this.team,
+                color: '#2ecc71', // Distinct color
+                explodeSpikes: 0, // Custom handle
+            }
+        );
+
+        // Override explode method to trigger the super effect
+        projectile.explode = () => {
+            this.createSuperEffect(projectile.position, game);
+        };
+
+        game.projectiles.push(projectile);
+        game.audioManager?.play('shoot'); // Play throw sound
+    }
+
+    createSuperEffect(position, game) {
+        console.log(`Spike Super Effect at: ${position.x}, ${position.y}`);
 
         // Remove existing spike field
         if (this.spikeField) {
             this.spikeField.active = false;
         }
 
+        // Create new field
         this.spikeField = {
-            position: fieldPos,
+            position: position.clone(),
             radius: this.config.superRadius,
             duration: this.config.superSlowDuration,
             damagePerSecond: this.config.superDamagePerSecond,
@@ -59,28 +87,29 @@ export class Spike extends Brawler {
         };
 
         game.spikeFields.push(this.spikeField);
-        console.log(`Spike Field added to game.spikeFields.Count: ${ game.spikeFields.length } `);
 
-        // Radial spike attack - fired from current position
-        const spikeCount = 8;
+        // Powerful Radial Spikes
+        const spikeCount = 12; // More spikes (was 8)
         const angleStep = (Math.PI * 2) / spikeCount;
+
         for (let i = 0; i < spikeCount; i++) {
             const angle = angleStep * i;
             const dir = Vector2.fromAngle(angle);
-            const spike = new Projectile(this.position.x, this.position.y, dir, {
-                speed: 400,
-                damage: this.config.explodeSpikeDamage || 300,
-                size: 8,
-                range: 300,
+            const spike = new Projectile(position.x, position.y, dir, {
+                speed: 550, // Faster spikes (was 400)
+                damage: (this.config.explodeSpikeDamage || 300) * 1.5, // More damage (1.5x)
+                size: 10, // Larger (was 8)
+                range: 450, // Further range (was 300)
                 owner: this,
                 team: this.team,
-                color: '#27ae60',
+                color: '#1e8449', // Darker/Stronger green
+                piercing: true // Powerful spikes pierce enemies
             });
             game.projectiles.push(spike);
         }
 
         game.audioManager?.play('super');
-        game.createEffect('spikeField', fieldPos.x, fieldPos.y, { radius: this.config.superRadius });
+        game.createEffect('spikeField', position.x, position.y, { radius: this.config.superRadius });
     }
 
     update(deltaTime, game) {
@@ -119,21 +148,21 @@ export class Spike extends Brawler {
 export function renderSpikeField(ctx, camera, field) {
     if (!field.active) return;
 
-    const screenX = field.position.x - camera.x;
-    const screenY = field.position.y - camera.y;
+    const screenX = field.position.x;
+    const screenY = field.position.y;
     const progress = field.timer / field.duration;
 
     // Fading effect as it expires
     const alpha = 1 - progress * 0.5;
 
     // Ground effect
-    ctx.fillStyle = `rgba(39, 174, 96, ${ alpha * 0.3})`;
+    ctx.fillStyle = `rgba(39, 174, 96, ${alpha * 0.3})`;
     ctx.beginPath();
     ctx.arc(screenX, screenY, field.radius, 0, Math.PI * 2);
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = `rgba(39, 174, 96, ${ alpha * 0.8})`;
+    ctx.strokeStyle = `rgba(39, 174, 96, ${alpha * 0.8})`;
     ctx.lineWidth = 3;
     ctx.stroke();
 
@@ -144,7 +173,7 @@ export function renderSpikeField(ctx, camera, field) {
         const spikeX = screenX + Math.cos(angle) * field.radius * 0.6;
         const spikeY = screenY + Math.sin(angle) * field.radius * 0.6;
 
-        ctx.fillStyle = `rgba(39, 174, 96, ${ alpha })`;
+        ctx.fillStyle = `rgba(39, 174, 96, ${alpha})`;
         ctx.beginPath();
         ctx.moveTo(spikeX, spikeY - 10);
         ctx.lineTo(spikeX + 5, spikeY + 5);

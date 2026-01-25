@@ -64,6 +64,9 @@ export class AIController {
             this.makeDecision();
         }
 
+        // Periodically check if we should use Super
+        this.tryUseSuper();
+
         this.executeState(deltaTime);
     }
 
@@ -393,11 +396,6 @@ export class AIController {
             this.brawler.attack(aimDir, this.game);
         }
 
-        // Use super if ready and close enough
-        if (this.brawler.superReady && distance < this.brawler.attackRange * 1.5) {
-            this.brawler.useSuper(toTarget.normalize(), this.game);
-        }
-
         // Strafe movement
         const strafeDir = toTarget.rotate(Math.PI / 2).normalize();
         if (Math.random() < 0.5) strafeDir.multiplyInPlace(-1);
@@ -433,10 +431,73 @@ export class AIController {
         const nearestEnemy = this.findNearestEnemy();
         if (nearestEnemy) {
             const distToEnemy = this.brawler.position.distanceTo(nearestEnemy.position);
-            if (distToEnemy <= this.brawler.attackRange && this.brawler.canAttack()) {
+            if (distToEnemy <= this.brawler.attackRange * 1.2 && this.brawler.canAttack()) {
                 const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
                 this.brawler.attack(toEnemy.normalize(), this.game);
             }
+        }
+    }
+
+    tryUseSuper() {
+        if (!this.brawler.superReady || !this.brawler.isAlive) return;
+
+        const healthPercent = this.brawler.health / this.brawler.maxHealth;
+        const nearestEnemy = this.findNearestEnemy();
+        const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
+
+        // Brawler specific Super logic
+        switch (this.brawler.config.id) {
+            case 'shelly':
+            case 'colt':
+                // Damage Supers: Use when enemy is in attack range
+                if (nearestEnemy && distToEnemy <= this.brawler.attackRange * 1.3) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
+
+            case 'nita':
+                // Summoning Super: Use as soon as enemy is within reasonable distance
+                if (nearestEnemy && distToEnemy <= 500) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
+
+            case 'poco':
+                // Healing Super: Use when health is low or allies are low
+                if (healthPercent < 0.6) {
+                    this.brawler.useSuper(new Vector2(0, 0), this.game);
+                } else {
+                    // Check nearby allies
+                    for (const teammate of this.game.brawlers) {
+                        if (teammate.team === this.brawler.team && teammate !== this.brawler && teammate.isAlive) {
+                            const distToTeammate = this.brawler.position.distanceTo(teammate.position);
+                            const teammateHealthPercent = teammate.health / teammate.maxHealth;
+                            if (distToTeammate < 350 && teammateHealthPercent < 0.5) {
+                                this.brawler.useSuper(new Vector2(0, 0), this.game);
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+
+            case 'spike':
+                // Area Control Super: Trap enemies
+                if (nearestEnemy && distToEnemy <= this.brawler.attackRange) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
+
+            default:
+                // Generic logic: Use if enemy is close
+                if (nearestEnemy && distToEnemy < this.brawler.attackRange) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
         }
     }
 

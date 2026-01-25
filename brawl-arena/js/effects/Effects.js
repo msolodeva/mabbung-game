@@ -22,8 +22,8 @@ export class Effect {
     }
 
     render(ctx, camera) {
-        const screenX = this.position.x - camera.x;
-        const screenY = this.position.y - camera.y;
+        const screenX = this.position.x;
+        const screenY = this.position.y;
         const progress = this.timer / this.lifetime;
 
         switch (this.type) {
