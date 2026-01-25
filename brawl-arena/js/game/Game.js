@@ -16,7 +16,18 @@ import { RenderSystem } from './RenderSystem.js';
 
 import { BRAWLER_CLASSES } from '../entities/brawlers/index.js';
 
+/**
+ * 게임의 중앙 컨트롤러 클래스
+ * 모든 시스템을 초기화하고 게임 루프를 관리
+ */
 export class Game {
+    /**
+     * 게임 인스턴스 생성
+     * @param {HTMLCanvasElement} canvas - 렌더링할 Canvas 엘리먼트
+     * @param {string} player1Brawler - 플레이어 1의 브롤러 ID (예: 'SHELLY')
+     * @param {string} player2Brawler - 플레이어 2의 브롤러 ID (예: 'COLT')
+     * @param {Object} mapData - 맵 데이터 (mapData.js에서 가져옴)
+     */
     constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP) {
         this.player1BrawlerId = player1Brawler;
         this.player2BrawlerId = player2Brawler;
@@ -53,10 +64,17 @@ export class Game {
         this.running = false;
     }
 
+    /**
+     * 카메라 객체 반환 (RenderSystem의 카메라)
+     * @returns {Object} 카메라 정보 {x, y, zoom, width, height}
+     */
     get camera() {
         return this.renderSystem.camera;
     }
 
+    /**
+     * 게임 초기화 - 브롤러 생성, Flow Field 사전 계산 등
+     */
     init() {
         // Create game mode
         this.gameMode = new GemGrabMode(this);
@@ -97,6 +115,10 @@ export class Game {
         document.addEventListener('keydown', () => this.audioManager.resume(), { once: true });
     }
 
+    /**
+     * AI 봇 생성 - 팀 구성 분석 후 최적의 브롤러 선택
+     * @param {string} team - 팀 식별자 (TEAMS.BLUE 또는 TEAMS.RED)
+     */
     createTeamBot(team) {
         // Get current team members
         const teamMembers = this.brawlers.filter(b => b.team === team);
@@ -175,16 +197,26 @@ export class Game {
         this.aiControllers.push(aiController);
     }
 
+    /**
+     * 게임 루프 시작
+     */
     start() {
         this.running = true;
         this.lastTime = performance.now();
         this.gameLoop();
     }
 
+    /**
+     * 게임 루프 중지
+     */
     stop() {
         this.running = false;
     }
 
+    /**
+     * 메인 게임 루프 - RequestAnimationFrame 기반
+     * 60 FPS 목표로 update와 render를 반복 호출
+     */
     gameLoop() {
         if (!this.running) return;
 
@@ -198,6 +230,10 @@ export class Game {
         requestAnimationFrame(() => this.gameLoop());
     }
 
+    /**
+     * 게임 상태 업데이트
+     * @param {number} deltaTime - 이전 프레임 이후 경과 시간 (초)
+     */
     update(deltaTime) {
         if (this.state !== GAME_STATES.PLAYING) return;
 

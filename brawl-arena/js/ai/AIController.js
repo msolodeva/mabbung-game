@@ -173,7 +173,15 @@ export class AIController {
         }
     }
 
-    // New strategic target finding method
+    /**
+     * 전략적 타겟 찾기
+     * - 카운터 관계 고려 (예: Shelly가 Poco를 우선 공격)
+     * - 위험에 처한 아군 지원
+     * - 저체력 적 우선순위
+     * - 보석 보유 적 집중 공격
+     *
+     * @returns {{enemy: Brawler|null, allyToHelp: Object|null}} 최적의 적과 도움이 필요한 아군
+     */
     findBestStrategicTarget() {
         let bestEnemy = null;
         let highestScore = -Infinity;
@@ -199,20 +207,20 @@ export class AIController {
             let score = 1000; // Base score
             const dist = this.brawler.position.distanceTo(enemy.position);
 
-            // Distance penalty
+            // Distance penalty (closer = higher score)
             score -= dist * 1.5;
 
-            // Counter bonus
+            // Counter bonus (내가 이 적을 카운터하면 보너스)
             if (counters[myId] && counters[myId].includes(enemy.config.id)) {
                 score += 500; // I counter this enemy
             }
 
-            // Vulnerability bonus (low health)
+            // Vulnerability bonus (저체력 적 우선순위)
             if (enemy.health < enemy.maxHealth * 0.4) {
                 score += 300;
             }
 
-            // High value target (has gems)
+            // High value target (보석 보유 적은 고득점 타겟)
             score += enemy.gems * 100;
 
             if (score > highestScore) {
@@ -221,7 +229,7 @@ export class AIController {
             }
         }
 
-        // 2. Evaluate if allies need help
+        // 2. Evaluate if allies need help (아군이 위험할 때 지원)
         let highestAllyTrouble = -Infinity;
         for (const ally of this.game.brawlers) {
             if (ally.team !== this.brawler.team || ally === this.brawler || !ally.isAlive) continue;
@@ -229,7 +237,7 @@ export class AIController {
             const allyDist = this.brawler.position.distanceTo(ally.position);
             const allyHealth = ally.health / ally.maxHealth;
 
-            // Find who is attacking this ally
+            // Find who is attacking this ally (아군을 공격하는 적 찾기)
             let threateningEnemy = null;
             let minDistToAlly = Infinity;
             for (const enemy of this.game.brawlers) {
@@ -242,6 +250,7 @@ export class AIController {
                 }
             }
 
+            // 아군이 저체력이고 적이 근처에 있으면 지원 점수 계산
             if (threateningEnemy && allyHealth < 0.5) {
                 const troubleScore = (1 - allyHealth) * 1000 - allyDist;
                 if (troubleScore > highestAllyTrouble) {
@@ -347,9 +356,16 @@ export class AIController {
         }
     }
 
-    // Helper: Move towards a target position using Flow Field (pre-computed navigation)
+    /**
+     * 목표 지점으로 이동 (Flow Field 또는 A* 사용)
+     * @param {Vector2} targetPos - 목표 위치
+     * @param {boolean} useFlowField - Flow Field 사용 여부 (기본값: true)
+     *
+     * Flow Field: O(1) 조회로 즉시 방향 획득 (사전 계산된 경로)
+     * A*: Flow Field 실패 시 대체 경로 탐색 (더 느리지만 정확)
+     */
     moveToTarget(targetPos, useFlowField = true) {
-        // If using alternative direction due to being stuck
+        // If using alternative direction due to being stuck (막혔을 때 대체 경로 사용)
         if (this.alternativeTimer > 0 && this.alternativeDir) {
             this.brawler.moveDirection = this.alternativeDir;
             this.avoidWallsEnhanced();
@@ -358,7 +374,7 @@ export class AIController {
 
         const distToTarget = this.brawler.position.distanceTo(targetPos);
 
-        // If very close, just move directly
+        // If very close, just move directly (매우 가까우면 직선 이동)
         if (distToTarget < 40) {
             const toTarget = targetPos.subtract(this.brawler.position);
             if (toTarget.magnitude() > 0) {
@@ -368,6 +384,7 @@ export class AIController {
         }
 
         // Use Flow Field for navigation (instant lookup, no pathfinding)
+        // Flow Field를 사용한 내비게이션 (즉시 조회, 경로 계산 불필요)
         if (useFlowField && this.flowField) {
             // Generate cache key based on target tile
             const tileSize = this.game.map.tileSize;
@@ -395,7 +412,12 @@ export class AIController {
         this.moveToTargetAStar(targetPos);
     }
 
-    // A* fallback for when Flow Field doesn't work
+    /**
+     * A* 경로 탐색 (Flow Field 대체용)
+     * Flow Field가 실패하거나 복잡한 경로가 필요할 때 사용
+     *
+     * @param {Vector2} targetPos - 목표 위치
+     */
     moveToTargetAStar(targetPos) {
         const distToTarget = this.brawler.position.distanceTo(targetPos);
 
@@ -659,7 +681,12 @@ export class AIController {
         }
     }
 
-    // Enhanced wall avoidance with diagonal checks and raycast-style detection
+    /**
+     * 향상된 벽 회피 알고리즘
+     * - 이동 방향으로 다중 거리에서 충돌 체크
+     * - 막힌 경우 대체 방향 탐색 (45도, 90도 각도)
+     * - 좌우 측면 체크로 미세 조정
+     */
     avoidWallsEnhanced() {
         const moveDir = this.brawler.moveDirection;
         if (moveDir.magnitude() < 0.1) return;
@@ -667,14 +694,15 @@ export class AIController {
         const checkDistances = [40, 60, 80];
         const pos = this.brawler.position;
 
-        // Check in the direction of movement
+        // Check in the direction of movement (이동 방향으로 충돌 체크)
         for (const dist of checkDistances) {
             const checkPos = pos.add(moveDir.multiply(dist));
             if (this.game.map.isPositionSolid(checkPos.x, checkPos.y)) {
                 // Wall ahead! Find best alternative direction
+                // 앞에 벽 발견! 대체 방향 찾기
                 const alternatives = this.findAlternativeDirections(moveDir);
                 if (alternatives.length > 0) {
-                    // Blend with best alternative
+                    // Blend with best alternative (최적 대체 방향과 혼합)
                     const bestAlt = alternatives[0];
                     this.brawler.moveDirection = moveDir.multiply(0.3).add(bestAlt.multiply(0.7));
                     if (this.brawler.moveDirection.magnitude() > 0) {
@@ -685,7 +713,7 @@ export class AIController {
             }
         }
 
-        // Additional side checks
+        // Additional side checks (좌우 측면 체크)
         const sideCheckDist = 35;
         const perpLeft = moveDir.rotate(Math.PI / 2).multiply(sideCheckDist);
         const perpRight = moveDir.rotate(-Math.PI / 2).multiply(sideCheckDist);
@@ -694,10 +722,10 @@ export class AIController {
         const rightBlocked = this.game.map.isPositionSolid(pos.x + perpRight.x, pos.y + perpRight.y);
 
         if (leftBlocked && !rightBlocked) {
-            // Nudge right
+            // Nudge right (오른쪽으로 미세 조정)
             this.brawler.moveDirection = moveDir.rotate(-0.2);
         } else if (rightBlocked && !leftBlocked) {
-            // Nudge left
+            // Nudge left (왼쪽으로 미세 조정)
             this.brawler.moveDirection = moveDir.rotate(0.2);
         }
 

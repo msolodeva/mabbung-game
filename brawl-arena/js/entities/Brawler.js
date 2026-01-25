@@ -6,7 +6,18 @@ import { Entity } from './Entity.js';
 import { Vector2 } from '../utils/Vector2.js';
 import { COLORS, TEAMS } from '../utils/constants.js';
 
+/**
+ * 브롤러 기본 클래스 - 플레이어블 캐릭터
+ * 모든 브롤러(Shelly, Colt, Nita 등)의 부모 클래스
+ */
 export class Brawler extends Entity {
+    /**
+     * 브롤러 생성
+     * @param {Object} config - constants.js의 BRAWLERS 객체에서 가져온 브롤러 설정
+     * @param {string} team - 팀 식별자 (TEAMS.BLUE 또는 TEAMS.RED)
+     * @param {number} x - 초기 X 좌표
+     * @param {number} y - 초기 Y 좌표
+     */
     constructor(config, team, x = 0, y = 0) {
         super(x, y);
         this.type = 'brawler';
@@ -272,10 +283,20 @@ export class Brawler extends Entity {
         }
     }
 
+    /**
+     * 브롤러가 공격 가능한 상태인지 확인
+     * @returns {boolean} 살아있고, 탄약이 있고, 쿨다운이 끝났는지 여부
+     */
     canAttack() {
         return this.isAlive && this.ammo > 0 && this.attackCooldown <= 0;
     }
 
+    /**
+     * 일반 공격 실행
+     * @param {Vector2} direction - 공격 방향 벡터
+     * @param {Game} game - 게임 인스턴스 (발사체 생성을 위해 필요)
+     * @returns {boolean} 공격 성공 여부
+     */
     attack(direction, game) {
         if (!this.canAttack()) return false;
 
@@ -296,10 +317,21 @@ export class Brawler extends Entity {
         return true;
     }
 
+    /**
+     * 일반 공격 발사체 생성 (하위 클래스에서 오버라이드 필수)
+     * @param {Vector2} direction - 공격 방향
+     * @param {Game} game - 게임 인스턴스
+     */
     createAttackProjectiles(direction, game) {
         // Override in subclass
     }
 
+    /**
+     * 슈퍼 스킬 사용
+     * @param {Vector2} direction - 슈퍼 방향
+     * @param {Game} game - 게임 인스턴스
+     * @returns {boolean} 슈퍼 사용 성공 여부
+     */
     useSuper(direction, game) {
         if (!this.superReady) return false;
 
@@ -313,10 +345,20 @@ export class Brawler extends Entity {
         return true;
     }
 
+    /**
+     * 슈퍼 스킬 발동 (하위 클래스에서 오버라이드 필수)
+     * @param {Vector2} direction - 슈퍼 방향
+     * @param {Game} game - 게임 인스턴스
+     */
     activateSuper(direction, game) {
         // Override in subclass
     }
 
+    /**
+     * 데미지 받기
+     * @param {number} amount - 데미지 양
+     * @param {Brawler|Bear|null} attacker - 공격자 (슈퍼 게이지 충전용)
+     */
     takeDamage(amount, attacker) {
         if (!this.isAlive) return;
 

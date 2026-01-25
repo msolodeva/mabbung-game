@@ -1,7 +1,16 @@
 
 import { renderSpikeField } from '../entities/brawlers/Spike.js';
 
+/**
+ * 렌더링 시스템 - 게임 로직과 렌더링 분리
+ * Canvas 좌표 변환, 카메라 관리, 레이어별 렌더링 담당
+ */
 export class RenderSystem {
+    /**
+     * 렌더링 시스템 생성
+     * @param {HTMLCanvasElement} canvas - 렌더링할 Canvas 엘리먼트
+     * @param {GameMap} map - 게임 맵 (카메라 스케일 계산에 사용)
+     */
     constructor(canvas, map) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -23,12 +32,18 @@ export class RenderSystem {
         this.resizeCanvas();
     }
 
+    /**
+     * Canvas 크기 조정 (윈도우 리사이즈 시 호출)
+     */
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.updateCameraScale();
     }
 
+    /**
+     * 카메라 스케일 업데이트 - 전체 맵이 화면에 맞도록 조정
+     */
     updateCameraScale() {
         if (!this.map || !this.camera) return;
 
@@ -46,6 +61,10 @@ export class RenderSystem {
         this.camera.y = (this.map.height - this.camera.height) / 2;
     }
 
+    /**
+     * 게임 전체 렌더링
+     * @param {Game} gameState - 현재 게임 상태 (brawlers, projectiles, gems 등 포함)
+     */
     render(gameState) {
         // Clear canvas with background color
         this.ctx.fillStyle = '#1a1a2e';
