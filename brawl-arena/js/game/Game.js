@@ -117,11 +117,7 @@ export class Game {
         const candidates = Object.values(BRAWLER_CLASSES).map(BrawlerClass => {
             // Find the config for this class
             const brawlerId = Object.keys(BRAWLER_CLASSES).find(key => BRAWLER_CLASSES[key] === BrawlerClass);
-            const config = BRAWLERS[brawlerId]; // Config keys are BRAWLER_ID usually
-
-            // Helper: Find config by matching class name to BRAWLERS values if ID lookup is tricky
-            // But BRAWLER_CLASSES keys are like 'SHELLY', 'NITA' which match BRAWLERS keys.
-            // Let's assume keys match.
+            const config = BRAWLERS[brawlerId.toUpperCase()]; // Config keys are BRAWLER_ID (uppercase)
 
             if (!config) return { id: 'unknown', score: -999, Class: BrawlerClass };
 
