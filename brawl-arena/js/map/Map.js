@@ -49,7 +49,7 @@ export class GameMap {
         const tileType = this.getTile(col, row);
         return {
             type: tileType,
-            solid: tileType === TILE_TYPES.WALL || tileType === TILE_TYPES.DESTRUCTIBLE,
+            solid: tileType === TILE_TYPES.WALL || tileType === TILE_TYPES.DESTRUCTIBLE || tileType === TILE_TYPES.WATER,
             bush: tileType === TILE_TYPES.BUSH,
         };
     }
