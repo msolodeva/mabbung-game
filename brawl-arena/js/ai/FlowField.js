@@ -19,6 +19,8 @@ export class FlowField {
 
         // Cache of flow fields by destination key
         this.fieldCache = new Map();
+        this.maxCacheSize = 20; // LRU 캐시 크기 제한
+        this.cacheOrder = []; // 캐시 접근 순서 추적
     }
 
     /**
@@ -30,11 +32,24 @@ export class FlowField {
      */
     getOrCreateField(key, targetX, targetY) {
         if (this.fieldCache.has(key)) {
+            // LRU: 최근 사용으로 이동
+            this.cacheOrder = this.cacheOrder.filter(k => k !== key);
+            this.cacheOrder.push(key);
             return this.fieldCache.get(key);
         }
 
         const field = this.generateField(targetX, targetY);
+
+        // LRU 캐시 정리
+        if (this.fieldCache.size >= this.maxCacheSize) {
+            const oldestKey = this.cacheOrder.shift();
+            if (oldestKey && !oldestKey.startsWith('spawn_') && oldestKey !== 'center') {
+                this.fieldCache.delete(oldestKey);
+            }
+        }
+
         this.fieldCache.set(key, field);
+        this.cacheOrder.push(key);
         return field;
     }
 
@@ -171,7 +186,10 @@ export class FlowField {
             return false;
         }
         const tile = this.map.getTile(col, row);
-        return tile !== TILE_TYPES.WALL && tile !== TILE_TYPES.DESTRUCTIBLE;
+        // 벽, 파괴 가능 벽, 물은 걸을 수 없음
+        return tile !== TILE_TYPES.WALL &&
+               tile !== TILE_TYPES.DESTRUCTIBLE &&
+               tile !== TILE_TYPES.WATER;
     }
 
     findNearestWalkable(col, row) {
@@ -194,6 +212,9 @@ export class FlowField {
      */
     clearCache() {
         this.fieldCache.clear();
+        this.cacheOrder = [];
+        // 맵 변경 후 기본 필드 재생성
+        this.pregenerate();
     }
 
     /**

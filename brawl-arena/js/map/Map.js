@@ -15,15 +15,51 @@ export class GameMap {
         this.width = this.cols * this.tileSize;
         this.height = this.rows * this.tileSize;
 
-        this.spawnPoints = {
-            blue: mapData.spawnBlue || [],
-            red: mapData.spawnRed || [],
-        };
-        this.gemSpawnPoints = mapData.gemSpawns || [];
+        // 타일 맵에서 스폰 포인트 자동 추출
+        this.spawnPoints = this.extractSpawnPoints();
+        this.gemSpawnPoints = this.extractGemSpawnPoints();
 
         // Destructible wall health
         this.destructibleHealth = {};
         this.initDestructibles();
+    }
+
+    /**
+     * 타일 맵에서 팀별 스폰 포인트 추출
+     */
+    extractSpawnPoints() {
+        const blue = [];
+        const red = [];
+
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const tile = this.tiles[row][col];
+                if (tile === TILE_TYPES.SPAWN_BLUE) {
+                    blue.push({ x: col, y: row });
+                } else if (tile === TILE_TYPES.SPAWN_RED) {
+                    red.push({ x: col, y: row });
+                }
+            }
+        }
+
+        return { blue, red };
+    }
+
+    /**
+     * 타일 맵에서 보석 스폰 포인트 추출
+     */
+    extractGemSpawnPoints() {
+        const gemSpawns = [];
+
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                if (this.tiles[row][col] === TILE_TYPES.GEM_SPAWN) {
+                    gemSpawns.push({ x: col, y: row });
+                }
+            }
+        }
+
+        return gemSpawns;
     }
 
     initDestructibles() {
@@ -64,6 +100,17 @@ export class GameMap {
     isPositionSolid(x, y) {
         const tile = this.getTileAtPosition(x, y);
         return tile.solid;
+    }
+
+    /**
+     * 발사체용 충돌 체크 - 물은 통과 가능
+     */
+    isPositionSolidForProjectile(x, y) {
+        const col = Math.floor(x / this.tileSize);
+        const row = Math.floor(y / this.tileSize);
+        const tileType = this.getTile(col, row);
+        // 발사체는 벽과 파괴 가능한 벽에만 막힘, 물은 통과
+        return tileType === TILE_TYPES.WALL || tileType === TILE_TYPES.DESTRUCTIBLE;
     }
 
     isPositionInBush(x, y) {
@@ -324,16 +371,67 @@ export class GameMap {
     }
 
     renderSpecialTile(ctx, x, y, tile, size) {
+        const time = performance.now() * 0.003;
+        const pulse = 0.6 + Math.sin(time) * 0.2;
+
         if (tile === TILE_TYPES.SPAWN_BLUE) {
-            ctx.fillStyle = 'rgba(74, 144, 217, 0.3)';
+            // 배경 글로우
+            const gradient = ctx.createRadialGradient(
+                x + size/2, y + size/2, 0,
+                x + size/2, y + size/2, size * 0.7
+            );
+            gradient.addColorStop(0, `rgba(74, 144, 217, ${0.5 * pulse})`);
+            gradient.addColorStop(1, 'rgba(74, 144, 217, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x - 10, y - 10, size + 20, size + 20);
+
+            // 메인 영역
+            ctx.fillStyle = `rgba(74, 144, 217, ${0.4 * pulse})`;
             ctx.beginPath();
-            ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 10);
+            ctx.roundRect(x + 3, y + 3, size - 6, size - 6, 12);
             ctx.fill();
+
+            // 테두리
+            ctx.strokeStyle = `rgba(100, 180, 255, ${0.8 * pulse})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 팀 아이콘
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * pulse})`;
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🔵', x + size/2, y + size/2);
+
         } else if (tile === TILE_TYPES.SPAWN_RED) {
-            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            // 배경 글로우
+            const gradient = ctx.createRadialGradient(
+                x + size/2, y + size/2, 0,
+                x + size/2, y + size/2, size * 0.7
+            );
+            gradient.addColorStop(0, `rgba(231, 76, 60, ${0.5 * pulse})`);
+            gradient.addColorStop(1, 'rgba(231, 76, 60, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x - 10, y - 10, size + 20, size + 20);
+
+            // 메인 영역
+            ctx.fillStyle = `rgba(231, 76, 60, ${0.4 * pulse})`;
             ctx.beginPath();
-            ctx.roundRect(x + 5, y + 5, size - 10, size - 10, 10);
+            ctx.roundRect(x + 3, y + 3, size - 6, size - 6, 12);
             ctx.fill();
+
+            // 테두리
+            ctx.strokeStyle = `rgba(255, 120, 100, ${0.8 * pulse})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 팀 아이콘
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * pulse})`;
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🔴', x + size/2, y + size/2);
+
         } else if (tile === TILE_TYPES.GEM_SPAWN) {
             // Premium Gem Mine (Hole-style to avoid confusion with actual gem items)
             ctx.fillStyle = '#1a1a1a'; // Deep dark hole

@@ -162,6 +162,9 @@ export class InputManager {
                         <div class="keys"><b>WASD</b> 이동/조준</div>
                         <div class="keys"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
                     </div>
+                    <div class="pause-hint">
+                        <div class="keys"><b>ESC</b> 일시정지</div>
+                    </div>
                     <div class="player-controls p2">
                         <div class="player-label">🔴 P2 (Red Team)</div>
                         <div class="keys"><b>방향키</b> 이동/조준</div>
@@ -174,6 +177,13 @@ export class InputManager {
 
     onKeyDown(e) {
         if (e.repeat) return;
+
+        // ESC 키로 일시정지 토글
+        if (e.code === 'Escape') {
+            this.game.togglePause();
+            return;
+        }
+
         this.player1Input.handleKeyDown(e.code);
         this.player2Input.handleKeyDown(e.code);
     }

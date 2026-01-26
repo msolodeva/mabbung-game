@@ -54,7 +54,10 @@ export class Pathfinder {
             return false;
         }
         const tile = this.map.getTile(x, y);
-        return tile !== TILE_TYPES.WALL && tile !== TILE_TYPES.DESTRUCTIBLE;
+        // 벽, 파괴 가능 벽, 물은 걸을 수 없음
+        return tile !== TILE_TYPES.WALL &&
+               tile !== TILE_TYPES.DESTRUCTIBLE &&
+               tile !== TILE_TYPES.WATER;
     }
 
     // Get neighbors for A*

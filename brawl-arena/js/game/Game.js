@@ -214,6 +214,124 @@ export class Game {
     }
 
     /**
+     * 게임 일시정지
+     */
+    pause() {
+        if (this.state === GAME_STATES.PLAYING) {
+            this.state = GAME_STATES.PAUSED;
+            this.showPauseOverlay();
+        }
+    }
+
+    /**
+     * 게임 재개
+     */
+    resume() {
+        if (this.state === GAME_STATES.PAUSED) {
+            this.state = GAME_STATES.PLAYING;
+            this.hidePauseOverlay();
+            this.lastTime = performance.now(); // Reset time to avoid big delta
+        }
+    }
+
+    /**
+     * 일시정지 토글
+     */
+    togglePause() {
+        if (this.state === GAME_STATES.PLAYING) {
+            this.pause();
+        } else if (this.state === GAME_STATES.PAUSED) {
+            this.resume();
+        }
+    }
+
+    /**
+     * 일시정지 오버레이 표시
+     */
+    showPauseOverlay() {
+        let overlay = document.getElementById('pause-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'pause-overlay';
+            overlay.innerHTML = `
+                <div class="pause-content">
+                    <h1>⏸️ 일시정지</h1>
+                    <p>ESC 키를 눌러 게임을 재개하세요</p>
+                    <button id="resume-btn" class="pause-btn">▶️ 게임 재개</button>
+                </div>
+            `;
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            const content = overlay.querySelector('.pause-content');
+            content.style.cssText = `
+                background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+                padding: 40px 60px;
+                border-radius: 20px;
+                text-align: center;
+                color: white;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+                border: 3px solid #3498db;
+            `;
+            const h1 = overlay.querySelector('h1');
+            h1.style.cssText = `
+                font-size: 48px;
+                margin-bottom: 20px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            `;
+            const p = overlay.querySelector('p');
+            p.style.cssText = `
+                font-size: 18px;
+                margin-bottom: 30px;
+                color: #bdc3c7;
+            `;
+            const btn = overlay.querySelector('#resume-btn');
+            btn.style.cssText = `
+                padding: 15px 40px;
+                font-size: 20px;
+                background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+                border: none;
+                border-radius: 10px;
+                color: white;
+                cursor: pointer;
+                font-weight: bold;
+                transition: transform 0.2s, box-shadow 0.2s;
+            `;
+            btn.addEventListener('mouseenter', () => {
+                btn.style.transform = 'scale(1.05)';
+                btn.style.boxShadow = '0 5px 20px rgba(46, 204, 113, 0.5)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'scale(1)';
+                btn.style.boxShadow = 'none';
+            });
+            btn.addEventListener('click', () => this.resume());
+            document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'flex';
+        }
+    }
+
+    /**
+     * 일시정지 오버레이 숨기기
+     */
+    hidePauseOverlay() {
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    /**
      * 메인 게임 루프 - RequestAnimationFrame 기반
      * 60 FPS 목표로 update와 render를 반복 호출
      */

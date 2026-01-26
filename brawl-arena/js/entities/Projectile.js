@@ -55,8 +55,8 @@ export class Projectile extends Entity {
             return;
         }
 
-        // Check wall collision
-        if (game.map.isPositionSolid(this.position.x, this.position.y)) {
+        // Check wall collision (projectiles can pass over water)
+        if (game.map.isPositionSolidForProjectile(this.position.x, this.position.y)) {
             // Check if it's a destructible wall
             const destroyed = game.map.damageWallAtPosition(this.position.x, this.position.y, this.damage);
             this.destroy();

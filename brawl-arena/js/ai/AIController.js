@@ -36,6 +36,10 @@ export class AIController {
         this.alternativeDir = null;
         this.alternativeTimer = 0;
 
+        // Direction smoothing (방향 스무딩)
+        this.smoothedDirection = new Vector2(0, 0);
+        this.smoothingFactor = 0.15; // 낮을수록 더 부드러움
+
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
     }
@@ -100,10 +104,94 @@ export class AIController {
         this.pathIndex = 0;
         this.pathfinder.clearCache();
 
-        // Try alternative direction - random perpendicular movement
-        const randomAngle = Math.random() * Math.PI * 2;
-        this.alternativeDir = Vector2.fromAngle(randomAngle);
-        this.alternativeTimer = 300; // Use alternative for 300ms
+        // 현재 목표 방향으로 가장 가까운 걸을 수 있는 방향 찾기
+        const targetPos = this.getTargetPosition();
+        if (targetPos) {
+            const bestDir = this.findBestUnstuckDirection(targetPos);
+            if (bestDir) {
+                this.alternativeDir = bestDir;
+                this.alternativeTimer = 400;
+                return;
+            }
+        }
+
+        // Fallback: 8방향 중 걸을 수 있는 방향 찾기
+        const walkableDir = this.findAnyWalkableDirection();
+        if (walkableDir) {
+            this.alternativeDir = walkableDir;
+            this.alternativeTimer = 300;
+        }
+    }
+
+    /**
+     * 현재 상태에 따른 목표 위치 반환
+     */
+    getTargetPosition() {
+        switch (this.state) {
+            case 'collectGem':
+                return this.targetGem?.position;
+            case 'chase':
+            case 'attack':
+                return this.currentTarget?.position;
+            case 'retreat':
+                return this.game.map.getSpawnPosition(this.brawler.team);
+            case 'patrol':
+                return this.patrolTarget;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 목표 방향으로 최적의 탈출 방향 찾기
+     */
+    findBestUnstuckDirection(targetPos) {
+        const pos = this.brawler.position;
+        const toTarget = targetPos.subtract(pos);
+        if (toTarget.magnitude() === 0) return null;
+
+        const baseAngle = toTarget.angle();
+        const checkDist = 60;
+
+        // 목표 방향 근처 각도들을 우선 체크 (45도 간격)
+        const angleOffsets = [
+            0, Math.PI/4, -Math.PI/4,
+            Math.PI/2, -Math.PI/2,
+            3*Math.PI/4, -3*Math.PI/4,
+            Math.PI
+        ];
+
+        for (const offset of angleOffsets) {
+            const testAngle = baseAngle + offset;
+            const testDir = Vector2.fromAngle(testAngle);
+            const testPos = pos.add(testDir.multiply(checkDist));
+
+            if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
+                return testDir;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 어느 방향이든 걸을 수 있는 방향 찾기
+     */
+    findAnyWalkableDirection() {
+        const pos = this.brawler.position;
+        const checkDist = 50;
+
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const testDir = Vector2.fromAngle(angle);
+            const testPos = pos.add(testDir.multiply(checkDist));
+
+            if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
+                return testDir;
+            }
+        }
+
+        return null;
     }
 
     resetPathfinding() {
@@ -287,6 +375,43 @@ export class AIController {
             case 'retreat':
                 this.retreat();
                 break;
+        }
+
+        // 방향 스무딩 적용 (지그재그 움직임 방지)
+        this.applyDirectionSmoothing();
+    }
+
+    /**
+     * 방향 전환을 부드럽게 하여 지그재그 움직임 방지
+     */
+    applyDirectionSmoothing() {
+        const targetDir = this.brawler.moveDirection;
+        if (targetDir.magnitude() < 0.1) {
+            this.smoothedDirection = new Vector2(0, 0);
+            return;
+        }
+
+        // 급격한 방향 전환 감지 (90도 이상)
+        if (this.smoothedDirection.magnitude() > 0.1) {
+            const dot = this.smoothedDirection.dot(targetDir);
+            if (dot < 0) {
+                // 거의 반대 방향 - 더 빠르게 전환
+                this.smoothedDirection = this.smoothedDirection
+                    .multiply(1 - this.smoothingFactor * 3)
+                    .add(targetDir.multiply(this.smoothingFactor * 3));
+            } else {
+                // 일반적인 방향 전환 - 부드럽게
+                this.smoothedDirection = this.smoothedDirection
+                    .multiply(1 - this.smoothingFactor)
+                    .add(targetDir.multiply(this.smoothingFactor));
+            }
+        } else {
+            this.smoothedDirection = targetDir.clone();
+        }
+
+        if (this.smoothedDirection.magnitude() > 0) {
+            this.smoothedDirection.normalizeInPlace();
+            this.brawler.moveDirection = this.smoothedDirection.clone();
         }
     }
 

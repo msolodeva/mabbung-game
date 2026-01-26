@@ -21,6 +21,7 @@ export const TEAMS = {
 export const GAME_STATES = {
     LOBBY: 'lobby',
     PLAYING: 'playing',
+    PAUSED: 'paused',
     COUNTDOWN: 'countdown',
     VICTORY: 'victory',
     DEFEAT: 'defeat',
