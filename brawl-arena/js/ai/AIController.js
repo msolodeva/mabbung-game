@@ -388,6 +388,14 @@ export class AIController {
         const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
         const enemyTooClose = distToEnemy < 200;
 
+        // --- 1-1. Carrier Survival Behavior ---
+        // 운반자(보석 5개 이상)는 더 보수적으로 후퇴
+        const isWinning = this.globalStats.myTeamGems > this.globalStats.enemyTeamGems;
+        if (hasManyGems && (healthPercent <= 0.7 || isWinning)) {
+            this.state = 'retreat';
+            return;
+        }
+
         // 난이도별 후퇴 임계값 적용
         if ((isVeryLowHealth && hasGems) || (hasManyGems && healthPercent < 0.45) || (outOfAmmo && enemyTooClose && healthPercent < 0.5)) {
             this.state = 'retreat';
@@ -648,6 +656,26 @@ export class AIController {
     }
 
     patrol() {
+        // --- Protector Escort Behavior ---
+        // 팀 운반자가 있고, 내가 운반자가 아니면 운반자 주변을 호위
+        if (this.teamCarrier && this.teamCarrier !== this.brawler && this.teamCarrier.isAlive) {
+            // 운반자 주변 150 유닛 반경의 랜덤 위치로 이동
+            const escortRadius = 150;
+            const randomAngle = Math.random() * Math.PI * 2;
+            const offsetX = Math.cos(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
+            const offsetY = Math.sin(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
+
+            this.patrolTarget = new Vector2(
+                this.teamCarrier.position.x + offsetX,
+                this.teamCarrier.position.y + offsetY
+            );
+
+            // Use pathfinding to navigate to escort position
+            this.moveToTarget(this.patrolTarget);
+            return;
+        }
+
+        // --- Default Patrol Behavior (중앙 순찰) ---
         // Periodically pick a new patrol target near center
         if (Math.random() < 0.02 || !this.patrolTarget) {
             const centerX = this.game.map.width / 2;
