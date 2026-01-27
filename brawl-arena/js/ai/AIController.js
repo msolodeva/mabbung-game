@@ -345,6 +345,16 @@ export class AIController {
             this.isCarrier = false;
         }
 
+        // --- Enhanced Protector Priority ---
+        // 호위병이고 운반자가 보석 5개 이상 보유 시 거리가 멀면 호위 우선
+        if (!this.isCarrier && this.teamCarrier && this.teamCarrier.gems >= 5) {
+            const distToCarrier = this.brawler.position.distanceTo(this.teamCarrier.position);
+            if (distToCarrier > 200) {
+                this.state = 'patrol'; // 호위 행동 유도 (patrol이 호위 로직 실행)
+                return;
+            }
+        }
+
         const difficulty = this.game.aiDifficulty;
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const ammoPercent = this.brawler.ammo / this.brawler.ammoMax;
@@ -547,7 +557,14 @@ export class AIController {
 
             // 아군이 저체력이고 적이 근처에 있으면 지원 점수 계산
             if (threateningEnemy && allyHealth < 0.5) {
-                const troubleScore = (1 - allyHealth) * 1000 - allyDist;
+                let troubleScore = (1 - allyHealth) * 1000 - allyDist;
+
+                // --- Carrier Focused Protection ---
+                // 운반자(보석 3개 이상)를 지키는 적을 최우선 타겟팅
+                if (ally === this.teamCarrier && ally.gems >= 3) {
+                    troubleScore += 1500;
+                }
+
                 if (troubleScore > highestAllyTrouble) {
                     highestAllyTrouble = troubleScore;
                     allyToHelp = { ally, enemy: threateningEnemy, dist: allyDist };
