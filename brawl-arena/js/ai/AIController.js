@@ -333,6 +333,38 @@ export class AIController {
         return carrier;
     }
 
+    /**
+     * 상황에 따른 동적 후퇴 임계값 계산
+     * - 기본값: 난이도별 설정값 사용
+     * - 우리 팀 승리 카운트다운 중: 보수적 후퇴 (운반자는 90%, 호위병은 기본값 + 0.2)
+     * - 상대 팀 승리 카운트다운 중: 공격적 플레이 (25%까지 버팀)
+     *
+     * @returns {number} 후퇴 임계값 (0~1 범위의 체력 비율)
+     */
+    calculateRetreatThreshold() {
+        const difficulty = this.game.aiDifficulty;
+        const baseThreshold = difficulty.retreatThreshold;
+
+        // 우리 팀이 승리 카운트다운 중
+        if (this.globalStats.countdownActive && this.globalStats.winningTeam === this.brawler.team) {
+            if (this.isCarrier) {
+                // 운반자는 최대한 안전하게 (90% 이하 시 후퇴)
+                return 0.9;
+            } else {
+                // 호위병은 더 보수적으로 (기본값 + 0.2)
+                return Math.min(baseThreshold + 0.2, 0.85);
+            }
+        }
+
+        // 상대 팀이 승리 카운트다운 중 - All-in
+        if (this.globalStats.countdownActive && this.globalStats.winningTeam !== this.brawler.team) {
+            return 0.25; // 25%까지 버팀
+        }
+
+        // 일반 상황에서는 기본값 사용
+        return baseThreshold;
+    }
+
     makeDecision() {
         // --- Role Assignment (역할 할당) ---
         // 팀 내 운반자 식별
@@ -390,7 +422,8 @@ export class AIController {
         }
 
         // --- 1. Tactical Retreat Evaluation ---
-        const isVeryLowHealth = healthPercent < 0.25;
+        const retreatThreshold = this.calculateRetreatThreshold();
+        const isVeryLowHealth = healthPercent < retreatThreshold;
         const hasGems = this.brawler.gems > 0;
         const hasManyGems = this.brawler.gems >= 5;
         const outOfAmmo = this.brawler.ammo === 0;
@@ -406,14 +439,14 @@ export class AIController {
             return;
         }
 
-        // 난이도별 후퇴 임계값 적용
+        // 동적 후퇴 임계값 적용
         if ((isVeryLowHealth && hasGems) || (hasManyGems && healthPercent < 0.45) || (outOfAmmo && enemyTooClose && healthPercent < 0.5)) {
             this.state = 'retreat';
             return;
         }
 
-        // 난이도별 후퇴 판단
-        if (healthPercent < difficulty.retreatThreshold && hasGems) {
+        // 동적 후퇴 판단
+        if (healthPercent < retreatThreshold && hasGems) {
             this.state = 'retreat';
             return;
         }
