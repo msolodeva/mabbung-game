@@ -44,6 +44,9 @@ export class AIController {
         this.reactionQueue = [];
         this.lastSeenEnemy = null;
 
+        // Aiming system (조준 시스템)
+        this.currentAimAngle = 0;
+
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
     }
