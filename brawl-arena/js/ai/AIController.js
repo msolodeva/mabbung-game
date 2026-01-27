@@ -80,7 +80,48 @@ export class AIController {
         // Periodically check if we should use Super
         this.tryUseSuper();
 
+        this.updateAim(deltaTime);
         this.executeState(deltaTime);
+    }
+
+    /**
+     * 부드러운 조준 회전 처리
+     * - 타겟 방향으로 점진적으로 조준을 변경하여 인간적인 움직임 구현
+     */
+    updateAim(deltaTime) {
+        // 타겟이 없거나 죽어있으면 현재 각도 유지
+        if (!this.currentTarget || !this.currentTarget.isAlive) {
+            return;
+        }
+
+        const difficulty = this.game.aiDifficulty;
+
+        // 타겟 방향 계산
+        const toTarget = this.currentTarget.position.subtract(this.brawler.position);
+        const targetAngle = toTarget.angle();
+
+        // 현재 조준 각도와 타겟 각도 사이의 최단 회전 경로 계산 (범위: -PI ~ PI)
+        let angleDiff = targetAngle - this.currentAimAngle;
+
+        // 각도 차이를 -PI ~ PI 범위로 정규화
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+        // 이번 프레임의 최대 회전 각도 계산
+        const maxRotation = difficulty.aimRotationSpeed * deltaTime;
+
+        // 조준 각도를 타겟 방향으로 보간
+        if (Math.abs(angleDiff) < maxRotation) {
+            // 목표에 거의 도달 - 정확히 맞춤
+            this.currentAimAngle = targetAngle;
+        } else {
+            // 점진적으로 회전
+            this.currentAimAngle += Math.sign(angleDiff) * maxRotation;
+        }
+
+        // 각도를 -PI ~ PI 범위로 정규화
+        while (this.currentAimAngle > Math.PI) this.currentAimAngle -= Math.PI * 2;
+        while (this.currentAimAngle < -Math.PI) this.currentAimAngle += Math.PI * 2;
     }
 
     detectStuck(deltaMs) {
