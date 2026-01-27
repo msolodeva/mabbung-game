@@ -741,6 +741,21 @@ export class AIController {
 
         // Aim and shoot
         if (this.brawler.canAttack()) {
+            // 타겟 방향 각도 계산
+            const targetAngle = toTarget.angle();
+
+            // 현재 조준 각도와 타겟 각도 사이의 오차 계산 (최단 경로 고려)
+            let angleError = targetAngle - this.currentAimAngle;
+
+            // 각도 오차를 -PI ~ PI 범위로 정규화
+            while (angleError > Math.PI) angleError -= Math.PI * 2;
+            while (angleError < -Math.PI) angleError += Math.PI * 2;
+
+            // 조준이 부정확하고 거리가 먼 경우 사격하지 않음
+            if (Math.abs(angleError) > 0.35 && distance >= 100) {
+                return;
+            }
+
             // 기본 조준 오차 (난이도 기반)
             const baseInaccuracy = (Math.random() - 0.5) * difficulty.aimInaccuracy;
 
@@ -751,7 +766,8 @@ export class AIController {
             const distanceFactor = Math.min(distance / this.brawler.attackRange, 1.5);
             const totalInaccuracy = baseInaccuracy + wobble * distanceFactor;
 
-            const aimDir = Vector2.fromAngle(toTarget.angle() + totalInaccuracy);
+            // 현재 조준 각도를 기준으로 발사
+            const aimDir = Vector2.fromAngle(this.currentAimAngle + totalInaccuracy);
             this.brawler.attack(aimDir, this.game);
         }
 
