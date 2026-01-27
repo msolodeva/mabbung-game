@@ -1066,6 +1066,35 @@ export class AIController {
         );
         ctx.stroke();
 
+        // Draw target angle (if target exists)
+        if (this.currentTarget && this.currentTarget.isAlive) {
+            const toTarget = this.currentTarget.position.subtract(this.brawler.position);
+            const targetAngle = toTarget.angle();
+            const targetDir = Vector2.fromAngle(targetAngle);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(
+                pos.x + targetDir.x * 60,
+                pos.y + targetDir.y * 60
+            );
+            ctx.stroke();
+        }
+
+        // Draw current aim angle
+        const aimDir = Vector2.fromAngle(this.currentAimAngle);
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(
+            pos.x + aimDir.x * 60,
+            pos.y + aimDir.y * 60
+        );
+        ctx.stroke();
+
         // Draw stuck indicator
         if (this.stuckTimer > 200) {
             ctx.fillStyle = '#ff0000';
