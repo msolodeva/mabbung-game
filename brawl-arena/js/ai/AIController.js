@@ -339,6 +339,31 @@ export class AIController {
     }
 
     /**
+     * 적 팀 운반자 찾기
+     * - 적 팀 중 보석을 가장 많이 보유한 브롤러를 반환
+     * - 상대 팀 카운트다운 중 역전을 위한 타겟팅에 사용
+     *
+     * @returns {Brawler|null} 적 팀 운반자 (없으면 null)
+     */
+    findEnemyCarrier() {
+        let carrier = null;
+        let maxGems = -1;
+
+        for (const brawler of this.game.brawlers) {
+            // 적 팀이고 살아있는 브롤러만 확인
+            if (brawler.team === this.brawler.team || !brawler.isAlive) continue;
+
+            // 보석 수가 더 많으면 운반자로 선택
+            if (brawler.gems > maxGems) {
+                carrier = brawler;
+                maxGems = brawler.gems;
+            }
+        }
+
+        return carrier;
+    }
+
+    /**
      * 상황에 따른 동적 후퇴 임계값 계산
      * - 기본값: 난이도별 설정값 사용
      * - 우리 팀 승리 카운트다운 중: 보수적 후퇴 (운반자는 90%, 호위병은 기본값 + 0.2)
@@ -371,6 +396,17 @@ export class AIController {
     }
 
     makeDecision() {
+        // --- Urgent Comeback: Target Enemy Carrier ---
+        // 상대 팀이 승리 카운트다운 중이면 적 운반자를 최우선 타겟팅
+        if (this.globalStats.countdownActive && this.globalStats.winningTeam !== this.brawler.team) {
+            const enemyCarrier = this.findEnemyCarrier();
+            if (enemyCarrier) {
+                this.currentTarget = enemyCarrier;
+                this.state = 'chase';
+                return; // 모든 자원을 역전에 투입
+            }
+        }
+
         // --- Role Assignment (역할 할당) ---
         // 팀 내 운반자 식별
         this.teamCarrier = this.findTeamCarrier();
@@ -745,8 +781,19 @@ export class AIController {
         // --- Protector Escort Behavior ---
         // 팀 운반자가 있고, 내가 운반자가 아니면 운반자 주변을 호위
         if (this.teamCarrier && this.teamCarrier !== this.brawler && this.teamCarrier.isAlive) {
-            // 운반자 주변 150 유닛 반경의 랜덤 위치로 이동
-            const escortRadius = 150;
+            // 카운트다운 상황에 따라 호위 반경 조정
+            let escortRadius = 150; // 기본값
+
+            if (this.globalStats.countdownActive) {
+                if (this.globalStats.winningTeam === this.brawler.team) {
+                    // 우리 팀 승리 카운트다운 중: 밀착 방어
+                    escortRadius = 80;
+                } else {
+                    // 상대 팀 승리 카운트다운 중: 넓은 범위 커버 및 압박
+                    escortRadius = 200;
+                }
+            }
+
             const randomAngle = Math.random() * Math.PI * 2;
             const offsetX = Math.cos(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
             const offsetY = Math.sin(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
