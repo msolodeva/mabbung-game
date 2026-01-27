@@ -64,6 +64,9 @@ export class AIController {
         // Role assignment (역할 할당)
         this.isCarrier = false;
         this.teamCarrier = null;
+
+        // Defend spawn state (기지 방어)
+        this.defendPatrolTarget = null;
     }
 
     /**
@@ -235,6 +238,8 @@ export class AIController {
                 return this.game.map.getSpawnPosition(this.brawler.team);
             case 'patrol':
                 return this.patrolTarget;
+            case 'defendSpawn':
+                return this.defendPatrolTarget;
             default:
                 return null;
         }
@@ -375,6 +380,33 @@ export class AIController {
             this.isCarrier = true;
         } else {
             this.isCarrier = false;
+        }
+
+        // --- Carrier Defend Spawn During Countdown ---
+        // 카운트다운 중이고, 우리 팀이 이기고 있으며, 내가 운반자일 때 기지 방어
+        if (this.globalStats.countdownActive &&
+            this.globalStats.winningTeam === this.brawler.team &&
+            this.isCarrier) {
+
+            const spawnPos = this.game.map.getSpawnPosition(this.brawler.team);
+            const distToSpawn = this.brawler.position.distanceTo(spawnPos);
+
+            // 이미 기지 근처(200 유닛 이내)에 있으면 즉시 defendSpawn 상태로 전환
+            if (distToSpawn <= 200) {
+                this.state = 'defendSpawn';
+                return;
+            }
+
+            // 기지에서 멀리 떨어져 있으면 retreat로 기지까지 이동 후 defendSpawn으로 전환
+            const healthPercent = this.brawler.health / this.brawler.maxHealth;
+            if (healthPercent > 0.5) {
+                // 체력이 충분하면 기지로 이동
+                this.state = 'retreat';
+            } else {
+                // 체력이 낮으면 더 보수적으로 후퇴
+                this.state = 'retreat';
+            }
+            return;
         }
 
         // --- Enhanced Protector Priority ---
@@ -632,6 +664,10 @@ export class AIController {
             case 'retreat':
                 this.retreat();
                 break;
+
+            case 'defendSpawn':
+                this.defendSpawn();
+                break;
         }
 
         // 방향 스무딩 적용 (지그재그 움직임 방지)
@@ -739,6 +775,71 @@ export class AIController {
 
         // Use pathfinding to navigate to patrol target
         this.moveToTarget(this.patrolTarget);
+    }
+
+    /**
+     * 기지 방어 상태
+     * - 카운트다운 중 운반자가 기지 내에서 방어적으로 행동
+     * - 기지 180 유닛 반경 내에서 순찰하며 적 공격
+     * - 적이 너무 가까우면 (200 유닛 미만) 기지 방향으로 후퇴하면서 공격
+     */
+    defendSpawn() {
+        const spawnPos = this.game.map.getSpawnPosition(this.brawler.team);
+        const distToSpawn = this.brawler.position.distanceTo(spawnPos);
+
+        // 근처 적 찾기
+        const nearestEnemy = this.findNearestEnemy();
+        const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
+
+        // --- 1. 적이 매우 가까이 있으면 (200 유닛 미만) 기지 방향으로 후퇴하면서 공격 ---
+        if (nearestEnemy && distToEnemy < 200) {
+            // 기지 방향으로 후퇴
+            const toSpawn = spawnPos.subtract(this.brawler.position);
+            if (toSpawn.magnitude() > 0) {
+                this.brawler.moveDirection = toSpawn.normalize();
+            }
+            this.avoidWallsEnhanced();
+
+            // 사거리 내에 있으면 공격
+            if (this.brawler.canAttack() && distToEnemy <= this.brawler.attackRange) {
+                const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
+                this.brawler.attack(toEnemy.normalize(), this.game);
+            }
+            return;
+        }
+
+        // --- 2. 기지 180 유닛 반경 내에서 순찰 ---
+        const defendRadius = 180;
+
+        // 새로운 순찰 지점 선택 (2% 확률로 갱신)
+        if (Math.random() < 0.02 || !this.defendPatrolTarget ||
+            this.brawler.position.distanceTo(this.defendPatrolTarget) < 30) {
+
+            const randomAngle = Math.random() * Math.PI * 2;
+            const randomDist = Math.random() * defendRadius;
+            const offsetX = Math.cos(randomAngle) * randomDist;
+            const offsetY = Math.sin(randomAngle) * randomDist;
+
+            this.defendPatrolTarget = new Vector2(
+                spawnPos.x + offsetX,
+                spawnPos.y + offsetY
+            );
+        }
+
+        // 순찰 지점으로 이동
+        this.moveToTarget(this.defendPatrolTarget);
+
+        // --- 3. 근처 적 공격 (사거리 내) ---
+        if (nearestEnemy && this.brawler.canAttack() && distToEnemy <= this.brawler.attackRange) {
+            const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
+            this.brawler.attack(toEnemy.normalize(), this.game);
+        }
+
+        // --- 4. 카운트다운 종료 시 일반 순찰로 복귀 ---
+        if (!this.globalStats.countdownActive) {
+            this.state = 'patrol';
+            this.defendPatrolTarget = null;
+        }
     }
 
     chase() {
