@@ -1184,12 +1184,36 @@ export class AIController {
             }
         }
 
-        // --- Faster recovery back to battle ---
+        // --- Enhanced Re-entry Logic for Countdown Situations ---
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const toSpawn = spawnPos.subtract(this.brawler.position);
+        const distToSpawn = toSpawn.magnitude();
 
-        // Return to battle if health is > 75% (was 60%) or arrived at safe zone
-        if (healthPercent > 0.75 || toSpawn.magnitude() < 150) {
+        // 1. 우리 팀 승리 카운트다운 중: 운반자는 기지 근처 도착 시 defendSpawn으로 전환
+        if (this.globalStats.countdownActive &&
+            this.globalStats.winningTeam === this.brawler.team) {
+
+            if (this.isCarrier && distToSpawn < 150) {
+                // 운반자가 기지에 거의 도착했다면 defendSpawn 상태로 전환
+                this.state = 'defendSpawn';
+                return;
+            }
+            // 호위병이나 아직 멀리 있는 운반자는 기본 후퇴 유지 (아래 로직 계속)
+        }
+
+        // 2. 상대 팀 승리 카운트다운 중: 체력 40%만 넘어도 즉시 복귀
+        if (this.globalStats.countdownActive &&
+            this.globalStats.winningTeam !== this.brawler.team &&
+            this.globalStats.winningTeam !== null) {
+
+            if (healthPercent > 0.4) {
+                this.state = 'patrol';
+                return;
+            }
+        }
+
+        // 3. 기본 상황: 체력 75% 이상이거나 기지 도착 시 patrol로 복귀
+        if (healthPercent > 0.75 || distToSpawn < 150) {
             this.state = 'patrol';
         }
     }
