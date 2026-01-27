@@ -106,7 +106,7 @@ export const BRAWLERS = {
         role: 'FIGHTER',
         emoji: '🔫',
         color: '#9b59b6',
-        health: 5800,
+        health: 7000,          // 5800 → 7000 (근접 교전 생존력 강화)
         speed: 260,            // Fast - can close gaps
         attackDamage: 480,     // High burst damage per pellet
         attackProjectiles: 5,
@@ -117,7 +117,7 @@ export const BRAWLERS = {
         ammoReloadTime: 1200,  // Fast reload
         superCharge: 8,
         superDamage: 520,
-        superKnockback: 350,
+        superKnockback: 450,   // 350 → 450 (방어적 유틸리티 강화)
         description: '근접 버스트 딜러 - 다가가면 끝장낸다',
         superDescription: '💥 슈퍼 셸: 강력한 산탄으로 적을 밀어냄',
     },
@@ -134,9 +134,9 @@ export const BRAWLERS = {
         role: 'TANK',
         emoji: '🐻',
         color: '#e74c3c',
-        health: 8000,          // HIGHEST HP
+        health: 9500,          // 8000 → 9500 (최고 체력으로 확실한 탱킹)
         speed: 230,            // Slow - but tanky
-        attackDamage: 950,
+        attackDamage: 1050,    // 950 → 1050 (관통 공격의 가치 상승)
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 300,      // Medium range
@@ -160,7 +160,7 @@ export const BRAWLERS = {
         role: 'MARKSMAN',
         emoji: '🤠',
         color: '#4a90d9',
-        health: 3600,          // LOWEST HP - glass cannon
+        health: 4500,          // 3600 → 4500 (원거리에서도 생존)
         speed: 270,            // Fast for kiting
         attackDamage: 420,
         attackProjectiles: 6,
@@ -168,7 +168,7 @@ export const BRAWLERS = {
         attackRange: 550,      // LONGEST range
         attackSpeed: 400,
         ammoMax: 3,
-        ammoReloadTime: 1700,
+        ammoReloadTime: 1500,  // 1700 → 1500 (지속적인 탄막 형성)
         superCharge: 12,
         superDamage: 420,
         description: '장거리 저격수 - 거리를 유지하라',
@@ -187,7 +187,7 @@ export const BRAWLERS = {
         role: 'SUPPORT',
         emoji: '🎸',
         color: '#2ecc71',
-        health: 5500,
+        health: 6600,          // 5500 → 6600 (힐러 생존력 강화)
         speed: 240,
         attackDamage: 800,     // Decent damage for support
         attackProjectiles: 1,
@@ -196,9 +196,9 @@ export const BRAWLERS = {
         attackSpeed: 900,      // Slow attack
         attackWidth: 180,      // WIDE attack - easy to hit
         ammoMax: 3,
-        ammoReloadTime: 1000,  // Fast reload
+        ammoReloadTime: 900,   // 1000 → 900 (더 빠른 궁극기 충전)
         superCharge: 5,        // Charges FAST for heals
-        superHeal: 2800,       // STRONG heal
+        superHeal: 3500,       // 2800 → 3500 (전세 역전 가능한 힐)
         superRadius: 380,
         description: '치유의 음악가 - 팀을 살린다',
         superDescription: '💚 치유의 멜로디: 주변 모든 아군을 대량 회복',
@@ -216,7 +216,7 @@ export const BRAWLERS = {
         role: 'CONTROLLER',
         emoji: '🌵',
         color: '#27ae60',
-        health: 4000,
+        health: 5000,          // 4000 → 5000 (생존력 강화)
         speed: 235,
         attackDamage: 600,
         attackProjectiles: 1,
@@ -229,7 +229,7 @@ export const BRAWLERS = {
         ammoReloadTime: 1800,  // Slow reload
         superCharge: 10,
         superRadius: 220,
-        superSlowDuration: 4000,
+        superSlowDuration: 5000, // 4000 → 5000 (더 강력한 지역 장악)
         superDamagePerSecond: 600,
         description: '지역 장악 전문가 - 발 밑을 조심해',
         superDescription: '🌵 가시 덫: 지속 피해와 슬로우를 주는 가시밭 생성',
