@@ -1236,3 +1236,51 @@ body {
     color: var(--red-team);
     text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
 }
+
+/* ========================================
+   DIFFICULTY SELECTION
+   ======================================== */
+.difficulty-selection-section {
+    margin: 25px 0;
+    text-align: center;
+}
+
+.difficulty-selector {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.difficulty-btn {
+    padding: 12px 28px;
+    font-size: 16px;
+    font-family: 'Lilita One', cursive;
+    border: 3px solid transparent;
+    border-radius: 10px;
+    background: var(--bg-light);
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: var(--text-shadow);
+    letter-spacing: 1px;
+}
+
+.difficulty-btn:hover {
+    background: #1e4976;
+    transform: scale(1.05);
+}
+
+.difficulty-btn.active {
+    border-color: var(--gold);
+    background: var(--bg-medium);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    transform: scale(1.08);
+}
+
+.difficulty-desc {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin-top: 10px;
+    min-height: 20px;
+}

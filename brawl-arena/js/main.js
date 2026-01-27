@@ -3,7 +3,7 @@
 // ========================================
 
 import { Game } from './game/Game.js';
-import { BRAWLERS } from './utils/constants.js';
+import { BRAWLERS, AI_DIFFICULTY } from './utils/constants.js';
 import { MAPS } from './map/mapData.js';
 
 class BrawlArena {
@@ -13,6 +13,7 @@ class BrawlArena {
         this.player2Brawler = 'colt';
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
         this.selectedMapId = 'open'; // Default map
+        this.selectedDifficulty = AI_DIFFICULTY.NORMAL; // Default difficulty
 
         this.init();
     }
@@ -21,6 +22,7 @@ class BrawlArena {
         console.log('Brawl Arena Initializing...');
         this.setupLobby();
         this.setupMapSelection();
+        this.setupDifficultySelection();
         this.setupEventListeners();
     }
 
@@ -62,6 +64,41 @@ class BrawlArena {
         document.getElementById('selected-map-desc').textContent = map.description;
     }
 
+    setupDifficultySelection() {
+        const difficultyButtons = {
+            'diff-easy': AI_DIFFICULTY.EASY,
+            'diff-normal': AI_DIFFICULTY.NORMAL,
+            'diff-hard': AI_DIFFICULTY.HARD,
+        };
+
+        const difficultyDescriptions = {
+            'diff-easy': '조준 불안정, 느린 반응 - 초보자에게 추천',
+            'diff-normal': '균형잡힌 AI - 적당한 도전',
+            'diff-hard': '정확한 조준, 빠른 판단 - 숙련자용',
+        };
+
+        Object.keys(difficultyButtons).forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+
+            btn.addEventListener('click', () => {
+                // 모든 버튼 비활성화
+                Object.keys(difficultyButtons).forEach(id => {
+                    document.getElementById(id)?.classList.remove('active');
+                });
+
+                // 선택된 버튼 활성화
+                btn.classList.add('active');
+
+                // 설명 업데이트
+                document.getElementById('difficulty-desc').textContent = difficultyDescriptions[btnId];
+
+                // 난이도 설정 저장
+                this.selectedDifficulty = difficultyButtons[btnId];
+            });
+        });
+    }
+
     startGame() {
         document.getElementById('lobby-screen').classList.add('hidden');
         document.getElementById('game-screen').classList.remove('hidden');
@@ -69,6 +106,7 @@ class BrawlArena {
         const canvas = document.getElementById('game-canvas');
         const mapData = MAPS[this.selectedMapId];
         this.game = new Game(canvas, this.player1Brawler, this.player2Brawler, mapData);
+        this.game.aiDifficulty = this.selectedDifficulty; // 난이도 설정
         this.game.init();
         this.game.start();
     }

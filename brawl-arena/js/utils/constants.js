@@ -261,3 +261,68 @@ export const AI_CONFIG = {
         AGGRESSIVE: 0.9,
     },
 };
+
+// ========================================
+// AI DIFFICULTY SYSTEM
+// ========================================
+// 3단계 난이도: 조준 실수, 반응 지연, 판단 실수
+// ========================================
+export const AI_DIFFICULTY = {
+    EASY: {
+        id: 'easy',
+        name: '쉬움',
+
+        // 조준 실수
+        aimInaccuracy: 0.8,           // ±0.8 라디안 (약 45도)
+        aimWobble: 0.3,                // 조준 떨림 진폭
+
+        // 반응 속도
+        reactionDelay: 400,            // 적 발견 후 400ms 딜레이
+        decisionInterval: 800,         // 느린 의사결정 (800ms)
+
+        // 판단 실수
+        poorDecisionChance: 0.4,       // 40% 확률로 잘못된 판단
+        retreatThreshold: 0.5,         // 체력 50% 이하면 후퇴 (겁많음)
+        wasteSuperChance: 0.3,         // 30% 확률로 슈퍼 낭비
+
+        // 움직임
+        pathUpdateFrequency: 1000,     // 경로 업데이트 느림
+        stuckThreshold: 1000,          // 막혔을 때 반응 느림
+    },
+
+    NORMAL: {
+        id: 'normal',
+        name: '보통',
+
+        aimInaccuracy: 0.3,            // ±0.3 라디안 (약 17도)
+        aimWobble: 0.1,
+
+        reactionDelay: 200,
+        decisionInterval: 500,
+
+        poorDecisionChance: 0.15,      // 15% 확률로 실수
+        retreatThreshold: 0.3,
+        wasteSuperChance: 0.1,
+
+        pathUpdateFrequency: 500,
+        stuckThreshold: 500,
+    },
+
+    HARD: {
+        id: 'hard',
+        name: '어려움',
+
+        aimInaccuracy: 0.1,            // ±0.1 라디안 (약 6도)
+        aimWobble: 0.02,
+
+        reactionDelay: 50,
+        decisionInterval: 200,
+
+        poorDecisionChance: 0.05,      // 5% 확률로 실수
+        retreatThreshold: 0.2,
+        wasteSuperChance: 0.02,
+
+        pathUpdateFrequency: 300,
+        stuckThreshold: 300,
+    },
+};

@@ -3,7 +3,7 @@
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
-import { GAME_CONFIG, TEAMS, GAME_STATES, BRAWLERS } from '../utils/constants.js';
+import { GAME_CONFIG, TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY } from '../utils/constants.js';
 import { GameMap } from '../map/Map.js';
 import { GEM_GRAB_MAP } from '../map/mapData.js';
 import { InputManager } from '../input/InputManager.js';
@@ -58,6 +58,9 @@ export class Game {
         // Game state
         this.state = GAME_STATES.PLAYING;
         this.gameMode = null;
+
+        // AI Difficulty
+        this.aiDifficulty = AI_DIFFICULTY.NORMAL;
 
         // Timing
         this.lastTime = 0;

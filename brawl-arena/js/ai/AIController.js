@@ -40,6 +40,10 @@ export class AIController {
         this.smoothedDirection = new Vector2(0, 0);
         this.smoothingFactor = 0.15; // 낮을수록 더 부드러움
 
+        // Reaction delay system (반응 지연)
+        this.reactionQueue = [];
+        this.lastSeenEnemy = null;
+
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
     }
@@ -51,6 +55,7 @@ export class AIController {
         }
 
         const deltaMs = deltaTime * 1000;
+        const difficulty = this.game.aiDifficulty;
 
         // Stuck detection
         this.detectStuck(deltaMs);
@@ -63,7 +68,8 @@ export class AIController {
             this.alternativeTimer -= deltaMs;
         }
 
-        if (this.decisionTimer >= AI_CONFIG.DECISION_INTERVAL) {
+        // 난이도별 의사결정 간격
+        if (this.decisionTimer >= difficulty.decisionInterval) {
             this.decisionTimer = 0;
             this.makeDecision();
         }
@@ -75,6 +81,7 @@ export class AIController {
     }
 
     detectStuck(deltaMs) {
+        const difficulty = this.game.aiDifficulty;
         const currentPos = this.brawler.position.clone();
 
         if (this.lastPosition) {
@@ -84,7 +91,8 @@ export class AIController {
                 // We're trying to move but not moving much
                 this.stuckTimer += deltaMs;
 
-                if (this.stuckTimer > this.stuckThreshold) {
+                // 난이도별 반응 시간
+                if (this.stuckTimer > difficulty.stuckThreshold) {
                     this.onStuck();
                     this.stuckTimer = 0;
                 }
@@ -204,6 +212,7 @@ export class AIController {
     }
 
     makeDecision() {
+        const difficulty = this.game.aiDifficulty;
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const ammoPercent = this.brawler.ammo / this.brawler.ammoMax;
 
@@ -215,8 +224,29 @@ export class AIController {
         const nearestEnemy = bestTarget.enemy;
         const helpAlly = bestTarget.allyToHelp;
 
+        // --- Reaction Delay System ---
+        // 새로운 적 발견 시 반응 지연
+        if (nearestEnemy && nearestEnemy !== this.lastSeenEnemy) {
+            this.lastSeenEnemy = nearestEnemy;
+            this.reactionQueue.push({
+                target: nearestEnemy,
+                timestamp: Date.now() + difficulty.reactionDelay
+            });
+            return; // 지연 동안 기존 행동 유지
+        }
+
+        // 지연된 반응 처리
+        if (this.reactionQueue.length > 0) {
+            const reaction = this.reactionQueue[0];
+            if (Date.now() >= reaction.timestamp) {
+                this.reactionQueue.shift();
+                this.currentTarget = reaction.target;
+            } else {
+                return; // 아직 반응 시간 안 됨
+            }
+        }
+
         // --- 1. Tactical Retreat Evaluation ---
-        // ... (same as before)
         const isVeryLowHealth = healthPercent < 0.25;
         const hasGems = this.brawler.gems > 0;
         const hasManyGems = this.brawler.gems >= 5;
@@ -225,9 +255,38 @@ export class AIController {
         const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
         const enemyTooClose = distToEnemy < 200;
 
+        // 난이도별 후퇴 임계값 적용
         if ((isVeryLowHealth && hasGems) || (hasManyGems && healthPercent < 0.45) || (outOfAmmo && enemyTooClose && healthPercent < 0.5)) {
             this.state = 'retreat';
             return;
+        }
+
+        // 난이도별 후퇴 판단
+        if (healthPercent < difficulty.retreatThreshold && hasGems) {
+            this.state = 'retreat';
+            return;
+        }
+
+        // --- Poor Decision System (판단 실수) ---
+        if (Math.random() < difficulty.poorDecisionChance) {
+            const randomChoice = Math.random();
+
+            // 패닉 후퇴 (체력 충분한데 도망)
+            if (randomChoice < 0.4) {
+                this.state = 'retreat';
+                return;
+            }
+            // 무모한 돌진 (체력 낮은데 공격)
+            else if (randomChoice < 0.7 && nearestEnemy) {
+                this.currentTarget = nearestEnemy;
+                this.state = 'chase';
+                return;
+            }
+            // 보석 무시하고 배회
+            else {
+                this.state = 'patrol';
+                return;
+            }
         }
 
         // --- 2. Normal Decision logic ---
@@ -634,12 +693,21 @@ export class AIController {
 
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
+        const difficulty = this.game.aiDifficulty;
 
         // Aim and shoot
         if (this.brawler.canAttack()) {
-            // Add some inaccuracy
-            const inaccuracy = (Math.random() - 0.5) * 0.3;
-            const aimDir = Vector2.fromAngle(toTarget.angle() + inaccuracy);
+            // 기본 조준 오차 (난이도 기반)
+            const baseInaccuracy = (Math.random() - 0.5) * difficulty.aimInaccuracy;
+
+            // 조준 떨림 (시간 기반 사인파)
+            const wobble = Math.sin(Date.now() / 200) * difficulty.aimWobble;
+
+            // 거리 페널티 (멀수록 부정확)
+            const distanceFactor = Math.min(distance / this.brawler.attackRange, 1.5);
+            const totalInaccuracy = baseInaccuracy + wobble * distanceFactor;
+
+            const aimDir = Vector2.fromAngle(toTarget.angle() + totalInaccuracy);
             this.brawler.attack(aimDir, this.game);
         }
 
@@ -688,9 +756,17 @@ export class AIController {
     tryUseSuper() {
         if (!this.brawler.superReady || !this.brawler.isAlive) return;
 
+        const difficulty = this.game.aiDifficulty;
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const nearestEnemy = this.findNearestEnemy();
         const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;
+
+        // 슈퍼 낭비: 적이 너무 멀거나 없을 때 사용
+        if (Math.random() < difficulty.wasteSuperChance) {
+            const randomDir = Vector2.fromAngle(Math.random() * Math.PI * 2);
+            this.brawler.useSuper(randomDir, this.game);
+            return;
+        }
 
         // Brawler specific Super logic
         switch (this.brawler.config.id) {
