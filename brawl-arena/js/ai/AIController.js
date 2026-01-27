@@ -60,6 +60,10 @@ export class AIController {
 
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
+
+        // Role assignment (역할 할당)
+        this.isCarrier = false;
+        this.teamCarrier = null;
     }
 
     /**
@@ -297,7 +301,50 @@ export class AIController {
         this.alternativeTimer = 0;
     }
 
+    /**
+     * 팀 내 운반자 찾기
+     * - 팀원 중 보석을 가장 많이 보유한 브롤러를 반환
+     * - 보석 수가 같으면 체력이 높은 쪽을 우선
+     *
+     * @returns {Brawler|null} 팀 내 운반자 (없으면 null)
+     */
+    findTeamCarrier() {
+        let carrier = null;
+        let maxGems = -1;
+        let maxHealth = -1;
+
+        for (const brawler of this.game.brawlers) {
+            // 같은 팀이고 살아있는 브롤러만 확인
+            if (brawler.team !== this.brawler.team || !brawler.isAlive) continue;
+
+            // 보석 수가 더 많으면 운반자로 선택
+            if (brawler.gems > maxGems) {
+                carrier = brawler;
+                maxGems = brawler.gems;
+                maxHealth = brawler.health;
+            }
+            // 보석 수가 같으면 체력이 높은 쪽 선택
+            else if (brawler.gems === maxGems && brawler.health > maxHealth) {
+                carrier = brawler;
+                maxHealth = brawler.health;
+            }
+        }
+
+        return carrier;
+    }
+
     makeDecision() {
+        // --- Role Assignment (역할 할당) ---
+        // 팀 내 운반자 식별
+        this.teamCarrier = this.findTeamCarrier();
+
+        // 내가 팀 내 운반자이면서 보석을 1개 이상 가졌다면 운반자 역할 활성화
+        if (this.teamCarrier === this.brawler && this.brawler.gems > 0) {
+            this.isCarrier = true;
+        } else {
+            this.isCarrier = false;
+        }
+
         const difficulty = this.game.aiDifficulty;
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const ammoPercent = this.brawler.ammo / this.brawler.ammoMax;
