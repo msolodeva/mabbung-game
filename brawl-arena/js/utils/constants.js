@@ -275,6 +275,7 @@ export const AI_DIFFICULTY = {
         // 조준 실수
         aimInaccuracy: 0.8,           // ±0.8 라디안 (약 45도)
         aimWobble: 0.3,                // 조준 떨림 진폭
+        aimRotationSpeed: Math.PI,     // 180도/s - 느린 조준 회전
 
         // 반응 속도
         reactionDelay: 400,            // 적 발견 후 400ms 딜레이
@@ -296,6 +297,7 @@ export const AI_DIFFICULTY = {
 
         aimInaccuracy: 0.3,            // ±0.3 라디안 (약 17도)
         aimWobble: 0.1,
+        aimRotationSpeed: Math.PI * 2, // 360도/s - 보통 조준 회전
 
         reactionDelay: 200,
         decisionInterval: 500,
@@ -314,6 +316,7 @@ export const AI_DIFFICULTY = {
 
         aimInaccuracy: 0.1,            // ±0.1 라디안 (약 6도)
         aimWobble: 0.02,
+        aimRotationSpeed: Math.PI * 4, // 720도/s - 빠른 조준 회전
 
         reactionDelay: 50,
         decisionInterval: 200,
