@@ -47,8 +47,47 @@ export class AIController {
         // Aiming system (조준 시스템)
         this.currentAimAngle = 0;
 
+        // Global game state awareness (전역 게임 상태 인지)
+        this.globalStats = {
+            myTeamGems: 0,
+            enemyTeamGems: 0,
+            myTeamScore: 0,
+            enemyTeamScore: 0,
+            countdownActive: false,
+            winningTeam: null,
+            timeRemaining: 0
+        };
+
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
+    }
+
+    /**
+     * 전역 게임 상태 업데이트
+     * - GemGrabMode에서 팀 보석 수, 스코어, 승리 카운트다운 상태 등을 읽어옴
+     * - AI 의사결정에 활용 가능한 전략적 정보 제공
+     */
+    updateGlobalStats() {
+        if (!this.game.gameMode) return;
+
+        const gameMode = this.game.gameMode;
+        const myTeam = this.brawler.team;
+        const enemyTeam = myTeam === TEAMS.BLUE ? TEAMS.RED : TEAMS.BLUE;
+
+        // 팀 보석 수 업데이트
+        this.globalStats.myTeamGems = gameMode.teamGems?.[myTeam] || 0;
+        this.globalStats.enemyTeamGems = gameMode.teamGems?.[enemyTeam] || 0;
+
+        // 팀 스코어 업데이트 (킬 수)
+        this.globalStats.myTeamScore = gameMode.teamScores?.[myTeam] || 0;
+        this.globalStats.enemyTeamScore = gameMode.teamScores?.[enemyTeam] || 0;
+
+        // 승리 카운트다운 상태
+        this.globalStats.countdownActive = gameMode.countdownActive || false;
+        this.globalStats.winningTeam = gameMode.winningTeam || null;
+
+        // 남은 매치 시간
+        this.globalStats.timeRemaining = gameMode.matchTimer || 0;
     }
 
     update(deltaTime) {
@@ -56,6 +95,9 @@ export class AIController {
             this.resetPathfinding();
             return;
         }
+
+        // 전역 게임 상태 갱신
+        this.updateGlobalStats();
 
         const deltaMs = deltaTime * 1000;
         const difficulty = this.game.aiDifficulty;
