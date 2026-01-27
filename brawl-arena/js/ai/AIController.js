@@ -495,13 +495,20 @@ export class AIController {
                 score += 500; // I counter this enemy
             }
 
-            // Vulnerability bonus (저체력 적 우선순위)
-            if (enemy.health < enemy.maxHealth * 0.4) {
-                score += 300;
+            // Vulnerability bonus (저체력 적 우선순위) - 30% 이하일 때 +500점
+            if (enemy.health < enemy.maxHealth * 0.3) {
+                score += 500;
             }
 
-            // High value target (보석 보유 적은 고득점 타겟)
-            score += enemy.gems * 100;
+            // High value target (보석 보유 적은 고득점 타겟) - 1개당 +200점
+            score += enemy.gems * 200;
+
+            // Comeback urgency (역전 절실도) - 상대가 카운트다운 중이고 우리가 지고 있을 때 보석 보유 적 +2000점
+            if (this.globalStats.countdownActive &&
+                this.globalStats.winningTeam !== this.brawler.team &&
+                enemy.gems > 0) {
+                score += 2000;
+            }
 
             if (score > highestScore) {
                 highestScore = score;
