@@ -107,15 +107,15 @@ export const BRAWLERS = {
         emoji: '🔫',
         color: '#9b59b6',
         health: 7000,          // 5800 → 7000 (근접 교전 생존력 강화)
-        speed: 260,            // Fast - can close gaps
+        speed: 280,            // 260 → 280 (접근 능력 강화)
         attackDamage: 480,     // High burst damage per pellet
         attackProjectiles: 5,
         attackSpread: 0.6,
-        attackRange: 220,      // SHORT - main weakness
+        attackRange: 250,      // 220 → 250 (사거리 약간 증가)
         attackSpeed: 500,
         ammoMax: 3,
         ammoReloadTime: 1200,  // Fast reload
-        superCharge: 8,
+        superCharge: 6,        // 8 → 6 (더 빠른 궁극기 충전)
         superDamage: 520,
         superKnockback: 450,   // 350 → 450 (방어적 유틸리티 강화)
         description: '근접 버스트 딜러 - 다가가면 끝장낸다',
@@ -136,11 +136,11 @@ export const BRAWLERS = {
         color: '#e74c3c',
         health: 9500,          // 8000 → 9500 (최고 체력으로 확실한 탱킹)
         speed: 230,            // Slow - but tanky
-        attackDamage: 1050,    // 950 → 1050 (관통 공격의 가치 상승)
+        attackDamage: 1150,    // 1050 → 1150 (솔로 킬 능력 강화)
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 300,      // Medium range
-        attackSpeed: 850,
+        attackSpeed: 750,      // 850 → 750 (공격 속도 증가)
         ammoMax: 3,
         ammoReloadTime: 1500,
         superCharge: 10,
@@ -160,12 +160,12 @@ export const BRAWLERS = {
         role: 'MARKSMAN',
         emoji: '🤠',
         color: '#4a90d9',
-        health: 4500,          // 3600 → 4500 (원거리에서도 생존)
+        health: 4200,          // 4500 → 4200 (생존력 약간 감소)
         speed: 270,            // Fast for kiting
-        attackDamage: 420,
+        attackDamage: 380,     // 420 → 380 (DPS 하향)
         attackProjectiles: 6,
         attackSpread: 0.08,
-        attackRange: 550,      // LONGEST range
+        attackRange: 500,      // 550 → 500 (사거리 약간 축소)
         attackSpeed: 400,
         ammoMax: 3,
         ammoReloadTime: 1500,  // 1700 → 1500 (지속적인 탄막 형성)
@@ -218,13 +218,13 @@ export const BRAWLERS = {
         color: '#27ae60',
         health: 5000,          // 4000 → 5000 (생존력 강화)
         speed: 235,
-        attackDamage: 600,
+        attackDamage: 650,     // 600 → 650 (메인 공격 보상)
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 400,
         attackSpeed: 700,
         explodeSpikes: 6,
-        explodeSpikeDamage: 280, // High potential if all spikes hit
+        explodeSpikeDamage: 240, // 280 → 240 (풀히트 시 너무 강함)
         ammoMax: 3,
         ammoReloadTime: 1800,  // Slow reload
         superCharge: 10,
@@ -289,6 +289,7 @@ export const AI_DIFFICULTY = {
         // 움직임
         pathUpdateFrequency: 1000,     // 경로 업데이트 느림
         stuckThreshold: 1000,          // 막혔을 때 반응 느림
+        smoothingFactor: 0.3,          // 방향 전환 스무딩 (높을수록 더 부드러움)
     },
 
     NORMAL: {
@@ -308,6 +309,7 @@ export const AI_DIFFICULTY = {
 
         pathUpdateFrequency: 500,
         stuckThreshold: 500,
+        smoothingFactor: 0.2,          // 방향 전환 스무딩 (중간)
     },
 
     HARD: {
@@ -327,5 +329,6 @@ export const AI_DIFFICULTY = {
 
         pathUpdateFrequency: 300,
         stuckThreshold: 300,
+        smoothingFactor: 0.15,         // 방향 전환 스무딩 (낮음 - 더 기계적)
     },
 };

@@ -12,6 +12,7 @@ export class AIController {
         this.brawler = brawler;
         this.game = game;
         this.decisionTimer = 0;
+        this.nextDecisionInterval = 0;
         this.currentTarget = null;
         this.targetGem = null;
         this.state = 'idle';
@@ -38,7 +39,7 @@ export class AIController {
 
         // Direction smoothing (방향 스무딩)
         this.smoothedDirection = new Vector2(0, 0);
-        this.smoothingFactor = 0.15; // 낮을수록 더 부드러움
+        // smoothingFactor는 난이도 설정에서 가져옴 (applyDirectionSmoothing에서 사용)
 
         // Reaction delay system (반응 지연)
         this.reactionQueue = [];
@@ -71,6 +72,9 @@ export class AIController {
         // Strafe movement (스트레이프 움직임)
         this.lastStrafeChange = 0;
         this.strafeSide = 1;
+
+        // Patrol wait timer (순찰 대기 타이머)
+        this.patrolWaitTimer = 0;
     }
 
     /**
@@ -124,10 +128,19 @@ export class AIController {
             this.alternativeTimer -= deltaMs;
         }
 
-        // 난이도별 의사결정 간격
-        if (this.decisionTimer >= difficulty.decisionInterval) {
+        // Decrease patrol wait timer
+        if (this.patrolWaitTimer > 0) {
+            this.patrolWaitTimer -= deltaMs;
+        }
+
+        // 난이도별 의사결정 간격 (무작위성 적용)
+        if (this.decisionTimer >= this.nextDecisionInterval) {
             this.decisionTimer = 0;
             this.makeDecision();
+            // 다음 의사결정 간격을 ±20% 범위 내에서 무작위로 설정
+            const jitterRange = 0.2;
+            const jitterMultiplier = 1.0 + (Math.random() * 2 - 1) * jitterRange; // 0.8 ~ 1.2
+            this.nextDecisionInterval = difficulty.decisionInterval * jitterMultiplier;
         }
 
         // Periodically check if we should use Super
@@ -492,12 +505,14 @@ export class AIController {
         const helpAlly = bestTarget.allyToHelp;
 
         // --- Reaction Delay System ---
-        // 새로운 적 발견 시 반응 지연
+        // 새로운 적 발견 시 반응 지연 (무작위성 적용)
         if (nearestEnemy && nearestEnemy !== this.lastSeenEnemy) {
             this.lastSeenEnemy = nearestEnemy;
+            // 반응 지연에 0.75~1.25 사이의 무작위 배율 적용
+            const reactionJitter = 0.75 + Math.random() * 0.5; // 0.75 ~ 1.25
             this.reactionQueue.push({
                 target: nearestEnemy,
-                timestamp: Date.now() + difficulty.reactionDelay
+                timestamp: Date.now() + (difficulty.reactionDelay * reactionJitter)
             });
             return; // 지연 동안 기존 행동 유지
         }
@@ -738,7 +753,9 @@ export class AIController {
      * 방향 전환을 부드럽게 하여 지그재그 움직임 방지
      */
     applyDirectionSmoothing() {
+        const difficulty = this.game.aiDifficulty;
         const targetDir = this.brawler.moveDirection;
+
         if (targetDir.magnitude() < 0.1) {
             this.smoothedDirection = new Vector2(0, 0);
             return;
@@ -750,13 +767,13 @@ export class AIController {
             if (dot < 0) {
                 // 거의 반대 방향 - 더 빠르게 전환
                 this.smoothedDirection = this.smoothedDirection
-                    .multiply(1 - this.smoothingFactor * 3)
-                    .add(targetDir.multiply(this.smoothingFactor * 3));
+                    .multiply(1 - difficulty.smoothingFactor * 3)
+                    .add(targetDir.multiply(difficulty.smoothingFactor * 3));
             } else {
                 // 일반적인 방향 전환 - 부드럽게
                 this.smoothedDirection = this.smoothedDirection
-                    .multiply(1 - this.smoothingFactor)
-                    .add(targetDir.multiply(this.smoothingFactor));
+                    .multiply(1 - difficulty.smoothingFactor)
+                    .add(targetDir.multiply(difficulty.smoothingFactor));
             }
         } else {
             this.smoothedDirection = targetDir.clone();
@@ -765,6 +782,11 @@ export class AIController {
         if (this.smoothedDirection.magnitude() > 0) {
             this.smoothedDirection.normalizeInPlace();
             this.brawler.moveDirection = this.smoothedDirection.clone();
+
+            // 이동 중일 때 미세한 노이즈 추가 (Wobble)
+            if (this.brawler.moveDirection.magnitude() > 0.1) {
+                this.brawler.moveDirection.rotate((Math.random() - 0.5) * 0.05);
+            }
         }
     }
 
@@ -802,6 +824,12 @@ export class AIController {
     }
 
     patrol() {
+        // If waiting at a patrol point, don't move
+        if (this.patrolWaitTimer > 0) {
+            this.brawler.moveDirection = new Vector2(0, 0);
+            return;
+        }
+
         // --- Protector Escort Behavior ---
         // 팀 운반자가 있고, 내가 운반자가 아니면 운반자 주변을 호위
         if (this.teamCarrier && this.teamCarrier !== this.brawler && this.teamCarrier.isAlive) {
@@ -818,14 +846,26 @@ export class AIController {
                 }
             }
 
-            const randomAngle = Math.random() * Math.PI * 2;
-            const offsetX = Math.cos(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
-            const offsetY = Math.sin(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
+            // Check if we need to pick a new escort position or reached current position
+            const needsNewPosition = !this.patrolTarget ||
+                this.brawler.position.distanceTo(this.patrolTarget) < 40;
 
-            this.patrolTarget = new Vector2(
-                this.teamCarrier.position.x + offsetX,
-                this.teamCarrier.position.y + offsetY
-            );
+            if (needsNewPosition) {
+                // Set wait timer before choosing new position
+                this.patrolWaitTimer = 500 + Math.random() * 1000; // 500ms ~ 1500ms
+                this.brawler.moveDirection = new Vector2(0, 0);
+
+                // Calculate new escort position
+                const randomAngle = Math.random() * Math.PI * 2;
+                const offsetX = Math.cos(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
+                const offsetY = Math.sin(randomAngle) * escortRadius * (0.5 + Math.random() * 0.5);
+
+                this.patrolTarget = new Vector2(
+                    this.teamCarrier.position.x + offsetX,
+                    this.teamCarrier.position.y + offsetY
+                );
+                return;
+            }
 
             // Use pathfinding to navigate to escort position
             this.moveToTarget(this.patrolTarget);
@@ -833,6 +873,15 @@ export class AIController {
         }
 
         // --- Default Patrol Behavior (중앙 순찰) ---
+        // Check if we reached current patrol target
+        if (this.patrolTarget && this.brawler.position.distanceTo(this.patrolTarget) < 40) {
+            // Reached patrol point, set wait timer
+            this.patrolWaitTimer = 500 + Math.random() * 1000; // 500ms ~ 1500ms
+            this.brawler.moveDirection = new Vector2(0, 0);
+            this.patrolTarget = null; // Clear target to pick new one after wait
+            return;
+        }
+
         // Periodically pick a new patrol target near center
         if (Math.random() < 0.02 || !this.patrolTarget) {
             const centerX = this.game.map.width / 2;
