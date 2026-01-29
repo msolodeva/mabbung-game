@@ -67,6 +67,10 @@ export class AIController {
 
         // Defend spawn state (기지 방어)
         this.defendPatrolTarget = null;
+
+        // Strafe movement (스트레이프 움직임)
+        this.lastStrafeChange = 0;
+        this.strafeSide = 1;
     }
 
     /**
@@ -247,30 +251,50 @@ export class AIController {
 
     /**
      * 목표 방향으로 최적의 탈출 방향 찾기
+     * - FlowField 방향을 우선 확인하여 물/장애물을 피해 다리를 찾음
+     * - 더 넓은 범위를 체크하여 다리 발견 확률 증가
      */
     findBestUnstuckDirection(targetPos) {
         const pos = this.brawler.position;
         const toTarget = targetPos.subtract(pos);
         if (toTarget.magnitude() === 0) return null;
 
+        // 1. FlowField 방향 우선 확인 (다리를 통한 경로)
+        if (this.flowField && targetPos) {
+            const fieldKey = `unstuck_${Math.floor(targetPos.x / 100)}_${Math.floor(targetPos.y / 100)}`;
+            const flowDir = this.flowField.getDirection(fieldKey, pos.x, pos.y, targetPos.x, targetPos.y);
+
+            if (flowDir && flowDir.magnitude() > 0.1) {
+                // FlowField가 유효한 방향을 제공하면 사용
+                const testPos = pos.add(flowDir.multiply(80));
+                if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
+                    return flowDir;
+                }
+            }
+        }
+
         const baseAngle = toTarget.angle();
-        const checkDist = 60;
+
+        // 2. 더 넓은 범위 체크 (60→150)
+        const checkDistances = [60, 100, 150];
 
         // 목표 방향 근처 각도들을 우선 체크 (45도 간격)
         const angleOffsets = [
-            0, Math.PI/4, -Math.PI/4,
-            Math.PI/2, -Math.PI/2,
-            3*Math.PI/4, -3*Math.PI/4,
+            0, Math.PI / 4, -Math.PI / 4,
+            Math.PI / 2, -Math.PI / 2,
+            3 * Math.PI / 4, -3 * Math.PI / 4,
             Math.PI
         ];
 
-        for (const offset of angleOffsets) {
-            const testAngle = baseAngle + offset;
-            const testDir = Vector2.fromAngle(testAngle);
-            const testPos = pos.add(testDir.multiply(checkDist));
+        for (const checkDist of checkDistances) {
+            for (const offset of angleOffsets) {
+                const testAngle = baseAngle + offset;
+                const testDir = Vector2.fromAngle(testAngle);
+                const testPos = pos.add(testDir.multiply(checkDist));
 
-            if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
-                return testDir;
+                if (!this.game.map.isPositionSolid(testPos.x, testPos.y)) {
+                    return testDir;
+                }
             }
         }
 
@@ -1093,9 +1117,20 @@ export class AIController {
             this.brawler.attack(aimDir, this.game);
         }
 
-        // Strafe movement
-        const strafeDir = toTarget.rotate(Math.PI / 2).normalize();
-        if (Math.random() < 0.5) strafeDir.multiplyInPlace(-1);
+        // Strafe movement with human-like variation
+        const now = Date.now();
+        const timeSinceLastChange = now - this.lastStrafeChange;
+        const strafeChangeInterval = 800 + Math.random() * 400; // 800-1200ms
+
+        // Change strafe direction periodically instead of every frame
+        if (timeSinceLastChange >= strafeChangeInterval) {
+            this.strafeSide = Math.random() < 0.5 ? 1 : -1;
+            this.lastStrafeChange = now;
+        }
+
+        // Random angle variation (73-107 degrees instead of fixed 90)
+        const strafeAngle = (Math.PI / 2) + (Math.random() - 0.5) * 0.6;
+        const strafeDir = toTarget.rotate(strafeAngle * this.strafeSide).normalize();
 
         // Keep optimal distance
         if (distance < this.brawler.attackRange * 0.5) {
