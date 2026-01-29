@@ -160,13 +160,63 @@ export class FlowField {
         const dirIndex = field[row][col];
 
         if (dirIndex <= 0) {
-            // At target or unreachable - move directly
+            // At target (0) or unreachable (-1)
+            if (dirIndex === 0) {
+                // At target - move directly towards exact position
+                const toTarget = new Vector2(targetX - worldX, targetY - worldY);
+                return toTarget.magnitude() > 0 ? toTarget.normalize() : new Vector2(0, 0);
+            }
+
+            // Unreachable - find a walkable neighbor that IS reachable
+            // This helps AI navigate around water/obstacles to find bridges
+            const directions = [
+                { dx: 1, dy: 0 },   // right
+                { dx: -1, dy: 0 },  // left
+                { dx: 0, dy: 1 },   // down
+                { dx: 0, dy: -1 },  // up
+                { dx: 1, dy: 1 },   // down-right
+                { dx: -1, dy: 1 },  // down-left
+                { dx: 1, dy: -1 },  // up-right
+                { dx: -1, dy: -1 }, // up-left
+            ];
+
+            let bestDir = null;
+            let bestCost = Infinity;
+
+            for (const dir of directions) {
+                const neighborCol = col + dir.dx;
+                const neighborRow = row + dir.dy;
+
+                if (neighborRow < 0 || neighborRow >= this.rows ||
+                    neighborCol < 0 || neighborCol >= this.cols) continue;
+
+                const neighborDirIndex = field[neighborRow][neighborCol];
+
+                // If neighbor is reachable (has a valid direction), go towards it
+                if (neighborDirIndex > 0 && this.isWalkable(neighborCol, neighborRow)) {
+                    // Estimate cost based on distance to target
+                    const neighborCenterX = neighborCol * this.tileSize + this.tileSize / 2;
+                    const neighborCenterY = neighborRow * this.tileSize + this.tileSize / 2;
+                    const cost = Math.hypot(targetX - neighborCenterX, targetY - neighborCenterY);
+
+                    if (cost < bestCost) {
+                        bestCost = cost;
+                        bestDir = new Vector2(dir.dx, dir.dy).normalize();
+                    }
+                }
+            }
+
+            if (bestDir) {
+                return bestDir;
+            }
+
+            // Last resort: move directly (will likely hit obstacle)
             const toTarget = new Vector2(targetX - worldX, targetY - worldY);
             return toTarget.magnitude() > 0 ? toTarget.normalize() : new Vector2(0, 0);
         }
 
         // Convert direction index to vector
-        const directions = [
+        const dirVectors = [
             new Vector2(0, 0),    // 0
             new Vector2(1, 0),    // 1: right
             new Vector2(-1, 0),   // 2: left
@@ -178,7 +228,7 @@ export class FlowField {
             new Vector2(-1, -1).normalize(),  // 8: up-left
         ];
 
-        return directions[dirIndex] || new Vector2(0, 0);
+        return dirVectors[dirIndex] || new Vector2(0, 0);
     }
 
     isWalkable(col, row) {
@@ -188,8 +238,8 @@ export class FlowField {
         const tile = this.map.getTile(col, row);
         // 벽, 파괴 가능 벽, 물은 걸을 수 없음
         return tile !== TILE_TYPES.WALL &&
-               tile !== TILE_TYPES.DESTRUCTIBLE &&
-               tile !== TILE_TYPES.WATER;
+            tile !== TILE_TYPES.DESTRUCTIBLE &&
+            tile !== TILE_TYPES.WATER;
     }
 
     findNearestWalkable(col, row) {

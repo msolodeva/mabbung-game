@@ -19,6 +19,7 @@ export class Projectile extends Entity {
         this.team = config.team;
         this.piercing = config.piercing || false;
         this.knockback = config.knockback || 0;
+        this.isSuper = config.isSuper || false;
 
         this.velocity = this.direction.multiply(this.speed);
         this.distanceTraveled = 0;
@@ -118,11 +119,11 @@ export class Projectile extends Entity {
     }
 
     onHit(brawler, game) {
-        brawler.takeDamage(this.damage, this.owner);
+        brawler.takeDamage(this.damage, this.owner, this);
         this.hitTargets.add(brawler.id);
 
-        // Apply knockback smoothly
-        if (this.knockback > 0) {
+        // Apply knockback smoothly (only if target has applyKnockback method)
+        if (this.knockback > 0 && typeof brawler.applyKnockback === 'function') {
             const knockbackDir = this.direction.clone();
             brawler.applyKnockback(knockbackDir, this.knockback);
         }

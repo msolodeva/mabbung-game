@@ -358,8 +358,9 @@ export class Brawler extends Entity {
      * 데미지 받기
      * @param {number} amount - 데미지 양
      * @param {Brawler|Bear|null} attacker - 공격자 (슈퍼 게이지 충전용)
+     * @param {Object|null} source - 데미지 원인 (Projectile 등)
      */
-    takeDamage(amount, attacker) {
+    takeDamage(amount, attacker, source = null) {
         if (!this.isAlive) return;
 
         this.health -= amount;
@@ -367,9 +368,17 @@ export class Brawler extends Entity {
 
         // Charge attacker's super
         if (attacker) {
+            let chargeAmount = 1;
+
+            // 궁극기 공격으로 인한 데미지는 궁극기를 충전시키지 않음 (무한 궁극기 방지)
+            if (source && source.isSuper) {
+                chargeAmount = 0;
+            }
+
             if (attacker.type === 'brawler') {
-                attacker.addSuperCharge(1);
+                attacker.addSuperCharge(chargeAmount);
             } else if (attacker.type === 'bear' && attacker.owner) {
+                // 곰 공격은 주인 궁극기 충전 (일반 공격 취급)
                 attacker.owner.addSuperCharge(1);
             }
         }

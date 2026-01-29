@@ -8,26 +8,27 @@
 - **게임 모드**: Gem Grab - 보석을 수집하고 유지하여 승리
 - **팀 구성**: 블루 팀 vs 레드 팀 (각 3명)
 - **승리 조건**:
-  - 팀이 10개의 보석을 수집하고 15초간 유지
-  - 또는 처치 점수 30점 도달
+  - 팀이 5개의 보석을 수집하고 40초간 유지
   - 또는 5분 타이머 종료 시 더 많은 보석을 보유한 팀
 
 ## 주요 기능
 
-### 플레이 가능한 브롤러 (8명)
-각 브롤러는 고유한 능력과 슈퍼 스킬을 보유:
-- **Shelly**: 산탄총 (근거리 고화력)
-- **Colt**: 연사 권총 (중거리 DPS)
-- **Nita**: 곰 소환 (탱커 서포터)
-- **Poco**: 힐링 음파 (팀 지원)
-- **Spike**: 폭발하는 가시 (범위 공격)
-- **Brock**: 로켓 런처 (장거리 포격)
-- **Bull**: 샷건 + 돌진 (탱커)
-- **El Primo**: 근접 펀치 + 점프 (브롤러)
+### 플레이 가능한 브롤러 (5명)
+각 브롤러는 고유한 능력과 슈퍼 스킬을 보유하며, 가위바위보 스타일의 상성 관계가 있습니다:
+
+| 브롤러 | 역할 | 설명 | 강점 | 약점 |
+|--------|------|------|------|------|
+| 🔫 **Shelly** | Fighter | 근접 버스트 딜러 | Poco, Spike | Colt |
+| 🐻 **Nita** | Tank | 곰 소환 탱커 | Colt | Poco |
+| 🤠 **Colt** | Marksman | 장거리 저격수 | Shelly, Spike | Nita |
+| 🎸 **Poco** | Support | 치유의 음악가 | Nita | Shelly, Colt |
+| 🌵 **Spike** | Controller | 지역 장악 전문가 | 뭉친 적, 느린 브롤러 | Shelly, Colt |
+
+**상성 체인**: Shelly → Poco → Nita → Colt → Shelly (Spike는 상황적)
 
 ### 게임 메커니즘
-- **보석 시스템**: 맵 중앙에서 주기적으로 생성
-- **사망 페널티**: 보석 전부 드롭 + 5초 리스폰
+- **보석 시스템**: 맵 중앙에서 5초마다 생성 (최대 15개)
+- **사망 페널티**: 보석 전부 드롭 + 3초 리스폰
 - **슈퍼 스킬**: 공격 시 게이지 충전, 강력한 궁극기 발동
 - **팀 플레이**: AI가 역할 분담 (공격수/수집가/지원)
 
@@ -37,13 +38,23 @@
 - **타겟팅**: 위협도 기반 적 우선순위 결정
 - **보석 관리**: 보석 수집 및 보호 전략
 
-### 다양한 맵
-- **Open**: 개방된 전투 공간
-- **Maze**: 복잡한 미로 구조
-- **Corridors**: 좁은 복도 전투
-- **Center**: 중앙 집중형
-- **Symmetric**: 대칭 구조
-- **Arena**: 아레나 스타일
+### AI 난이도 시스템
+3단계 난이도로 AI 실력 조절:
+
+| 난이도 | 조준 정확도 | 반응 속도 | 판단 실수 확률 |
+|--------|-------------|-----------|----------------|
+| 🟢 쉬움 | ±45° | 400ms | 40% |
+| 🟡 보통 | ±17° | 200ms | 15% |
+| 🔴 어려움 | ±6° | 50ms | 5% |
+
+### 다양한 맵 (5종)
+| 맵 | ID | 설명 |
+|----|-----|------|
+| **Open Field** | open | 개방된 클래식 아레나, 장거리 전투에 적합 |
+| **The Maze** | maze | 복잡한 미로와 2타일 폭 복도, 근접전 유리 |
+| **River Crossing** | river | 물로 분리된 맵, 장거리 브롤러 강세 |
+| **Bush Ambush** | bush | 풀숲이 가득한 매복 지형, 근접 브롤러 천국 |
+| **The Fortress** | fortress | 중앙 요새 구조, 벽 파괴나 우회 필요 |
 
 ## 기술 스택
 
@@ -51,7 +62,7 @@
 - **렌더링**: HTML5 Canvas API
 - **아키텍처**: 객체 지향 프로그래밍
 - **모듈 시스템**: ES6 Modules
-- **게임 루프**: RequestAnimationFrame
+- **게임 루프**: RequestAnimationFrame (60 FPS)
 
 ## 프로젝트 구조
 
@@ -61,12 +72,15 @@ brawl-arena/
 ├── css/
 │   ├── styles.css          # 게임 스타일
 │   └── map-selection.css   # 맵 선택 UI
+├── docs/
+│   └── plans/              # 개발 계획 문서
 └── js/
     ├── main.js             # 애플리케이션 초기화
     ├── ai/                 # AI 시스템
     │   ├── AIController.js # AI 행동 제어
     │   ├── FlowField.js    # Flow field 경로 탐색
-    │   └── Pathfinder.js   # A* 경로 찾기
+    │   ├── Pathfinder.js   # A* 경로 찾기
+    │   └── index.js
     ├── audio/              # 오디오 관리
     │   └── AudioManager.js
     ├── effects/            # 시각 효과
@@ -77,29 +91,31 @@ brawl-arena/
     │   ├── Projectile.js   # 발사체
     │   ├── Gem.js          # 보석
     │   ├── Bear.js         # Nita의 곰
+    │   ├── index.js
     │   └── brawlers/       # 개별 브롤러 구현
     │       ├── index.js
     │       ├── Shelly.js
     │       ├── Colt.js
     │       ├── Nita.js
     │       ├── Poco.js
-    │       ├── Spike.js
-    │       ├── Brock.js
-    │       ├── Bull.js
-    │       └── ElPrimo.js
+    │       └── Spike.js
     ├── game/               # 코어 게임 로직
     │   ├── Game.js         # 게임 컨트롤러
-    │   └── RenderSystem.js # 렌더링 시스템
+    │   ├── RenderSystem.js # 렌더링 시스템
+    │   └── index.js
     ├── input/              # 입력 처리
     │   └── InputManager.js
     ├── map/                # 맵 시스템
     │   ├── Map.js          # 맵 클래스
-    │   └── mapData.js      # 맵 정의
+    │   ├── mapData.js      # 맵 정의 (5종)
+    │   └── index.js
     ├── modes/              # 게임 모드
-    │   └── GemGrab.js      # Gem Grab 모드
+    │   ├── GemGrab.js      # Gem Grab 모드
+    │   └── index.js
     └── utils/              # 유틸리티
         ├── constants.js    # 게임 설정 및 밸런스
-        └── Vector2.js      # 2D 벡터 수학
+        ├── Vector2.js      # 2D 벡터 수학
+        └── index.js
 ```
 
 ## 시작하기
@@ -139,14 +155,19 @@ http://localhost:8000
 
 #### 메뉴
 - **맵 선택**: 원하는 맵 클릭
-- **Start Auto Battle**: AI vs AI 자동 전투
-- **Play as Player**: 플레이어로 직접 참여 (블루 팀)
+- **브롤러 선택**: 좌우 방향키로 브롤러 변경 (P1: A/D, P2: ←/→)
+- **난이도 선택**: AI 난이도 버튼 클릭
+- **게임 시작**: Start 버튼 클릭
 
-#### 게임 중
-- **마우스 이동**: 브롤러 이동 방향 지정 (플레이어 모드)
-- **클릭**: 일반 공격 발사
-- **우클릭/Space**: 슈퍼 스킬 발동
-- **ESC**: 메뉴로 돌아가기
+#### 게임 중 (2인용 키보드 조작)
+
+| 조작 | 🔵 플레이어 1 (블루팀) | 🔴 플레이어 2 (레드팀) |
+|------|------------------------|------------------------|
+| 이동/조준 | `W` `A` `S` `D` | `↑` `←` `↓` `→` |
+| 일반 공격 | `F` | `Right Shift` |
+| 궁극기 | `G` | `Enter` |
+
+- **ESC**: 일시정지/메뉴
 
 ## 개발 가이드
 
@@ -162,8 +183,9 @@ http://localhost:8000
 예시:
 ```javascript
 import Brawler from '../Brawler.js';
+import { BRAWLERS } from '../../utils/constants.js';
 
-export default class NewBrawler extends Brawler {
+export class NewBrawler extends Brawler {
   constructor(team, x = 0, y = 0) {
     const config = BRAWLERS.NEWBRAWLER;
     super(config, team, x, y);
@@ -171,6 +193,7 @@ export default class NewBrawler extends Brawler {
 
   createAttackProjectiles() {
     // 일반 공격 로직
+    return [];
   }
 
   activateSuper() {
@@ -182,19 +205,32 @@ export default class NewBrawler extends Brawler {
 ### 게임 밸런스 조정
 
 모든 밸런스 값은 `js/utils/constants.js`에 중앙화되어 있습니다:
-- `BRAWLERS`: 브롤러 스탯 (체력, 속도, 데미지 등)
-- `PROJECTILE_CONFIG`: 발사체 물리
-- `GEM_CONFIG`: 보석 생성 규칙
-- `AI_CONFIG`: AI 행동 파라미터
-- `GAME_CONFIG`: 전체 게임 설정
+
+| 설정 객체 | 설명 |
+|-----------|------|
+| `GAME_CONFIG` | 캔버스 크기, 타일 크기, 승리 조건 등 |
+| `BRAWLERS` | 브롤러 스탯 (체력, 속도, 데미지, 상성 등) |
+| `PROJECTILE_CONFIG` | 발사체 물리 (속도, 크기) |
+| `GEM_CONFIG` | 보석 생성 규칙 |
+| `AI_CONFIG` | AI 행동 파라미터 |
+| `AI_DIFFICULTY` | AI 난이도별 설정 |
+| `TILE_TYPES` | 타일 종류 (지면, 벽, 풀숲, 파괴물, 물 등) |
 
 ### 새 맵 추가하기
 
 1. `js/map/mapData.js`에 새 맵 데이터 추가
-2. 타일 그리드 배열 정의 (0=빈공간, 1=벽, 2=물)
+2. 타일 그리드 배열 정의:
+   - `G (0)`: 지면
+   - `W (1)`: 벽
+   - `B (2)`: 풀숲
+   - `D (3)`: 파괴 가능한 벽
+   - `SB (4)`: 블루팀 스폰
+   - `SR (5)`: 레드팀 스폰
+   - `GS (6)`: 보석 스폰
+   - `7`: 물
 3. 팀 스폰 포인트 설정
 4. 보석 스폰 위치 지정
-5. 맵 이름과 설명 추가
+5. MAPS 객체에 맵 추가
 
 ### 아키텍처 이해하기
 
@@ -203,7 +239,7 @@ export default class NewBrawler extends Brawler {
 주요 시스템:
 - **게임 루프**: 60 FPS 업데이트/렌더링
 - **엔티티 시스템**: 상속 기반 계층 구조
-- **AI 시스템**: Flow field + 팀 전략
+- **AI 시스템**: Flow field + 팀 전략 + 난이도 시스템
 - **렌더링**: 레이어 기반 Canvas 렌더링
 - **이벤트 시스템**: 커스텀 이벤트 기반 통신
 
@@ -227,25 +263,3 @@ export default class NewBrawler extends Brawler {
 
 - 브라우저 최소화 시 게임 일시 정지됨 (requestAnimationFrame 특성)
 - 많은 발사체 동시 생성 시 프레임 드롭 가능
-
-## 라이선스
-
-MIT License
-
-## 기여하기
-
-이슈와 풀 리퀘스트를 환영합니다!
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 크레딧
-
-Brawl Stars의 게임 메커니즘에서 영감을 받았습니다.
-
----
-
-**Made with ❤️ for game development learning**

@@ -53,6 +53,7 @@ export class Spike extends Brawler {
                 team: this.team,
                 color: '#2ecc71', // Distinct color
                 explodeSpikes: 0, // Custom handle
+                isSuper: true,    // 궁극기 투사체
             }
         );
 
@@ -103,7 +104,8 @@ export class Spike extends Brawler {
                 owner: this,
                 team: this.team,
                 color: '#1e8449', // Darker/Stronger green
-                piercing: true // Powerful spikes pierce enemies
+                piercing: true, // Powerful spikes pierce enemies
+                isSuper: true   // 궁극기 투사체
             });
             game.projectiles.push(spike);
         }
@@ -134,9 +136,9 @@ export class Spike extends Brawler {
                 for (const brawler of game.brawlers) {
                     if (brawler.team === this.team || !brawler.isAlive) continue;
 
-                    const distance = brawler.position.distanceTo(this.spikeField.position);
                     if (distance <= this.spikeField.radius) {
-                        brawler.takeDamage(this.spikeField.damagePerSecond / 2, this);
+                        // Pass mock source object with isSuper: true
+                        brawler.takeDamage(this.spikeField.damagePerSecond / 2, this, { isSuper: true });
                     }
                 }
             }

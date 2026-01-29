@@ -1382,20 +1382,21 @@ export class AIController {
         const moveDir = this.brawler.moveDirection;
         if (moveDir.magnitude() < 0.1) return;
 
-        const checkDistances = [40, 60, 80];
         const pos = this.brawler.position;
 
-        // Check in the direction of movement (이동 방향으로 충돌 체크)
+        // 1. Frontal Check (전방 체크)
+        // 여러 거리를 체크하여 멀리 있는 장애물도 미리 감지
+        const checkDistances = [40, 60, 80];
         for (const dist of checkDistances) {
             const checkPos = pos.add(moveDir.multiply(dist));
             if (this.game.map.isPositionSolid(checkPos.x, checkPos.y)) {
                 // Wall ahead! Find best alternative direction
-                // 앞에 벽 발견! 대체 방향 찾기
                 const alternatives = this.findAlternativeDirections(moveDir);
                 if (alternatives.length > 0) {
-                    // Blend with best alternative (최적 대체 방향과 혼합)
                     const bestAlt = alternatives[0];
-                    this.brawler.moveDirection = moveDir.multiply(0.3).add(bestAlt.multiply(0.7));
+                    // 장애물이 가까울수록 대체 방향 가중치 증가
+                    const weight = dist <= 40 ? 0.9 : 0.6;
+                    this.brawler.moveDirection = moveDir.multiply(1 - weight).add(bestAlt.multiply(weight));
                     if (this.brawler.moveDirection.magnitude() > 0) {
                         this.brawler.moveDirection.normalizeInPlace();
                     }
@@ -1404,20 +1405,35 @@ export class AIController {
             }
         }
 
-        // Additional side checks (좌우 측면 체크)
-        const sideCheckDist = 35;
-        const perpLeft = moveDir.rotate(Math.PI / 2).multiply(sideCheckDist);
-        const perpRight = moveDir.rotate(-Math.PI / 2).multiply(sideCheckDist);
+        // 2. Whisker Checks (더듬이 체크 - 코너 감지 강화)
+        // 대각선 앞쪽 (45도) 체크로 모서리 미리 감지
+        const whiskerDist = 45;
+        const whiskerAngle = Math.PI / 4; // 45도
 
-        const leftBlocked = this.game.map.isPositionSolid(pos.x + perpLeft.x, pos.y + perpLeft.y);
-        const rightBlocked = this.game.map.isPositionSolid(pos.x + perpRight.x, pos.y + perpRight.y);
+        const leftWhisker = moveDir.rotate(whiskerAngle).multiply(whiskerDist);
+        const rightWhisker = moveDir.rotate(-whiskerAngle).multiply(whiskerDist);
 
-        if (leftBlocked && !rightBlocked) {
-            // Nudge right (오른쪽으로 미세 조정)
-            this.brawler.moveDirection = moveDir.rotate(-0.2);
-        } else if (rightBlocked && !leftBlocked) {
-            // Nudge left (왼쪽으로 미세 조정)
-            this.brawler.moveDirection = moveDir.rotate(0.2);
+        const leftBlocked = this.game.map.isPositionSolid(pos.x + leftWhisker.x, pos.y + leftWhisker.y);
+        const rightBlocked = this.game.map.isPositionSolid(pos.x + rightWhisker.x, pos.y + rightWhisker.y);
+
+        // 3. Side Checks (측면 체크 - 90도)
+        const sideDist = 35;
+        const leftSide = moveDir.rotate(Math.PI / 2).multiply(sideDist);
+        const rightSide = moveDir.rotate(-Math.PI / 2).multiply(sideDist);
+
+        const leftSideBlocked = this.game.map.isPositionSolid(pos.x + leftSide.x, pos.y + leftSide.y);
+        const rightSideBlocked = this.game.map.isPositionSolid(pos.x + rightSide.x, pos.y + rightSide.y);
+
+        // 회피 로직
+        if (leftBlocked || leftSideBlocked) {
+            // 왼쪽이 막힘 -> 오른쪽으로 강하게 회전
+            // 코너(대각선)가 막혔으면 더 크게 회전
+            const rotateAmount = leftBlocked ? -0.6 : -0.3;
+            this.brawler.moveDirection = this.brawler.moveDirection.rotate(rotateAmount);
+        } else if (rightBlocked || rightSideBlocked) {
+            // 오른쪽이 막힘 -> 왼쪽으로 강하게 회전
+            const rotateAmount = rightBlocked ? 0.6 : 0.3;
+            this.brawler.moveDirection = this.brawler.moveDirection.rotate(rotateAmount);
         }
 
         if (this.brawler.moveDirection.magnitude() > 0) {

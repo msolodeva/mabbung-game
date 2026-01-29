@@ -14,8 +14,8 @@ export class Bear extends Entity {
         this.team = owner.team;
         this.radius = 30;
 
-        this.maxHealth = 2000;
-        this.health = 2000;
+        this.maxHealth = 2800;
+        this.health = 2800;
         this.speed = 180;
         this.attackDamage = 400;
         this.attackRange = 50;

@@ -76,6 +76,7 @@ export class Colt extends Brawler {
                         color: '#ffd700',
                         trailLength: 6,
                         piercing: true, // Super bullets pierce through enemies
+                        isSuper: true,  // 궁극기 투사체
                     }
                 );
                 game.projectiles.push(projectile);

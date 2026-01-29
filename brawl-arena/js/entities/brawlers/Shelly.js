@@ -65,6 +65,7 @@ export class Shelly extends Brawler {
                     team: this.team,
                     color: '#ff9900',
                     knockback: this.config.superKnockback,
+                    isSuper: true, // 궁극기 투사체
                 }
             );
             game.projectiles.push(projectile);
