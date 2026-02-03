@@ -301,6 +301,10 @@ body {
     background: var(--blue-team);
 }
 
+.stat-fill.speed {
+    background: var(--orange);
+}
+
 .play-button {
     background: var(--gradient-green);
     border: none;

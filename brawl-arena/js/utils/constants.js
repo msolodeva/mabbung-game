@@ -106,46 +106,47 @@ export const BRAWLERS = {
         role: 'FIGHTER',
         emoji: '🔫',
         color: '#9b59b6',
-        health: 7000,          // 5800 → 7000 (근접 교전 생존력 강화)
-        speed: 280,            // 260 → 280 (접근 능력 강화)
-        attackDamage: 480,     // High burst damage per pellet
+        health: 3800,
+        speed: 280,
+        attackDamage: 300,
         attackProjectiles: 5,
-        attackSpread: 0.6,
-        attackRange: 250,      // 220 → 250 (사거리 약간 증가)
-        attackSpeed: 500,
+        attackSpread: 0.5,
+        attackRange: 260,
+        attackSpeed: 600,
         ammoMax: 3,
-        ammoReloadTime: 1200,  // Fast reload
-        superCharge: 6,        // 8 → 6 (더 빠른 궁극기 충전)
-        superDamage: 520,
-        superKnockback: 450,   // 350 → 450 (방어적 유틸리티 강화)
+        ammoReloadTime: 1500,
+        superCharge: 6,        // 6 히트로 충전
+        superDamage: 320,
+        superKnockback: 400,
         description: '근접 버스트 딜러 - 다가가면 끝장낸다',
         superDescription: '💥 슈퍼 셸: 강력한 산탄으로 적을 밀어냄',
     },
 
     // =====================================
-    // NITA - Tank (High HP + Bear Summon)
+    // NITA - Tank (High HP + Homing Missile)
     // =====================================
-    // ✅ STRONG vs: Colt (absorbs damage, bear flanks)
+    // ✅ STRONG vs: Colt (absorbs damage, missile tracks)
     // ❌ WEAK vs: Poco (can't kill through heals)
     // =====================================
     NITA: {
         id: 'nita',
         name: 'Nita',
         role: 'TANK',
-        emoji: '🐻',
+        emoji: '🚀',
         color: '#e74c3c',
-        health: 9500,          // 8000 → 9500 (최고 체력으로 확실한 탱킹)
-        speed: 230,            // Slow - but tanky
-        attackDamage: 1150,    // 1050 → 1150 (솔로 킬 능력 강화)
+        health: 4400,
+        speed: 250,
+        attackDamage: 880,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 300,      // Medium range
-        attackSpeed: 750,      // 850 → 750 (공격 속도 증가)
+        attackRange: 350,
+        attackSpeed: 900,
         ammoMax: 3,
-        ammoReloadTime: 1500,
-        superCharge: 10,
-        description: '불굴의 탱커 - 곰과 함께 압박한다',
-        superDescription: '🐻 곰 소환: 적을 추적하는 곰 동료를 소환',
+        ammoReloadTime: 1200,
+        superCharge: 8,        // 8 히트로 충전
+        superDamage: 1200,
+        description: '불굴의 탱커 - 유도 미사일로 도망치는 적을 추적한다',
+        superDescription: '🚀 유도 미사일: 가장 가까운 적을 자동으로 추적하는 미사일 발사',
     },
 
     // =====================================
@@ -160,17 +161,17 @@ export const BRAWLERS = {
         role: 'MARKSMAN',
         emoji: '🤠',
         color: '#4a90d9',
-        health: 4200,          // 4500 → 4200 (생존력 약간 감소)
-        speed: 270,            // Fast for kiting
-        attackDamage: 380,     // 420 → 380 (DPS 하향)
+        health: 2800,
+        speed: 290,
+        attackDamage: 360,
         attackProjectiles: 6,
-        attackSpread: 0.08,
-        attackRange: 500,      // 550 → 500 (사거리 약간 축소)
-        attackSpeed: 400,
+        attackSpread: 0.05,
+        attackRange: 550,
+        attackSpeed: 500,
         ammoMax: 3,
-        ammoReloadTime: 1500,  // 1700 → 1500 (지속적인 탄막 형성)
-        superCharge: 12,
-        superDamage: 420,
+        ammoReloadTime: 1600,
+        superCharge: 12,       // 12 히트로 충전 (느림)
+        superDamage: 320,
         description: '장거리 저격수 - 거리를 유지하라',
         superDescription: '🔥 불릿 스톰: 관통하는 12발의 총알을 연사',
     },
@@ -187,19 +188,19 @@ export const BRAWLERS = {
         role: 'SUPPORT',
         emoji: '🎸',
         color: '#2ecc71',
-        health: 6600,          // 5500 → 6600 (힐러 생존력 강화)
-        speed: 240,
-        attackDamage: 800,     // Decent damage for support
+        health: 4000,
+        speed: 260,
+        attackDamage: 700,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 380,
-        attackSpeed: 900,      // Slow attack
-        attackWidth: 180,      // WIDE attack - easy to hit
+        attackRange: 420,
+        attackSpeed: 1000,
+        attackWidth: 200,
         ammoMax: 3,
-        ammoReloadTime: 900,   // 1000 → 900 (더 빠른 궁극기 충전)
-        superCharge: 5,        // Charges FAST for heals
-        superHeal: 3500,       // 2800 → 3500 (전세 역전 가능한 힐)
-        superRadius: 380,
+        ammoReloadTime: 1300,
+        superCharge: 5,        // 5 히트로 빠른 충전 (힐러)
+        superHeal: 2400,
+        superRadius: 400,
         description: '치유의 음악가 - 팀을 살린다',
         superDescription: '💚 치유의 멜로디: 주변 모든 아군을 대량 회복',
     },
@@ -216,21 +217,21 @@ export const BRAWLERS = {
         role: 'CONTROLLER',
         emoji: '🌵',
         color: '#27ae60',
-        health: 5000,          // 4000 → 5000 (생존력 강화)
-        speed: 235,
-        attackDamage: 650,     // 600 → 650 (메인 공격 보상)
+        health: 2400,
+        speed: 250,
+        attackDamage: 560,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 400,
-        attackSpeed: 700,
+        attackRange: 450,
+        attackSpeed: 800,
         explodeSpikes: 6,
-        explodeSpikeDamage: 240, // 280 → 240 (풀히트 시 너무 강함)
+        explodeSpikeDamage: 280,
         ammoMax: 3,
-        ammoReloadTime: 1800,  // Slow reload
-        superCharge: 10,
-        superRadius: 220,
-        superSlowDuration: 5000, // 4000 → 5000 (더 강력한 지역 장악)
-        superDamagePerSecond: 600,
+        ammoReloadTime: 1800,
+        superCharge: 10,       // 10 히트로 충전
+        superRadius: 250,
+        superSlowDuration: 4000,
+        superDamagePerSecond: 400,
         description: '지역 장악 전문가 - 발 밑을 조심해',
         superDescription: '🌵 가시 덫: 지속 피해와 슬로우를 주는 가시밭 생성',
     },

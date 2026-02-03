@@ -136,6 +136,7 @@ export class Spike extends Brawler {
                 for (const brawler of game.brawlers) {
                     if (brawler.team === this.team || !brawler.isAlive) continue;
 
+                    const distance = this.spikeField.position.distanceTo(brawler.position);
                     if (distance <= this.spikeField.radius) {
                         // Pass mock source object with isSuper: true
                         brawler.takeDamage(this.spikeField.damagePerSecond / 2, this, { isSuper: true });

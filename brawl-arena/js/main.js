@@ -170,9 +170,9 @@ class BrawlArena {
         // Update stats display
         const stats = document.getElementById(statsId);
         if (stats) {
-            const healthPercent = (brawler.health / 8000) * 100;
+            const healthPercent = (brawler.health / 5000) * 100;
             const damagePercent = (brawler.attackDamage / 1000) * 100;
-            const rangePercent = (brawler.attackRange / 700) * 100;
+            const rangePercent = (brawler.attackRange / 600) * 100;
 
             stats.innerHTML = `
                 <div class="selected-brawler-header">
@@ -202,6 +202,13 @@ class BrawlArena {
                         <div class="stat-value-container">
                             <div class="stat-bar"><div class="stat-fill range" style="width: ${rangePercent}%"></div></div>
                             <span class="stat-number">${brawler.attackRange}</span>
+                        </div>
+                    </div>
+                    <div class="stat-row-detailed">
+                        <div class="stat-label">🏃 이동 속도 (Speed)</div>
+                        <div class="stat-value-container">
+                            <div class="stat-bar"><div class="stat-fill speed" style="width: ${(brawler.speed / 320) * 100}%"></div></div>
+                            <span class="stat-number">${brawler.speed}</span>
                         </div>
                     </div>
                 </div>

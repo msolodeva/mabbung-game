@@ -1,17 +1,15 @@
 // ========================================
-// NITA - Bear Summoner
+// NITA - Homing Missile Launcher
 // ========================================
 
 import { Brawler } from '../Brawler.js';
-import { Projectile } from '../Projectile.js';
-import { Bear } from '../Bear.js';
+import { Projectile, HomingMissile } from '../Projectile.js';
 import { Vector2 } from '../../utils/Vector2.js';
 import { BRAWLERS } from '../../utils/constants.js';
 
 export class Nita extends Brawler {
     constructor(team, x, y) {
         super(BRAWLERS.NITA, team, x, y);
-        this.bear = null;
     }
 
     createAttackProjectiles(direction, game) {
@@ -39,36 +37,33 @@ export class Nita extends Brawler {
     }
 
     activateSuper(direction, game) {
-        // Remove existing bear if any
-        if (this.bear) {
-            this.bear.isAlive = false;
-            this.bear.active = false;
-        }
-
-        // Summon bear at aimed position
-        const spawnDistance = 100;
+        // Launch a homing missile that tracks the nearest enemy
+        const spawnDistance = 30;
         const spawnPos = this.position.add(direction.normalize().multiply(spawnDistance));
 
-        // Create and register the new bear
-        this.bear = new Bear(spawnPos.x, spawnPos.y, this);
-        this.bear.game = game;
-        game.bears.push(this.bear);
+        // Create homing missile
+        const missile = new HomingMissile(
+            spawnPos.x,
+            spawnPos.y,
+            direction,
+            {
+                speed: 350,                    // 미사일 속도
+                damage: this.config.superDamage, // 설정된 데미지 사용
+                size: 15,                      // 미사일 크기
+                range: 800,                    // 최대 비행 거리
+                owner: this,
+                team: this.team,
+                color: '#e74c3c',
+                trackingRange: 600,            // 적 감지 범위
+                turnSpeed: 5,                  // 방향 전환 속도 (rad/s)
+                lifetime: 4000,                // 최대 수명 4초
+                isSuper: true,
+            }
+        );
+
+        game.projectiles.push(missile);
 
         game.audioManager?.play('super');
-        game.createEffect('summon', spawnPos.x, spawnPos.y);
-    }
-
-    update(deltaTime, game) {
-        super.update(deltaTime, game);
-
-        // Update bear reference
-        if (this.bear && !this.bear.isAlive) {
-            this.bear = null;
-        }
-    }
-
-    die() {
-        // Bear no longer dies with Nita - it survives independently
-        return super.die();
+        game.createEffect('explosion', spawnPos.x, spawnPos.y);
     }
 }
