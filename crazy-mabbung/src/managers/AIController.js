@@ -150,7 +150,8 @@ export class AIController {
             }
         }
 
-        return directions[Math.floor(Math.random() * directions.length)].key;
+        // 모든 방향이 위험하면 제자리 유지 (null 반환)
+        return null;
     }
 
     findNearestEnemy() {
@@ -258,7 +259,7 @@ export class AIController {
             col, row, this.player.bombRange, this.player.speed
         );
 
-        if (!escapePath) {
+        if (!escapePath || escapePath.length === 0) {
             return false;  // 탈출 불가 → 설치 금지
         }
 
