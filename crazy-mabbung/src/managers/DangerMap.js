@@ -336,4 +336,77 @@ export class DangerMap {
 
         return true;
     }
+
+    /**
+     * 가상의 폭탄을 추가하고 탈출 가능 여부 확인
+     * 실제 dangerGrid는 수정하지 않고 복사본으로 계산
+     * @param {number} col - 폭탄 위치 열
+     * @param {number} row - 폭탄 위치 행
+     * @param {number} range - 폭탄 범위
+     * @param {number} playerSpeed - 플레이어 속도
+     * @returns {Array|null} 탈출 경로 또는 null
+     */
+    simulateBombAndFindEscape(col, row, range, playerSpeed) {
+        // 가상의 폭탄 객체 생성
+        const virtualBomb = {
+            col: col,
+            row: row,
+            range: range,
+            timer: 3000,  // 새 폭탄이므로 3초
+            isDead: false
+        };
+
+        // 현재 그리드 상태 백업
+        const backup = this.backupGrid();
+
+        // 가상 폭탄 위험 계산 추가
+        this.calculateBombDanger(virtualBomb);
+
+        // 탈출 경로 탐색
+        const escapePath = this.findSafePath(col, row, playerSpeed);
+
+        // 그리드 복원
+        this.restoreGrid(backup);
+
+        return escapePath;
+    }
+
+    /**
+     * 현재 그리드 상태 백업
+     * @returns {Array} 그리드 복사본
+     */
+    backupGrid() {
+        const backup = [];
+        for (let r = 0; r < this.rows; r++) {
+            const row = [];
+            for (let c = 0; c < this.cols; c++) {
+                const cell = this.dangerGrid[r][c];
+                row.push({
+                    dangerLevel: cell.dangerLevel,
+                    timeUntilDanger: cell.timeUntilDanger,
+                    dangerDuration: cell.dangerDuration,
+                    sourceBombs: [...cell.sourceBombs]
+                });
+            }
+            backup.push(row);
+        }
+        return backup;
+    }
+
+    /**
+     * 그리드 상태 복원
+     * @param {Array} backup - 백업 데이터
+     */
+    restoreGrid(backup) {
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const cell = this.dangerGrid[r][c];
+                const saved = backup[r][c];
+                cell.dangerLevel = saved.dangerLevel;
+                cell.timeUntilDanger = saved.timeUntilDanger;
+                cell.dangerDuration = saved.dangerDuration;
+                cell.sourceBombs = saved.sourceBombs;
+            }
+        }
+    }
 }
