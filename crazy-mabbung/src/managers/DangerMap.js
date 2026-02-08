@@ -121,4 +121,66 @@ export class DangerMap {
             cell.sourceBombs.push(bomb);
         }
     }
+
+    /**
+     * 현재 폭발 중인 타일 표시
+     * @param {Array} explosions - 폭발 배열 [{col, row, timer}]
+     */
+    markActiveExplosions(explosions) {
+        for (const exp of explosions) {
+            if (exp.col >= 0 && exp.col < this.cols &&
+                exp.row >= 0 && exp.row < this.rows) {
+                const cell = this.dangerGrid[exp.row][exp.col];
+                cell.dangerLevel = 2;  // 현재 폭발 중
+                cell.timeUntilDanger = 0;
+                cell.dangerDuration = exp.timer;
+            }
+        }
+    }
+
+    /**
+     * 위험 지도 전체 업데이트
+     * @param {Array} bombs - 폭탄 배열
+     * @param {Array} explosions - 폭발 배열
+     */
+    update(bombs, explosions) {
+        // 그리드 초기화
+        this.resetGrid();
+
+        // 모든 폭탄의 위험 범위 계산
+        for (const bomb of bombs) {
+            if (!bomb.isDead) {
+                this.calculateBombDanger(bomb);
+            }
+        }
+
+        // 현재 폭발 중인 타일 표시 (가장 위험)
+        this.markActiveExplosions(explosions);
+    }
+
+    /**
+     * 특정 타일이 위험한지 확인
+     * @param {number} col - 열
+     * @param {number} row - 행
+     * @returns {boolean} 위험 여부
+     */
+    isDangerous(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return true;  // 맵 밖은 위험
+        }
+        return this.dangerGrid[row][col].dangerLevel > 0;
+    }
+
+    /**
+     * 특정 타일의 위험 시작까지 남은 시간
+     * @param {number} col - 열
+     * @param {number} row - 행
+     * @returns {number} 남은 ms (Infinity면 안전)
+     */
+    getTimeUntilDanger(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return 0;
+        }
+        return this.dangerGrid[row][col].timeUntilDanger;
+    }
 }
