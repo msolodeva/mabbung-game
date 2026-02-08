@@ -177,6 +177,41 @@ export class AIController {
         return nearest;
     }
 
+    /**
+     * 가장 가까운 아군 탐색
+     */
+    findNearestTeammate() {
+        const player = this.player;
+        let nearest = null;
+        let minDist = Infinity;
+
+        for (const p of this.game.players) {
+            if (p === player) continue;
+            if (p.state === 'DEAD') continue;
+            if (p.team !== player.team) continue;
+
+            const dx = p.x - player.x;
+            const dy = p.y - player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = p;
+            }
+        }
+        return nearest;
+    }
+
+    /**
+     * 도움이 필요한(갇힌) 아군 탐색
+     */
+    findTrappedTeammate() {
+        return this.game.players.find(p =>
+            p.team === this.player.team &&
+            p.state === 'TRAPPED'
+        );
+    }
+
     findNearestBreakableBlock(col, row) {
         const map = this.game.map;
         let nearest = null;

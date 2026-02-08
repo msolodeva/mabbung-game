@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crazy Arcade Clone (BnB)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-header">
+        <div class="hud">
+            <div class="team-stats team-red">
+                <div class="team-label">🔴 레드팀</div>
+                <div class="team-info">
+                    <span>생존: <span id="team1-alive">3</span>/3</span>
+                </div>
+                <div class="player-indicator">P1: <span id="p1-status">●</span></div>
+            </div>
+            <div class="game-info">
+                <div class="timer">TIME: <span id="game-timer">00</span></div>
+            </div>
+            <div class="team-stats team-blue">
+                <div class="team-label">🔵 블루팀</div>
+                <div class="team-info">
+                    <span>생존: <span id="team2-alive">3</span>/3</span>
+                </div>
+                <div class="player-indicator">P2: <span id="p2-status">●</span></div>
+            </div>
+        </div>
+    </div>
+    <div id="game-container">
+        <canvas id="game-canvas" width="1088" height="960"></canvas> <!-- 17x15 tiles * 64px -->
+        <div id="ui-layer"></div>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal" class="hidden">
+            <div class="modal-content">
+                <h1 id="winner-text">Player 1 Wins!</h1>
+                <button id="restart-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
