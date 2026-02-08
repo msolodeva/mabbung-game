@@ -11,7 +11,7 @@ export class Game {
         this.ctx = ctx;
         this.debug = true;
         this.assets = new AssetManager();
-        this.tilesize = 64;
+        this.tileSize = 64;
 
         // Load Assets
         this.assets.load({
@@ -32,10 +32,10 @@ export class Game {
         this.width = this.ctx.canvas.width;
         this.height = this.ctx.canvas.height;
 
-        const cols = Math.floor(this.width / this.tilesize);
-        const rows = Math.floor(this.height / this.tilesize);
+        const cols = Math.floor(this.width / this.tileSize);
+        const rows = Math.floor(this.height / this.tileSize);
 
-        this.map = new Map(this.tilesize, cols, rows);
+        this.map = new Map(this.tileSize, cols, rows);
 
         // DangerMap 생성 (AI들이 공유)
         this.dangerMap = new DangerMap(this.map);
@@ -46,7 +46,7 @@ export class Game {
         const team2Color = '#3498db';
 
         // Player 1 (Human - Top Left)
-        this.player1 = new Player(1, 1, this.tilesize, team1Color, {
+        this.player1 = new Player(1, 1, this.tileSize, team1Color, {
             up: 'KeyW',
             down: 'KeyS',
             left: 'KeyA',
@@ -57,7 +57,7 @@ export class Game {
         this.player1.isAI = false;
 
         // Player 2 (Human - Bottom Right)
-        this.player2 = new Player(cols - 2, rows - 2, this.tilesize, team2Color, {
+        this.player2 = new Player(cols - 2, rows - 2, this.tileSize, team2Color, {
             up: 'ArrowUp',
             down: 'ArrowDown',
             left: 'ArrowLeft',
@@ -68,26 +68,26 @@ export class Game {
         this.player2.isAI = false;
 
         // AI Players - Team 1 (Red)
-        this.ai1_1 = new Player(1, rows - 2, this.tilesize, team1Color, {
+        this.ai1_1 = new Player(1, rows - 2, this.tileSize, team1Color, {
             up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
         });
         this.ai1_1.team = 1;
         this.ai1_1.isAI = true;
 
-        this.ai1_2 = new Player(1, Math.floor(rows / 2), this.tilesize, team1Color, {
+        this.ai1_2 = new Player(1, Math.floor(rows / 2), this.tileSize, team1Color, {
             up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
         });
         this.ai1_2.team = 1;
         this.ai1_2.isAI = true;
 
         // AI Players - Team 2 (Blue)
-        this.ai2_1 = new Player(cols - 2, 1, this.tilesize, team2Color, {
+        this.ai2_1 = new Player(cols - 2, 1, this.tileSize, team2Color, {
             up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
         });
         this.ai2_1.team = 2;
         this.ai2_1.isAI = true;
 
-        this.ai2_2 = new Player(cols - 2, Math.floor(rows / 2), this.tilesize, team2Color, {
+        this.ai2_2 = new Player(cols - 2, Math.floor(rows / 2), this.tileSize, team2Color, {
             up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
         });
         this.ai2_2.team = 2;
@@ -220,9 +220,9 @@ export class Game {
         // Draw Explosions
         this.ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
         this.explosions.forEach(exp => {
-            const x = exp.col * this.tilesize;
-            const y = exp.row * this.tilesize;
-            this.ctx.fillRect(x, y, this.tilesize, this.tilesize);
+            const x = exp.col * this.tileSize;
+            const y = exp.row * this.tileSize;
+            this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
         });
 
         // Draw Players
@@ -240,8 +240,8 @@ export class Game {
     }
 
     checkItemCollection(player) {
-        const pCol = Math.floor(player.x / this.tilesize);
-        const pRow = Math.floor(player.y / this.tilesize);
+        const pCol = Math.floor(player.x / this.tileSize);
+        const pRow = Math.floor(player.y / this.tileSize);
 
         for (let i = this.items.length - 1; i >= 0; i--) {
             const item = this.items[i];
@@ -290,13 +290,13 @@ export class Game {
         if (player.state !== 'NORMAL') return;
         if (player.activeBombs >= player.maxBombs) return;
 
-        const col = Math.floor(player.x / this.tilesize);
-        const row = Math.floor(player.y / this.tilesize);
+        const col = Math.floor(player.x / this.tileSize);
+        const row = Math.floor(player.y / this.tileSize);
 
         const existingBomb = this.bombs.find(b => b.col === col && b.row === row);
         if (existingBomb) return;
 
-        const bomb = new Bomb(col, row, player.bombRange, player, this.tilesize);
+        const bomb = new Bomb(col, row, player.bombRange, player, this.tileSize);
         this.bombs.push(bomb);
         player.activeBombs++;
     }
@@ -346,7 +346,7 @@ export class Game {
         const types = ['speed', 'range', 'count'];
         const type = types[Math.floor(Math.random() * types.length)];
         if (!this.items.some(i => i.col === col && i.row === row)) {
-            this.items.push(new Item(col, row, type, this.tilesize));
+            this.items.push(new Item(col, row, type, this.tileSize));
         }
     }
 
@@ -376,8 +376,8 @@ export class Game {
     }
 
     checkEntityOnTile(entity, col, row) {
-        const eCol = Math.floor(entity.x / this.tilesize);
-        const eRow = Math.floor(entity.y / this.tilesize);
+        const eCol = Math.floor(entity.x / this.tileSize);
+        const eRow = Math.floor(entity.y / this.tileSize);
         return eCol === col && eRow === row;
     }
 }
