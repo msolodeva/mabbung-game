@@ -210,17 +210,13 @@ export class DangerMap {
 
         // 현재 폭발 중이면 위험
         if (cell.dangerLevel === 2) {
-            // 폭발이 끝날 때까지 기다려야 함
-            return arrivalTime > cell.dangerDuration;
+            return false;
         }
 
-        // 위험 예정 타일: 폭발 전에 도착하고 통과할 수 있거나,
-        // 폭발이 끝난 후에 도착해야 안전
+        // 위험 예정 타일: 폭발이 끝난 후에 도착해야 안전
         const explosionTime = cell.timeUntilDanger;
         const explosionEndTime = explosionTime + cell.dangerDuration;
 
-        // 폭발 전에 도착해서 지나갈 수 있는 경우 (현재 위치가 목적지일 때만)
-        // 또는 폭발이 끝난 후에 도착하는 경우
         return arrivalTime > explosionEndTime;
     }
 
@@ -250,7 +246,8 @@ export class DangerMap {
         }];
 
         const visited = new Set();
-        visited.add(`${startCol},${startRow}`);
+        const startKey = `${startCol},${startRow},0`;
+        visited.add(startKey);
 
         while (queue.length > 0) {
             const current = queue.shift();
@@ -270,14 +267,14 @@ export class DangerMap {
             for (const dir of directions) {
                 const newCol = current.col + dir.dc;
                 const newRow = current.row + dir.dr;
-                const key = `${newCol},${newRow}`;
+                const arrivalTime = current.time + moveTimePerTile;
+                const timeWindow = Math.floor(arrivalTime / 100);
+                const key = `${newCol},${newRow},${timeWindow}`;
 
                 if (visited.has(key)) continue;
 
                 // 벽이나 블록은 이동 불가
                 if (this.map.isSolid(newCol, newRow)) continue;
-
-                const arrivalTime = current.time + moveTimePerTile;
 
                 // 이동 경로가 안전한지 확인 (통과 시점에 폭발하지 않아야 함)
                 const midTime = current.time + moveTimePerTile / 2;
