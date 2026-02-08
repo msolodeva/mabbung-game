@@ -27,7 +27,15 @@ export class Item {
             else if (this.type === 'range') sx = sw * 1; // Potion (Row 1 Col 2)
             else if (this.type === 'count') sx = sw * 2; // Bomb Icon (Row 1 Col 3)
 
-            ctx.drawImage(sheet, sx, sy, sw, sh, x + 8, y + 8 + bounce, this.tileSize - 16, this.tileSize - 16);
+            // Spawn animation: Scale up
+            if (!this.spawnTime) this.spawnTime = Date.now();
+            const elapsed = Date.now() - this.spawnTime;
+            const spawnScale = Math.min(1, elapsed / 300); // 300ms scale up
+
+            const drawSize = (this.tileSize - 16) * spawnScale;
+            const drawOffset = (this.tileSize - drawSize) / 2;
+
+            ctx.drawImage(sheet, sx, sy, sw, sh, x + drawOffset, y + drawOffset + bounce, drawSize, drawSize);
         } else {
             // Fallback
             ctx.fillStyle = '#ecf0f1';

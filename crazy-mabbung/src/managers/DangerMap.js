@@ -372,6 +372,52 @@ export class DangerMap {
     }
 
     /**
+     * 특정 위치에 폭탄 설치 시, 모든 아군이 탈출 가능한지 확인
+     * @param {number} col - 폭탄 위치 열
+     * @param {number} row - 폭탄 위치 행
+     * @param {number} range - 폭탄 범위
+     * @param {Array} teamPlayers - 아군 플레이어 배열
+     * @returns {boolean} 모든 아군이 안전하게 탈출 가능한지 여부
+     */
+    simulateBombForTeam(col, row, range, teamPlayers) {
+        // 가상의 폭탄 객체 생성
+        const virtualBomb = {
+            col: col,
+            row: row,
+            range: range,
+            timer: 3000,
+            isDead: false
+        };
+
+        // 현재 그리드 상태 백업
+        const backup = this.backupGrid();
+
+        try {
+            // 가상 폭탄 위험 계산 추가
+            this.calculateBombDanger(virtualBomb);
+
+            // 모든 아군에 대해 안전한 경로가 있는지 확인
+            for (const p of teamPlayers) {
+                if (p.state !== 'NORMAL') continue;
+
+                const pCol = Math.floor(p.x / this.tileSize);
+                const pRow = Math.floor(p.y / this.tileSize);
+
+                // 현재 위치가 위험해졌는데 탈출 경로가 없다면 위험한 것으로 판단
+                const path = this.findSafePath(pCol, pRow, p.speed);
+                if (this.isDangerous(pCol, pRow) && (!path || path.length === 0)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } finally {
+            // 항상 그리드 복원
+            this.restoreGrid(backup);
+        }
+    }
+
+    /**
      * 현재 그리드 상태 백업
      * @returns {Array} 그리드 복사본
      */

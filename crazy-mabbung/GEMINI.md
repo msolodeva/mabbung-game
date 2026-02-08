@@ -111,6 +111,7 @@ crazy-mabbung/
 - 새 파일 추가 시 적절한 폴더에 배치 (entities/, managers/, core/)
 - import 경로 수정 시 상대 경로 주의 (`../`, `./`)
 - 게임 시작: `./start.sh [포트]` 또는 `python3 -m http.server [포트]`
+- Browser로 테스트 시: 코드 수정 후에는 반드시 서버를 종료하고 다시 실행(`python3 -m http.server [포트]`)한 뒤, 브라우저에서 새로고침을 해야 함.
 - 캔버스 크기: 1088x960 (17x15 타일, 64px/타일)
 
 ## 8. 조작법

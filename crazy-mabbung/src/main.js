@@ -6,6 +6,7 @@ window.addEventListener('load', () => {
 
     // Create Game instance
     const game = new Game(ctx);
+    window.game = game; // Expose for debugging
 
     // UI Elements
     const ui = {

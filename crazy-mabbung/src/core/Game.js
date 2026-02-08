@@ -69,26 +69,26 @@ export class Game {
 
         // AI Players - Team 1 (Red)
         this.ai1_1 = new Player(1, rows - 2, this.tileSize, team1Color, {
-            up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
+            up: 'ai1_up', down: 'ai1_down', left: 'ai1_left', right: 'ai1_right', bomb: 'ai1_bomb'
         });
         this.ai1_1.team = 1;
         this.ai1_1.isAI = true;
 
         this.ai1_2 = new Player(1, Math.floor(rows / 2), this.tileSize, team1Color, {
-            up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
+            up: 'ai2_up', down: 'ai2_down', left: 'ai2_left', right: 'ai2_right', bomb: 'ai2_bomb'
         });
         this.ai1_2.team = 1;
         this.ai1_2.isAI = true;
 
         // AI Players - Team 2 (Blue)
         this.ai2_1 = new Player(cols - 2, 1, this.tileSize, team2Color, {
-            up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
+            up: 'ai3_up', down: 'ai3_down', left: 'ai3_left', right: 'ai3_right', bomb: 'ai3_bomb'
         });
         this.ai2_1.team = 2;
         this.ai2_1.isAI = true;
 
         this.ai2_2 = new Player(cols - 2, Math.floor(rows / 2), this.tileSize, team2Color, {
-            up: 'AI', down: 'AI', left: 'AI', right: 'AI', bomb: 'AI'
+            up: 'ai4_up', down: 'ai4_down', left: 'ai4_left', right: 'ai4_right', bomb: 'ai4_bomb'
         });
         this.ai2_2.team = 2;
         this.ai2_2.isAI = true;
@@ -142,9 +142,13 @@ export class Game {
 
         // Update AI Controllers
         for (const ai of this.aiControllers) {
+            // Always update player (for animations and timers like trappedTimer)
+            // But only make decisions if NORMAL
             if (ai.player.state === 'NORMAL') {
                 const aiInput = ai.update(deltaTime);
                 ai.player.update(deltaTime, this.map, aiInput, this);
+            } else {
+                ai.player.update(deltaTime, this.map, {}, this);
             }
         }
 
@@ -217,12 +221,112 @@ export class Game {
         // Draw Bombs
         this.bombs.forEach(bomb => bomb.draw(this.ctx, this.assets));
 
-        // Draw Explosions
-        this.ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
+        // Draw Explosions with Crazy Arcade Aesthetics (Bubble Stream)
         this.explosions.forEach(exp => {
+            const progress = exp.timer / exp.maxTimer; // 1.0 -> 0.0
+            const opacity = Math.min(1, progress * 4); // Fade out last
+
+            // Pop / Elastic Scale
+            let scale = 1;
+            const popP = 1 - progress;
+            if (popP < 0.2) scale = popP * 5;
+            else if (popP < 0.4) scale = 1 + (0.4 - popP) * 1;
+            else scale = 1.0;
+
             const x = exp.col * this.tileSize;
             const y = exp.row * this.tileSize;
-            this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
+            const midX = x + this.tileSize / 2;
+            const midY = y + this.tileSize / 2;
+            const size = this.tileSize;
+
+            this.ctx.save();
+            this.ctx.globalAlpha = opacity;
+            this.ctx.translate(midX, midY);
+            this.ctx.scale(scale, scale);
+
+            const waterBlue = '#00a8ff';
+
+            // Draw Helper
+            const drawBlob = (bx, by, br) => {
+                this.ctx.beginPath();
+                this.ctx.arc(bx, by, br, 0, Math.PI * 2);
+                this.ctx.fillStyle = waterBlue;
+                this.ctx.fill();
+                // Shine
+                this.ctx.beginPath();
+                this.ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.25, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                this.ctx.fill();
+            };
+
+            if (exp.type === 'CENTER') {
+                drawBlob(0, 0, size * 0.55);
+                // Rim
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
+                this.ctx.strokeStyle = '#7ed6df';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                // Extra inner
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, size * 0.25, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#48dbfb';
+                this.ctx.fill();
+
+                // Particles
+                for (let i = 0; i < 6; i++) {
+                    const ang = (i / 6) * Math.PI * 2 + Date.now() / 150;
+                    const rDist = size * 0.65;
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.cos(ang) * rDist, Math.sin(ang) * rDist, 4, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#dff9fb';
+                    this.ctx.fill();
+                }
+            } else {
+                let rotation = 0;
+                if (exp.type === 'VERTICAL' || exp.type === 'END_UP' || exp.type === 'END_DOWN') rotation = Math.PI / 2;
+
+                this.ctx.rotate(rotation);
+
+                // Draw Horizontal Stream logic relative to rotation
+                if (exp.type === 'HORIZONTAL' || exp.type === 'VERTICAL') {
+                    drawBlob(-18, 0, size * 0.42);
+                    drawBlob(0, 0, size * 0.42);
+                    drawBlob(18, 0, size * 0.42);
+                }
+                else {
+                    // Start from center and go to one side
+                    // Reset rotation to handle absolute End Caps if needed, but local space is easier
+                    // Actually, for END_UP/DOWN, we rotated PI/2.
+                    // END_UP means the top end. Rotation PI/2 means "Right" is "Down". "Left" is "Up".
+                    // So END_UP -> LEFT in local space.
+
+                    // Let's reset rotation to use absolute coordinates to match types exactly
+                    this.ctx.rotate(-rotation);
+
+                    if (exp.type === 'END_LEFT') {
+                        drawBlob(10, 0, size * 0.4);
+                        drawBlob(-5, 0, size * 0.5); // End Bulb
+                        // Droplets
+                        this.ctx.fillStyle = 'white'; this.ctx.beginPath(); this.ctx.arc(-24, 0, 4, 0, Math.PI * 2); this.ctx.fill();
+                    } else if (exp.type === 'END_RIGHT') {
+                        drawBlob(-10, 0, size * 0.4);
+                        drawBlob(5, 0, size * 0.5);
+                        this.ctx.fillStyle = 'white'; this.ctx.beginPath(); this.ctx.arc(24, 0, 4, 0, Math.PI * 2); this.ctx.fill();
+                    } else if (exp.type === 'END_UP') {
+                        drawBlob(0, 10, size * 0.4);
+                        drawBlob(0, -5, size * 0.5);
+                        this.ctx.fillStyle = 'white'; this.ctx.beginPath(); this.ctx.arc(0, -24, 4, 0, Math.PI * 2); this.ctx.fill();
+                    } else if (exp.type === 'END_DOWN') {
+                        drawBlob(0, -10, size * 0.4);
+                        drawBlob(0, 5, size * 0.5);
+                        this.ctx.fillStyle = 'white'; this.ctx.beginPath(); this.ctx.arc(0, 24, 4, 0, Math.PI * 2); this.ctx.fill();
+                    }
+                }
+            }
+
+            this.ctx.restore();
         });
 
         // Draw Players
@@ -272,13 +376,22 @@ export class Game {
     }
 
     handlePlayerContact(p1, p2) {
-        // Only opposite teams can kill each other
-        if (p1.team === p2.team) return;
-
         if (p1.state === 'TRAPPED' && p2.state === 'NORMAL') {
-            p1.state = 'DEAD';
+            if (p1.team === p2.team) {
+                p1.state = 'NORMAL';
+                console.log("Player Rescued!");
+            } else {
+                p1.state = 'DEAD';
+                console.log("Player Killed!");
+            }
         } else if (p2.state === 'TRAPPED' && p1.state === 'NORMAL') {
-            p2.state = 'DEAD';
+            if (p1.team === p2.team) {
+                p2.state = 'NORMAL';
+                console.log("Player Rescued!");
+            } else {
+                p2.state = 'DEAD';
+                console.log("Player Killed!");
+            }
         }
     }
 
@@ -302,13 +415,13 @@ export class Game {
     }
 
     triggerExplosion(col, row, range, owner) {
-        this.addExplosion(col, row);
+        this.addExplosion(col, row, 'CENTER');
 
         const directions = [
-            { dx: 0, dy: -1 },
-            { dx: 0, dy: 1 },
-            { dx: -1, dy: 0 },
-            { dx: 1, dy: 0 }
+            { dx: 0, dy: -1, type: 'VERTICAL', end: 'END_UP' },
+            { dx: 0, dy: 1, type: 'VERTICAL', end: 'END_DOWN' },
+            { dx: -1, dy: 0, type: 'HORIZONTAL', end: 'END_LEFT' },
+            { dx: 1, dy: 0, type: 'HORIZONTAL', end: 'END_RIGHT' }
         ];
 
         directions.forEach(dir => {
@@ -322,7 +435,7 @@ export class Game {
 
                 if (this.map.data[r][c] === 2) {
                     this.map.destroyBlock(c, r);
-                    this.addExplosion(c, r);
+                    this.addExplosion(c, r, i === range ? dir.end : dir.type); // Treat blocked as potential end
 
                     if (Math.random() < 0.3) {
                         this.spawnItem(c, r);
@@ -337,7 +450,8 @@ export class Game {
                     break;
                 }
 
-                this.addExplosion(c, r);
+                const isEnd = (i === range);
+                this.addExplosion(c, r, isEnd ? dir.end : dir.type);
             }
         });
     }
@@ -350,13 +464,20 @@ export class Game {
         }
     }
 
-    addExplosion(col, row) {
-        if (this.explosions.some(e => e.col === col && e.row === row)) return;
+    addExplosion(col, row, type = 'CENTER') {
+        // Reuse existing if same type, or update type if center
+        const existing = this.explosions.find(e => e.col === col && e.row === row);
+        if (existing) {
+            if (type === 'CENTER') existing.type = 'CENTER';
+            return;
+        }
 
         this.explosions.push({
             col: col,
             row: row,
-            timer: 500
+            type: type,
+            timer: 600, // Slightly longer for better visibility
+            maxTimer: 600
         });
 
         this.players.forEach(player => {

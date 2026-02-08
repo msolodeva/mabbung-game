@@ -44,18 +44,21 @@ export class Map {
 
     isSpawnZone(c, r) {
         // Top-left corner (Player 1 spawn - Red Team)
-        if ((c >= 1 && c <= 2) && (r >= 1 && r <= 2)) return true;
+        if ((c >= 1 && c <= 3) && (r >= 1 && r <= 3)) return true;
         // Bottom-right corner (Player 2 spawn - Blue Team)
-        if ((c >= this.cols - 3 && c <= this.cols - 2) && (r >= this.rows - 3 && r <= this.rows - 2)) return true;
+        if ((c >= this.cols - 4 && c <= this.cols - 2) && (r >= this.rows - 4 && r <= this.rows - 2)) return true;
         // Bottom-left corner (AI Red Team)
-        if ((c >= 1 && c <= 2) && (r >= this.rows - 3 && r <= this.rows - 2)) return true;
+        if ((c >= 1 && c <= 3) && (r >= this.rows - 4 && r <= this.rows - 2)) return true;
         // Top-right corner (AI Blue Team)
-        if ((c >= this.cols - 3 && c <= this.cols - 2) && (r >= 1 && r <= 2)) return true;
-        // Left-middle (AI Red Team)
+        if ((c >= this.cols - 4 && c <= this.cols - 2) && (r >= 1 && r <= 3)) return true;
+
+        // Middle areas
         const midRow = Math.floor(this.rows / 2);
-        if ((c >= 1 && c <= 2) && (r >= midRow - 1 && r <= midRow + 1)) return true;
+        // Left-middle (AI Red Team)
+        if ((c >= 1 && c <= 3) && (r >= midRow - 1 && r <= midRow + 1)) return true;
         // Right-middle (AI Blue Team)
-        if ((c >= this.cols - 3 && c <= this.cols - 2) && (r >= midRow - 1 && r <= midRow + 1)) return true;
+        if ((c >= this.cols - 4 && c <= this.cols - 2) && (r >= midRow - 1 && r <= midRow + 1)) return true;
+
         return false;
     }
 

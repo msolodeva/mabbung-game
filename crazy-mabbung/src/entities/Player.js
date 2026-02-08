@@ -32,8 +32,8 @@ export class Player {
         this.maxBombs = 1;  // Max concurrent bombs
         this.activeBombs = 0; // Currently placed bombs
 
-        // Animation
-        this.direction = 1; // 1 = Right, -1 = Left
+        // Animation State
+        this.facing = 'DOWN'; // UP, DOWN, LEFT, RIGHT
         this.animTimer = 0;
         this.frame = 0;
         this.isMoving = false;
@@ -48,7 +48,7 @@ export class Player {
                 this.state = 'DEAD';
                 console.log("Player Died!");
             }
-            return; // Cannot move while trapped (or maybe wiggle?)
+            return; // Cannot move while trapped
         }
 
         // 1. Handle Bomb Placement
@@ -68,25 +68,27 @@ export class Player {
         if (input[this.controls.down]) dy = speed;
 
         this.isMoving = dx !== 0 || dy !== 0;
+        this.moveDir.x = dx;
+        this.moveDir.y = dy;
 
-        if (dx !== 0) {
-            this.direction = Math.sign(dx);
-        }
+        // Update Facing Direction
+        if (dx < 0) this.facing = 'LEFT';
+        else if (dx > 0) this.facing = 'RIGHT';
+        else if (dy < 0) this.facing = 'UP';
+        else if (dy > 0) this.facing = 'DOWN';
 
+        // Animation Timer
         if (this.isMoving) {
             this.animTimer += deltaTime;
-            if (this.animTimer > 150) { // 150ms per frame
-                this.frame = (this.frame + 1) % 4; // Assume 4 frames
+            const msPerFrame = 120; // 120ms per frame for walking
+            if (this.animTimer > msPerFrame) {
+                this.frame++;
                 this.animTimer = 0;
             }
         } else {
             this.frame = 0;
             this.animTimer = 0;
         }
-
-        // Normalize diagonal? Crazy Arcade usually prioritizes one axis or allows both.
-        // Let's strict to axis-aligned movement for standard gameplay feel, 
-        // or allow diagonal but collide separately.
 
         // Move X
         if (dx !== 0) {
@@ -95,8 +97,6 @@ export class Player {
             if (!collision) {
                 this.x = newX;
             } else {
-                // Corner Sliding / Correction for X axis
-                // If we hit a wall moving horizontally, check if we can slide up or down
                 this.applyCornerCorrection(newX, this.y, 0, map, speed);
             }
         }
@@ -108,7 +108,6 @@ export class Player {
             if (!collision) {
                 this.y = newY;
             } else {
-                // Corner Sliding / Correction for Y axis
                 this.applyCornerCorrection(this.x, newY, 1, map, speed);
             }
         }
@@ -132,39 +131,54 @@ export class Player {
             let baseRow = 0; // Red
             if (this.color === '#3498db') baseRow = 3; // Blue
 
-            let rowOffset = 0;
-            let col = this.frame;
-
-            // Animation Params
+            let rowOffset = 0; // Offset from baseRow (0: Front/Back, 1: Side, 2: Trapped)
+            let col = 0;
             let scaleX = 1;
             let scaleY = 1;
-            let rotation = 0;
             let offsetY = 0;
 
             if (this.state === 'TRAPPED') {
-                rowOffset = 2;
-                // Trapped animation: Wiggle and Bubble float
-                col = Math.floor(Date.now() / 200) % 4;
-                rotation = Math.sin(Date.now() / 100) * 0.1; // Wiggle
-                offsetY = Math.sin(Date.now() / 300) * 2; // Float
-            } else if (this.isMoving) {
-                rowOffset = 1;
-                // Bounce while moving
-                offsetY = Math.abs(Math.sin(Date.now() / 100)) * -4; // Jump up slightly
-            } else {
-                rowOffset = 0;
-                // Idle Breathing
-                scaleY = 1 + Math.sin(Date.now() / 500) * 0.02;
-                scaleX = 1 + Math.cos(Date.now() / 500) * 0.02;
-                // Blink
-                if (Math.floor(Date.now() / 1000) % 3 === 0 && Math.floor(Date.now() / 100) % 10 === 0) {
-                    // A simple blink frame hack if we had one, otherwise just normal
+                rowOffset = 2; // Trapped Row
+                const trapFrame = Math.floor(Date.now() / 150) % 6;
+                col = trapFrame;
+                offsetY = Math.sin(Date.now() / 400) * 3 - 3; // Floating effect
+            }
+            else if (this.isMoving) {
+                // WALKING ANIMATION
+                // Dynamic Bounce
+                offsetY = Math.abs(Math.sin(Date.now() / 100)) * -3;
+
+                if (this.facing === 'LEFT' || this.facing === 'RIGHT') {
+                    rowOffset = 1; // Side Row
+                    col = this.frame % 8; // 8 frames for side walk
+                    if (this.facing === 'LEFT') scaleX = -1; // Flip for Left
+                } else if (this.facing === 'UP') {
+                    rowOffset = 0; // Front/Back Row
+                    col = 4 + (this.frame % 4); // Back walk frames are 4-7
+                } else { // DOWN
+                    rowOffset = 0; // Front/Back Row
+                    col = this.frame % 4; // Front walk frames are 0-3
                 }
-                col = Math.floor(Date.now() / 500) % 4;
+            }
+            else {
+                // IDLE ANIMATION
+                // Breathing Effect
+                scaleY = 1 + Math.sin(Date.now() / 800) * 0.02;
+
+                if (this.facing === 'LEFT' || this.facing === 'RIGHT') {
+                    rowOffset = 1; // Side Row
+                    col = 0; // Standing frame for side
+                    if (this.facing === 'LEFT') scaleX = -1;
+                } else if (this.facing === 'UP') {
+                    rowOffset = 0; // Front/Back Row
+                    col = 4; // Standing frame for back
+                } else { // DOWN
+                    rowOffset = 0; // Front/Back Row
+                    col = 0; // Standing frame for front
+                }
             }
 
             const frameRow = baseRow + rowOffset;
-
             const width = sheet.width || sheet.naturalWidth;
             const height = sheet.height || sheet.naturalHeight;
             const frameCount = 8;
@@ -172,25 +186,31 @@ export class Player {
 
             const sw = width / frameCount;
             const sh = height / rowCount;
-            const sx = (col % frameCount) * sw;
+            const sx = col * sw;
             const sy = frameRow * sh;
 
             const x = this.x;
-            const y = this.y - 12 + offsetY;
-            const size = this.tileSize * 1.5;
+            const y = this.y - 14 + offsetY; // Lifted slightly
+            const size = this.tileSize * 1.4; // Slightly larger sprite
 
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.scale(this.direction === -1 ? -scaleX : scaleX, scaleY);
+            ctx.scale(scaleX, scaleY); // Apply flip and breathing
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            // Counter-scale shadow so it doesn't flip or breathe with the body
+            const shadowScaleX = (scaleX < 0 ? -1 : 1) / scaleX;
+            const shadowScaleY = 1 / scaleY;
+
+            ctx.scale(shadowScaleX, shadowScaleY);
+            ctx.ellipse(0, size / 2 - 5, size / 4, size / 8, 0, 0, Math.PI * 2);
+            ctx.scale(1 / shadowScaleX, 1 / shadowScaleY); // Restore
+            ctx.fill();
 
             // Draw Character
             ctx.drawImage(sheet, sx, sy, sw, sh, -size / 2, -size / 2, size, size);
-
-            // Draw Trapped Bubble Overlay if trapped (double check visual)
-            if (this.state === 'TRAPPED') {
-                // Optional extra bubble effect
-            }
 
             ctx.restore();
         } else {
@@ -200,6 +220,15 @@ export class Player {
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = 'white';
+            ctx.stroke();
+
+            // Direction Indicator
+            const dirX = (this.facing === 'RIGHT') ? 1 : (this.facing === 'LEFT' ? -1 : 0);
+            const dirY = (this.facing === 'DOWN') ? 1 : (this.facing === 'UP' ? -1 : 0);
+
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x + dirX * 10, this.y + dirY * 10);
             ctx.stroke();
         }
     }

@@ -8,7 +8,7 @@ export class AIController {
         this.game = game;
         this.dangerMap = dangerMap;
         this.decisionTimer = 0;
-        this.decisionInterval = 200; // 200ms마다 결정
+        this.decisionInterval = 150; // 반응 속도 약간 상향 (200 -> 150)
         this.currentDirection = null;
         this.targetPos = null;
         this.lastBombTime = 0;
@@ -43,85 +43,191 @@ export class AIController {
 
     makeDecision() {
         const player = this.player;
-        const game = this.game;
-        const map = game.map;
-
         const myCol = Math.floor(player.x / player.tileSize);
         const myRow = Math.floor(player.y / player.tileSize);
 
-        // 1. 위험 체크 (폭발 범위에 있는지)
+        // 1. 위험 회피 (가장 최우선)
         if (this.isInDanger(myCol, myRow)) {
+            // console.log(`AI ${player.team} Danger! Evading...`);
             this.currentDirection = this.findSafeDirection(myCol, myRow);
             return;
         }
 
-        // 2. 근처에 적이 있는지 체크
+        // 2. 갇힌 아군 구출 (높은 우선순위)
+        const trappedTeammate = this.findTrappedTeammate();
+        if (trappedTeammate) {
+            const tCol = Math.floor(trappedTeammate.x / player.tileSize);
+            const tRow = Math.floor(trappedTeammate.y / player.tileSize);
+
+            // console.log(`AI ${player.team} Rescuing teammate at ${tCol},${tRow}`);
+            const move = this.findNextMove(myCol, myRow, tCol, tRow);
+            if (move) {
+                this.currentDirection = move;
+                return;
+            }
+        }
+
+        // 3. 아이템 획득 (안전한 경우)
+        const nearestItem = this.findNearestItem(myCol, myRow);
+        if (nearestItem) {
+            const move = this.findNextMove(myCol, myRow, nearestItem.col, nearestItem.row);
+            if (move) {
+                this.currentDirection = move;
+                return;
+            }
+        }
+
+        // 4. 적 공격 (추적)
         const nearestEnemy = this.findNearestEnemy();
         if (nearestEnemy) {
             const enemyCol = Math.floor(nearestEnemy.x / player.tileSize);
             const enemyRow = Math.floor(nearestEnemy.y / player.tileSize);
 
-            // 적과 같은 라인에 있으면 폭탄 설치 고려
-            if (myCol === enemyCol || myRow === enemyRow) {
-                this.targetPos = { col: myCol, row: myRow };
-            } else {
-                // 적을 향해 이동
-                this.currentDirection = this.getDirectionTowards(myCol, myRow, enemyCol, enemyRow);
-                return;
+            // 적이 너무 멀면 블록 파밍도 고려 (랜덤성)
+            const dist = Math.abs(myCol - enemyCol) + Math.abs(myRow - enemyRow);
+
+            if (dist < 10 || Math.random() < 0.6) {
+                const move = this.findNextMove(myCol, myRow, enemyCol, enemyRow);
+                if (move) {
+                    this.currentDirection = move;
+                    return;
+                }
             }
         }
 
-        // 3. 파괴 가능 블록을 향해 이동
+        // 5. 파밍 (블록 파괴)
         const nearestBlock = this.findNearestBreakableBlock(myCol, myRow);
         if (nearestBlock) {
+            // 인접하면 멈춰서 폭탄 설치 각을 봄
             if (this.isAdjacent(myCol, myRow, nearestBlock.col, nearestBlock.row)) {
-                this.targetPos = { col: myCol, row: myRow };
                 this.currentDirection = null;
             } else {
-                this.currentDirection = this.getDirectionTowards(myCol, myRow, nearestBlock.col, nearestBlock.row);
+                const move = this.findNextMove(myCol, myRow, nearestBlock.col, nearestBlock.row);
+                if (move) {
+                    this.currentDirection = move;
+                    return;
+                }
             }
             return;
         }
 
-        // 4. 랜덤 이동
-        this.currentDirection = this.getRandomDirection(myCol, myRow);
+        // 6. 아무것도 할 게 없으면 랜덤 배회 (제자리 멈춤 방지)
+        if (!this.currentDirection || Math.random() < 0.05) {
+            this.currentDirection = this.getRandomDirection(myCol, myRow);
+        }
     }
 
-    isInDanger(col, row) {
-        // 🆕 DangerMap 활용
-        return this.dangerMap.isDangerous(col, row);
-    }
+    /**
+     * BFS 길찾기 알고리즘
+     * 위험한 곳과 벽을 피해서 목표까지 가는 다음 이동 방향 반환
+     */
+    findNextMove(startCol, startRow, targetCol, targetRow) {
+        // 이미 도착했으면 null
+        if (startCol === targetCol && startRow === targetRow) return null;
 
-    isInBombRange(col, row, bomb) {
-        if (bomb.col === col && bomb.row === row) return true;
+        const queue = [{ col: startCol, row: startRow, path: [] }];
+        const visited = new Set();
+        visited.add(`${startCol},${startRow}`);
 
-        // 4방향 체크
+        // 최대 탐색 깊이 제한 (성능 고려)
+        const MAX_DEPTH = 25;
+
         const directions = [
-            { dx: 0, dy: -1 },
-            { dx: 0, dy: 1 },
-            { dx: -1, dy: 0 },
-            { dx: 1, dy: 0 }
+            { key: this.player.controls.up, dc: 0, dr: -1 },
+            { key: this.player.controls.down, dc: 0, dr: 1 },
+            { key: this.player.controls.left, dc: -1, dr: 0 },
+            { key: this.player.controls.right, dc: 1, dr: 0 }
         ];
 
-        for (const dir of directions) {
-            for (let i = 1; i <= bomb.range; i++) {
-                const c = bomb.col + dir.dx * i;
-                const r = bomb.row + dir.dy * i;
+        // 랜덤하게 섞어서 자연스러운 움직임 유도
+        directions.sort(() => Math.random() - 0.5);
 
-                if (this.game.map.isSolid(c, r)) break;
-                if (c === col && r === row) return true;
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            // 목표 도달
+            if (current.col === targetCol && current.row === targetRow) {
+                return current.path[0]; // 첫 번째 이동 방향 반환
+            }
+
+            if (current.path.length >= MAX_DEPTH) continue;
+
+            for (const dir of directions) {
+                const nc = current.col + dir.dc;
+                const nr = current.row + dir.dr;
+                const key = `${nc},${nr}`;
+
+                if (visited.has(key)) continue;
+
+                // 맵 밖 체크
+                if (nc < 0 || nc >= this.game.map.cols || nr < 0 || nr >= this.game.map.rows) continue;
+
+                const isTarget = (nc === targetCol && nr === targetRow);
+
+                // 벽 체크 (목표 지점은 예외)
+                if (!isTarget && this.game.map.isSolid(nc, nr)) continue;
+
+                // 위험 지역 체크 (폭발 예정지) - 안전 제일 (타겟이어도 위험하면 안감)
+                if (this.dangerMap.isDangerous(nc, nr)) continue;
+
+                // 다른 플레이어(아군/적)와 겹치는 것 방지 (길막) - 목표 지점은 예외 (적 추적)
+                if (!isTarget && this.isBlockedByPlayer(nc, nr)) continue;
+
+                visited.add(key);
+                queue.push({
+                    col: nc,
+                    row: nr,
+                    path: [...current.path, dir.key]
+                });
             }
         }
 
+        return null; // 경로 없음
+    }
+
+    isBlockedByPlayer(col, row) {
+        for (const p of this.game.players) {
+            if (p === this.player || p.state === 'DEAD') continue;
+
+            // 플레이어의 현재 위치 타일 계산
+            const pc = Math.floor((p.x + p.tileSize / 2) / p.tileSize);
+            const pr = Math.floor((p.y + p.tileSize / 2) / p.tileSize);
+
+            if (pc === col && pr === row) {
+                // 갇힌 아군은 블로킹하지 않음 (구조 가능)
+                if (p.state === 'TRAPPED' && p.team === this.player.team) return false;
+                return true;
+            }
+        }
         return false;
     }
 
+    findNearestItem(col, row) {
+        let nearest = null;
+        let minDist = Infinity;
+
+        for (const item of this.game.items) {
+            // 위험한 곳에 있는 아이템은 무시
+            if (this.dangerMap.isDangerous(item.col, item.row)) continue;
+
+            const dist = Math.abs(col - item.col) + Math.abs(row - item.row);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = item;
+            }
+        }
+        return nearest;
+    }
+
+    isInDanger(col, row) {
+        return this.dangerMap.isDangerous(col, row);
+    }
+
     findSafeDirection(col, row) {
-        // 🆕 DangerMap의 BFS 경로 활용
+        // DangerMap의 BFS 경로 활용 (탈출 전문)
         const path = this.dangerMap.findSafePath(col, row, this.player.speed);
 
         if (path && path.length > 0) {
-            // 방향 키 문자열을 실제 컨트롤 키로 변환
             const directionKey = path[0];
             const keyMap = {
                 'up': this.player.controls.up,
@@ -132,25 +238,25 @@ export class AIController {
             return keyMap[directionKey];
         }
 
-        // 폴백: 기존 방식으로 안전한 방향 찾기
+        // 2차 수단: 즉시 안전한 인접 타일 찾기 (Fallback)
         const directions = [
-            { key: this.player.controls.up, dx: 0, dy: -1 },
-            { key: this.player.controls.down, dx: 0, dy: 1 },
-            { key: this.player.controls.left, dx: -1, dy: 0 },
-            { key: this.player.controls.right, dx: 1, dy: 0 }
+            { key: this.player.controls.up, dc: 0, dr: -1 },
+            { key: this.player.controls.down, dc: 0, dr: 1 },
+            { key: this.player.controls.left, dc: -1, dr: 0 },
+            { key: this.player.controls.right, dc: 1, dr: 0 }
         ];
 
-        for (const dir of directions) {
-            const newCol = col + dir.dx;
-            const newRow = row + dir.dy;
+        directions.sort(() => Math.random() - 0.5);
 
-            if (!this.game.map.isSolid(newCol, newRow) &&
-                !this.dangerMap.isDangerous(newCol, newRow)) {
+        for (const dir of directions) {
+            const nc = col + dir.dc;
+            const nr = row + dir.dr;
+
+            if (!this.game.map.isSolid(nc, nr) && !this.dangerMap.isDangerous(nc, nr)) {
                 return dir.key;
             }
         }
 
-        // 모든 방향이 위험하면 제자리 유지 (null 반환)
         return null;
     }
 
@@ -177,39 +283,22 @@ export class AIController {
         return nearest;
     }
 
-    /**
-     * 가장 가까운 아군 탐색
-     */
-    findNearestTeammate() {
-        const player = this.player;
-        let nearest = null;
-        let minDist = Infinity;
-
-        for (const p of this.game.players) {
-            if (p === player) continue;
-            if (p.state === 'DEAD') continue;
-            if (p.team !== player.team) continue;
-
-            const dx = p.x - player.x;
-            const dy = p.y - player.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < minDist) {
-                minDist = dist;
-                nearest = p;
-            }
-        }
-        return nearest;
-    }
-
-    /**
-     * 도움이 필요한(갇힌) 아군 탐색
-     */
     findTrappedTeammate() {
-        return this.game.players.find(p =>
-            p.team === this.player.team &&
+        const player = this.player;
+        // 가장 가까운 갇힌 아군 찾기
+        const teammates = this.game.players.filter(p =>
+            p !== player &&
+            p.team === player.team &&
             p.state === 'TRAPPED'
         );
+
+        if (teammates.length === 0) return null;
+
+        return teammates.sort((a, b) => {
+            const distA = Math.hypot(a.x - player.x, a.y - player.y);
+            const distB = Math.hypot(b.x - player.x, b.y - player.y);
+            return distA - distB;
+        })[0];
     }
 
     findNearestBreakableBlock(col, row) {
@@ -217,9 +306,13 @@ export class AIController {
         let nearest = null;
         let minDist = Infinity;
 
+        // 가장 가까운 안전한 블록 탐색
         for (let r = 0; r < map.rows; r++) {
             for (let c = 0; c < map.cols; c++) {
                 if (map.data[r][c] === 2) {
+                    // 이미 위험 지역(폭탄 설치됨)이면 제외
+                    if (this.dangerMap.isDangerous(c, r)) continue;
+
                     const dist = Math.abs(c - col) + Math.abs(r - row);
                     if (dist < minDist) {
                         minDist = dist;
@@ -228,7 +321,6 @@ export class AIController {
                 }
             }
         }
-
         return nearest;
     }
 
@@ -236,40 +328,20 @@ export class AIController {
         return Math.abs(col1 - col2) + Math.abs(row1 - row2) === 1;
     }
 
-    getDirectionTowards(fromCol, fromRow, toCol, toRow) {
-        const map = this.game.map;
-
-        // 간단한 방향 선택 (A* 대신 기본적인 접근)
-        const possibleMoves = [];
-
-        if (toCol < fromCol && !map.isSolid(fromCol - 1, fromRow)) {
-            possibleMoves.push(this.player.controls.left);
-        }
-        if (toCol > fromCol && !map.isSolid(fromCol + 1, fromRow)) {
-            possibleMoves.push(this.player.controls.right);
-        }
-        if (toRow < fromRow && !map.isSolid(fromCol, fromRow - 1)) {
-            possibleMoves.push(this.player.controls.up);
-        }
-        if (toRow > fromRow && !map.isSolid(fromCol, fromRow + 1)) {
-            possibleMoves.push(this.player.controls.down);
-        }
-
-        if (possibleMoves.length > 0) {
-            return possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-        }
-
-        return this.getRandomDirection(fromCol, fromRow);
-    }
-
     getRandomDirection(col, row) {
         const map = this.game.map;
         const directions = [];
 
-        if (!map.isSolid(col, row - 1)) directions.push(this.player.controls.up);
-        if (!map.isSolid(col, row + 1)) directions.push(this.player.controls.down);
-        if (!map.isSolid(col - 1, row)) directions.push(this.player.controls.left);
-        if (!map.isSolid(col + 1, row)) directions.push(this.player.controls.right);
+        const checkMove = (c, r) => {
+            if (map.isSolid(c, r)) return false;
+            if (this.dangerMap.isDangerous(c, r)) return false;
+            return !this.isBlockedByPlayer(c, r);
+        };
+
+        if (checkMove(col, row - 1)) directions.push(this.player.controls.up);
+        if (checkMove(col, row + 1)) directions.push(this.player.controls.down);
+        if (checkMove(col - 1, row)) directions.push(this.player.controls.left);
+        if (checkMove(col + 1, row)) directions.push(this.player.controls.right);
 
         if (directions.length > 0) {
             return directions[Math.floor(Math.random() * directions.length)];
@@ -284,40 +356,48 @@ export class AIController {
         const col = Math.floor(this.player.x / this.player.tileSize);
         const row = Math.floor(this.player.y / this.player.tileSize);
 
-        // 이미 폭탄이 있는지 체크
+        // 이미 내 위치에 폭탄이 있는지 체크
         for (const bomb of this.game.bombs) {
             if (bomb.col === col && bomb.row === row) return false;
         }
 
-        // 🆕 핵심: 폭탄 설치 후 탈출 가능한지 먼저 확인
-        const escapePath = this.dangerMap.simulateBombAndFindEscape(
-            col, row, this.player.bombRange, this.player.speed
+        // 1. 아군 안전 시뮬레이션 (필수)
+        const teamPlayers = this.game.players.filter(p => p.team === this.player.team && p.state !== 'DEAD');
+        const isSafeForTeam = this.dangerMap.simulateBombForTeam(
+            col, row, this.player.bombRange, teamPlayers
         );
 
-        if (!escapePath || escapePath.length === 0) {
-            return false;  // 탈출 불가 → 설치 금지
+        if (!isSafeForTeam) {
+            return false; // 설치 시 아군/본인이 위험해지면 취소
         }
 
-        // 근처에 적이나 파괴 가능 블록이 있으면 폭탄 설치
+        // 2. 적 공격 (우선순위 높음)
         const nearestEnemy = this.findNearestEnemy();
         if (nearestEnemy) {
             const enemyCol = Math.floor(nearestEnemy.x / this.player.tileSize);
             const enemyRow = Math.floor(nearestEnemy.y / this.player.tileSize);
+            const dist = Math.abs(col - enemyCol) + Math.abs(row - enemyRow);
 
-            // 같은 라인에 있고 범위 내면 폭탄
-            if ((col === enemyCol && Math.abs(row - enemyRow) <= this.player.bombRange) ||
-                (row === enemyRow && Math.abs(col - enemyCol) <= this.player.bombRange)) {
-                return Math.random() < 0.5;
-            }
+            // 적과 일직선상이고 사거리 내에 있음
+            const inLine = (col === enemyCol || row === enemyRow);
+            const inRange = dist <= this.player.bombRange;
+
+            if (inLine && inRange) return true;
         }
 
-        // 인접 블록이 있으면 폭탄
+        // 3. 파괴 가능한 블록 파밍
         const map = this.game.map;
-        if (map.data[row - 1]?.[col] === 2 ||
-            map.data[row + 1]?.[col] === 2 ||
-            map.data[row]?.[col - 1] === 2 ||
-            map.data[row]?.[col + 1] === 2) {
-            return Math.random() < 0.3;
+        const directions = [
+            { r: -1, c: 0 }, { r: 1, c: 0 }, { r: 0, c: -1 }, { r: 0, c: 1 }
+        ];
+
+        for (const dir of directions) {
+            const nc = col + dir.c;
+            const nr = row + dir.r;
+            // 바로 옆에 벽돌이 있으면 설치
+            if (map.data[nr]?.[nc] === 2) {
+                return true;
+            }
         }
 
         return false;
