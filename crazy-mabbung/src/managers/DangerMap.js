@@ -183,4 +183,160 @@ export class DangerMap {
         }
         return this.dangerGrid[row][col].timeUntilDanger;
     }
+
+    /**
+     * 특정 시점에 특정 타일이 안전한지 확인
+     * @param {number} col - 열
+     * @param {number} row - 행
+     * @param {number} arrivalTime - 도착 예정 시간 (ms)
+     * @returns {boolean} 안전 여부
+     */
+    isSafeAtTime(col, row, arrivalTime) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return false;
+        }
+
+        // 벽이나 블록은 이동 불가
+        if (this.map.isSolid(col, row)) {
+            return false;
+        }
+
+        const cell = this.dangerGrid[row][col];
+
+        // 위험하지 않은 타일은 안전
+        if (cell.dangerLevel === 0) {
+            return true;
+        }
+
+        // 현재 폭발 중이면 위험
+        if (cell.dangerLevel === 2) {
+            // 폭발이 끝날 때까지 기다려야 함
+            return arrivalTime > cell.dangerDuration;
+        }
+
+        // 위험 예정 타일: 폭발 전에 도착하고 통과할 수 있거나,
+        // 폭발이 끝난 후에 도착해야 안전
+        const explosionTime = cell.timeUntilDanger;
+        const explosionEndTime = explosionTime + cell.dangerDuration;
+
+        // 폭발 전에 도착해서 지나갈 수 있는 경우 (현재 위치가 목적지일 때만)
+        // 또는 폭발이 끝난 후에 도착하는 경우
+        return arrivalTime > explosionEndTime;
+    }
+
+    /**
+     * BFS로 안전한 탈출 경로 탐색
+     * @param {number} startCol - 시작 열
+     * @param {number} startRow - 시작 행
+     * @param {number} playerSpeed - 플레이어 속도 (px/s)
+     * @returns {Array|null} 방향 키 배열 또는 null (탈출 불가)
+     */
+    findSafePath(startCol, startRow, playerSpeed) {
+        const moveTimePerTile = (this.tileSize / playerSpeed) * 1000;
+
+        const directions = [
+            { dc: 0, dr: -1, key: 'up' },
+            { dc: 0, dr: 1, key: 'down' },
+            { dc: -1, dr: 0, key: 'left' },
+            { dc: 1, dr: 0, key: 'right' }
+        ];
+
+        // BFS 큐: {col, row, time, path}
+        const queue = [{
+            col: startCol,
+            row: startRow,
+            time: 0,
+            path: []
+        }];
+
+        const visited = new Set();
+        visited.add(`${startCol},${startRow}`);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            // 현재 위치가 안전한 목적지인지 확인
+            // (시작 위치가 아니고, 해당 시간에 안전한 경우)
+            if (current.path.length > 0 && this.isSafeAtTime(current.col, current.row, current.time)) {
+                // 이 타일에 머물러도 안전한지 추가 확인
+                // (폭발 전에 도착했다면 폭발 시점에도 안전해야 함)
+                const cell = this.dangerGrid[current.row][current.col];
+                if (cell.dangerLevel === 0) {
+                    return current.path;
+                }
+            }
+
+            // 4방향 탐색
+            for (const dir of directions) {
+                const newCol = current.col + dir.dc;
+                const newRow = current.row + dir.dr;
+                const key = `${newCol},${newRow}`;
+
+                if (visited.has(key)) continue;
+
+                // 벽이나 블록은 이동 불가
+                if (this.map.isSolid(newCol, newRow)) continue;
+
+                const arrivalTime = current.time + moveTimePerTile;
+
+                // 이동 경로가 안전한지 확인 (통과 시점에 폭발하지 않아야 함)
+                const midTime = current.time + moveTimePerTile / 2;
+                if (!this.canPassThrough(current.col, current.row, newCol, newRow, midTime)) {
+                    continue;
+                }
+
+                visited.add(key);
+
+                queue.push({
+                    col: newCol,
+                    row: newRow,
+                    time: arrivalTime,
+                    path: [...current.path, dir.key]
+                });
+            }
+        }
+
+        return null;  // 탈출 경로 없음
+    }
+
+    /**
+     * 두 타일 사이를 통과할 수 있는지 확인
+     * @param {number} fromCol - 출발 열
+     * @param {number} fromRow - 출발 행
+     * @param {number} toCol - 도착 열
+     * @param {number} toRow - 도착 행
+     * @param {number} passTime - 통과 시점 (ms)
+     * @returns {boolean} 통과 가능 여부
+     */
+    canPassThrough(fromCol, fromRow, toCol, toRow, passTime) {
+        // 출발지와 도착지 모두 통과 시점에 안전해야 함
+        const fromCell = this.dangerGrid[fromRow]?.[fromCol];
+        const toCell = this.dangerGrid[toRow]?.[toCol];
+
+        if (!fromCell || !toCell) return false;
+
+        // 현재 폭발 중이면 통과 불가
+        if (fromCell.dangerLevel === 2 || toCell.dangerLevel === 2) {
+            return false;
+        }
+
+        // 통과 시점에 폭발 예정인지 확인
+        if (fromCell.dangerLevel === 1) {
+            const explosionStart = fromCell.timeUntilDanger;
+            const explosionEnd = explosionStart + fromCell.dangerDuration;
+            if (passTime >= explosionStart && passTime <= explosionEnd) {
+                return false;
+            }
+        }
+
+        if (toCell.dangerLevel === 1) {
+            const explosionStart = toCell.timeUntilDanger;
+            const explosionEnd = explosionStart + toCell.dangerDuration;
+            if (passTime >= explosionStart && passTime <= explosionEnd) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
