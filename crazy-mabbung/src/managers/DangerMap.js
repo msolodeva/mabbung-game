@@ -44,8 +44,81 @@ export class DangerMap {
                 cell.dangerLevel = 0;
                 cell.timeUntilDanger = Infinity;
                 cell.dangerDuration = 0;
-                cell.sourceBombs = [];
+                cell.sourceBombs.length = 0;
             }
+        }
+    }
+
+    /**
+     * 단일 폭탄의 위험 범위 계산 및 그리드에 표시
+     * @param {Bomb} bomb - 폭탄 객체
+     */
+    calculateBombDanger(bomb) {
+        const directions = [
+            { dc: 0, dr: -1 },  // 상
+            { dc: 0, dr: 1 },   // 하
+            { dc: -1, dr: 0 },  // 좌
+            { dc: 1, dr: 0 }    // 우
+        ];
+
+        // 폭탄 위치 자체도 위험
+        this.markDangerous(bomb.col, bomb.row, bomb);
+
+        // 4방향으로 range만큼 확장
+        for (const dir of directions) {
+            for (let i = 1; i <= bomb.range; i++) {
+                const col = bomb.col + dir.dc * i;
+                const row = bomb.row + dir.dr * i;
+
+                // 맵 범위 체크
+                if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+                    break;
+                }
+
+                const tileType = this.map.data[row][col];
+
+                // 벽이면 폭발 차단
+                if (tileType === 1) {
+                    break;
+                }
+
+                // 파괴 블록이면 이 타일까지만 위험하고 차단
+                if (tileType === 2) {
+                    this.markDangerous(col, row, bomb);
+                    break;
+                }
+
+                // 빈 공간은 위험 표시
+                this.markDangerous(col, row, bomb);
+            }
+        }
+    }
+
+    /**
+     * 타일을 위험으로 표시
+     * @param {number} col - 열
+     * @param {number} row - 행
+     * @param {Bomb} bomb - 원인 폭탄
+     */
+    markDangerous(col, row, bomb) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return;
+        }
+
+        const cell = this.dangerGrid[row][col];
+        const timeUntilExplosion = bomb.timer;
+
+        // 이 폭탄이 가장 빠른 위험인 경우 업데이트
+        if (timeUntilExplosion < cell.timeUntilDanger) {
+            cell.timeUntilDanger = timeUntilExplosion;
+        }
+
+        cell.dangerLevel = 1;  // 위험 예정
+        cell.dangerDuration = 500;  // 폭발 지속 시간
+
+        // 중복 방지
+        if (!cell.sourceBombs.includes(bomb)) {
+            cell.sourceBombs.push(bomb);
         }
     }
 }
