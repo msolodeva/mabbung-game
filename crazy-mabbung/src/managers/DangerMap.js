@@ -359,16 +359,16 @@ export class DangerMap {
         // 현재 그리드 상태 백업
         const backup = this.backupGrid();
 
-        // 가상 폭탄 위험 계산 추가
-        this.calculateBombDanger(virtualBomb);
+        try {
+            // 가상 폭탄 위험 계산 추가
+            this.calculateBombDanger(virtualBomb);
 
-        // 탈출 경로 탐색
-        const escapePath = this.findSafePath(col, row, playerSpeed);
-
-        // 그리드 복원
-        this.restoreGrid(backup);
-
-        return escapePath;
+            // 탈출 경로 탐색
+            return this.findSafePath(col, row, playerSpeed);
+        } finally {
+            // 항상 그리드 복원
+            this.restoreGrid(backup);
+        }
     }
 
     /**
@@ -398,6 +398,12 @@ export class DangerMap {
      * @param {Array} backup - 백업 데이터
      */
     restoreGrid(backup) {
+        if (!backup || backup.length !== this.rows ||
+            !backup[0] || backup[0].length !== this.cols) {
+            console.error('Backup dimensions mismatch');
+            return;
+        }
+
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const cell = this.dangerGrid[r][c];
@@ -405,7 +411,8 @@ export class DangerMap {
                 cell.dangerLevel = saved.dangerLevel;
                 cell.timeUntilDanger = saved.timeUntilDanger;
                 cell.dangerDuration = saved.dangerDuration;
-                cell.sourceBombs = saved.sourceBombs;
+                cell.sourceBombs.length = 0;
+                cell.sourceBombs.push(...saved.sourceBombs);
             }
         }
     }
