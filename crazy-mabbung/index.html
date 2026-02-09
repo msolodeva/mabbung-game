@@ -34,11 +34,43 @@
         <canvas id="game-canvas" width="1088" height="960"></canvas> <!-- 17x15 tiles * 64px -->
         <div id="ui-layer"></div>
 
+        <!-- Character Selection Modal -->
+        <div id="char-select-modal" class="">
+            <div class="select-content">
+                <h1>SELECT CHARACTER</h1>
+                <div class="players-setup">
+                    <div class="player-slot p1-slot">
+                        <h2>PLAYER 1</h2>
+                        <div class="selected-preview" id="p1-preview"></div>
+                        <div class="controls-hint">WASD + F</div>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="player-slot p2-slot">
+                        <h2>PLAYER 2</h2>
+                        <div class="selected-preview" id="p2-preview"></div>
+                        <div class="controls-hint">Arrows + R-Shift</div>
+                    </div>
+                </div>
+                
+                <div class="char-grid" id="char-grid">
+                    <!-- Javascript will populate this -->
+                </div>
+
+                <div class="start-section">
+                    <button id="start-game-btn" disabled>GAME START</button>
+                    <div id="waiting-msg">Waiting for players...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Game Over Modal -->
         <div id="game-over-modal" class="hidden">
             <div class="modal-content">
                 <h1 id="winner-text">Player 1 Wins!</h1>
-                <button id="restart-btn">Play Again</button>
+                <div class="modal-buttons">
+                    <button id="restart-btn">Play Again</button>
+                    <button id="menu-btn" style="background-color: #3498db; margin-left: 10px;">Main Menu</button>
+                </div>
             </div>
         </div>
     </div>

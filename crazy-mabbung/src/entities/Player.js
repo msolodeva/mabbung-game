@@ -1,7 +1,8 @@
 export class Player {
-    constructor(startCol, startRow, tileSize, color, controls) {
+    constructor(startCol, startRow, tileSize, color, controls, customTexture = null) {
         this.tileSize = tileSize;
         this.color = color;
+        this.customTexture = customTexture;
 
         // Default controls if not provided
         this.controls = controls || {
@@ -124,12 +125,14 @@ export class Player {
     draw(ctx, assets) {
         if (this.state === 'DEAD') return;
 
-        const sheet = assets.get('spritesheet_characters');
+        let sheet = this.customTexture;
+        if (!sheet) sheet = assets.get('spritesheet_characters');
 
         if (sheet && (sheet.width || sheet.naturalWidth) > 0) {
             // Calculate Row
-            let baseRow = 0; // Red
-            if (this.color === '#3498db') baseRow = 3; // Blue
+            let baseRow = 0; // Default (Red position)
+            // Only use built-in color logic if no custom texture
+            if (!this.customTexture && this.color === '#3498db') baseRow = 3; // Blue
 
             let rowOffset = 0; // Offset from baseRow (0: Front/Back, 1: Side, 2: Trapped)
             let col = 0;

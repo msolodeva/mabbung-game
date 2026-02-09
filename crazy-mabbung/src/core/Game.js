@@ -5,12 +5,17 @@ import { Item } from '../entities/Item.js';
 import { AssetManager } from '../managers/AssetManager.js';
 import { AIController } from '../managers/AIController.js';
 import { DangerMap } from '../managers/DangerMap.js';
+import { SoundManager } from '../managers/SoundManager.js';
 
 export class Game {
-    constructor(ctx) {
+    constructor(ctx, p1Config = null, p2Config = null) {
         this.ctx = ctx;
+        this.p1Config = p1Config;
+        this.p2Config = p2Config;
+
         this.debug = true;
         this.assets = new AssetManager();
+        this.sounds = new SoundManager();
         this.tileSize = 64;
 
         // Load Assets
@@ -24,11 +29,14 @@ export class Game {
             'sheet_bomb': 'assets/spritesheet_bomb.png'
         });
 
-        this.restart();
+        this.restart(this.p1Config, this.p2Config);
         this.lastInput = {};
     }
 
-    restart() {
+    restart(p1Config = null, p2Config = null) {
+        // Save configs if provided, else keep existing
+        if (p1Config) this.p1Config = p1Config;
+        if (p2Config) this.p2Config = p2Config;
         this.width = this.ctx.canvas.width;
         this.height = this.ctx.canvas.height;
 
@@ -41,9 +49,12 @@ export class Game {
         this.dangerMap = new DangerMap(this.map);
 
         // Team 1 (Red Team) - 왼쪽 스폰
-        const team1Color = '#e74c3c';
+        const team1Color = this.p1Config ? this.p1Config.color : '#e74c3c';
+        const team1Texture = this.p1Config ? this.p1Config.texture : null;
+
         // Team 2 (Blue Team) - 오른쪽 스폰  
-        const team2Color = '#3498db';
+        const team2Color = this.p2Config ? this.p2Config.color : '#3498db';
+        const team2Texture = this.p2Config ? this.p2Config.texture : null;
 
         // Player 1 (Human - Top Left)
         this.player1 = new Player(1, 1, this.tileSize, team1Color, {
@@ -52,7 +63,7 @@ export class Game {
             left: 'KeyA',
             right: 'KeyD',
             bomb: 'KeyF'
-        });
+        }, team1Texture);
         this.player1.team = 1;
         this.player1.isAI = false;
 
@@ -63,33 +74,42 @@ export class Game {
             left: 'ArrowLeft',
             right: 'ArrowRight',
             bomb: 'ShiftRight'
-        });
+        }, team2Texture);
         this.player2.team = 2;
         this.player2.isAI = false;
 
         // AI Players - Team 1 (Red)
+        // Ensure AIs use default Red skin (no texture override, rely on color fallback which is Red by default for unknown colors, 
+        // but we want them to look like Team 1 color if possible. 
+        // Player.js currently defaults baseRow=0 (Red) unless color is Blue.
+        // If team1Color is Green, AI will look Red unless we give them a Green texture.
+        // For now, let's just let AIs be Red/Blue standard to differentiate "Hero" vs "Minion" or just keeps code simple.
+        // If we want AI to match P1's color, we need to pass P1's texture.
+        // Let's pass the texture to AI teammates too!
+
         this.ai1_1 = new Player(1, rows - 2, this.tileSize, team1Color, {
             up: 'ai1_up', down: 'ai1_down', left: 'ai1_left', right: 'ai1_right', bomb: 'ai1_bomb'
-        });
+        }, team1Texture);
         this.ai1_1.team = 1;
         this.ai1_1.isAI = true;
 
         this.ai1_2 = new Player(1, Math.floor(rows / 2), this.tileSize, team1Color, {
             up: 'ai2_up', down: 'ai2_down', left: 'ai2_left', right: 'ai2_right', bomb: 'ai2_bomb'
-        });
+        }, team1Texture);
         this.ai1_2.team = 1;
         this.ai1_2.isAI = true;
 
         // AI Players - Team 2 (Blue)
+        // AI Players - Team 2 (Blue)
         this.ai2_1 = new Player(cols - 2, 1, this.tileSize, team2Color, {
             up: 'ai3_up', down: 'ai3_down', left: 'ai3_left', right: 'ai3_right', bomb: 'ai3_bomb'
-        });
+        }, team2Texture);
         this.ai2_1.team = 2;
         this.ai2_1.isAI = true;
 
         this.ai2_2 = new Player(cols - 2, Math.floor(rows / 2), this.tileSize, team2Color, {
             up: 'ai4_up', down: 'ai4_down', left: 'ai4_left', right: 'ai4_right', bomb: 'ai4_bomb'
-        });
+        }, team2Texture);
         this.ai2_2.team = 2;
         this.ai2_2.isAI = true;
 
@@ -111,6 +131,10 @@ export class Game {
 
         this.gameOver = false;
         this.winner = null;
+        this.gameOverSoundPlayed = false;
+
+        // Start Sound
+        this.sounds.play('start');
 
         // Clear spawn zones for AI players
         this.clearSpawnZone(1, rows - 2);
@@ -205,6 +229,18 @@ export class Game {
         } else if (team2Alive === 0) {
             this.gameOver = true;
             this.winner = '레드팀 승리! 🔴';
+        }
+
+        if (this.gameOver && !this.gameOverSoundPlayed) {
+            this.gameOverSoundPlayed = true;
+            if (this.winner === '무승부!') {
+                this.sounds.play('lose'); // Draw is kind of a loss?
+            } else {
+                // Determine if human player won (Assuming Player 1 is Red, Player 2 is Blue)
+                // Actually, just play a generic Win sound for now, or check which team won.
+                // Since this is local multiplayer or AI bot match, let's just play 'win'.
+                this.sounds.play('win');
+            }
         }
     }
 
@@ -364,6 +400,7 @@ export class Game {
         } else if (type === 'count') {
             player.maxBombs++;
         }
+        this.sounds.play('item_get');
     }
 
     checkPlayerCollision(p1, p2) {
@@ -380,17 +417,21 @@ export class Game {
             if (p1.team === p2.team) {
                 p1.state = 'NORMAL';
                 console.log("Player Rescued!");
+                this.sounds.play('item_get'); // Reuse positive sound
             } else {
                 p1.state = 'DEAD';
                 console.log("Player Killed!");
+                this.sounds.play('die');
             }
         } else if (p2.state === 'TRAPPED' && p1.state === 'NORMAL') {
             if (p1.team === p2.team) {
                 p2.state = 'NORMAL';
                 console.log("Player Rescued!");
+                this.sounds.play('item_get');
             } else {
                 p2.state = 'DEAD';
                 console.log("Player Killed!");
+                this.sounds.play('die');
             }
         }
     }
@@ -412,10 +453,12 @@ export class Game {
         const bomb = new Bomb(col, row, player.bombRange, player, this.tileSize);
         this.bombs.push(bomb);
         player.activeBombs++;
+        this.sounds.play('place_bomb');
     }
 
     triggerExplosion(col, row, range, owner) {
         this.addExplosion(col, row, 'CENTER');
+        this.sounds.play('explode');
 
         const directions = [
             { dx: 0, dy: -1, type: 'VERTICAL', end: 'END_UP' },
@@ -484,6 +527,7 @@ export class Game {
             if (this.checkEntityOnTile(player, col, row)) {
                 if (player.state === 'NORMAL') {
                     player.trap();
+                    this.sounds.play('trap');
                 }
             }
         });
