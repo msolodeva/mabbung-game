@@ -1,5 +1,6 @@
 import { Game } from './core/Game.js';
 import { AssetManager } from './managers/AssetManager.js';
+import { Map, MAP_THEMES } from './core/Map.js';
 
 window.addEventListener('load', () => {
     const canvas = document.getElementById('game-canvas');
@@ -54,12 +55,67 @@ window.addEventListener('load', () => {
     // Pre-load assets for selection screen
     const selectionAssets = new AssetManager();
     selectionAssets.load({
-        'spritesheet_characters': 'assets/spritesheet_characters.png'
+        'spritesheet_characters': 'assets/spritesheet_characters.png',
+        'sheet_tiles': 'assets/spritesheet_tiles.png'
     });
 
     selectionAssets.onLoadComplete = () => {
         initSelectionScreen();
+        initMapSelection();
     };
+
+    // Map Selection Logic
+    let selectedMapTheme = MAP_THEMES.FOREST;
+    const mapGrid = document.getElementById('map-grid');
+    const mapNameLabel = document.getElementById('selected-map-name');
+
+    function initMapSelection() {
+        Object.values(MAP_THEMES).forEach(theme => {
+            const el = document.createElement('div');
+            el.className = 'map-option';
+            if (theme.id === selectedMapTheme.id) el.classList.add('selected');
+            el.onclick = () => selectMap(theme);
+
+            // Create Thumbnail
+            const startX = 0;
+            const startY = 0;
+            const thumbW = 80;
+            const thumbH = 60;
+
+            const cvs = document.createElement('canvas');
+            cvs.width = thumbW;
+            cvs.height = thumbH;
+            const ctx = cvs.getContext('2d');
+
+            // Draw a mini map preview
+            // We can just use the Map class to fill a tiny area
+            const miniTileSize = 10;
+            const miniCols = Math.ceil(thumbW / miniTileSize);
+            const miniRows = Math.ceil(thumbH / miniTileSize);
+
+            const miniMap = new Map(miniTileSize, miniCols, miniRows, theme);
+            // Force redraw with assets
+            miniMap.draw(ctx, selectionAssets);
+
+            el.appendChild(cvs);
+            mapGrid.appendChild(el);
+        });
+    }
+
+    function selectMap(theme) {
+        selectedMapTheme = theme;
+        mapNameLabel.textContent = theme.name;
+
+        // Update UI
+        document.querySelectorAll('.map-option').forEach(el => el.classList.remove('selected'));
+        // Find the element again (a bit inefficient but fine for small list)
+        // Or store ref. Let's just rebuild/find by index if we had one.
+        // Actually since we iterate Object.values order is preserved in modern JS mostly, but better to check child
+        const index = Object.values(MAP_THEMES).findIndex(t => t.id === theme.id);
+        if (index >= 0 && mapGrid.children[index]) {
+            mapGrid.children[index].classList.add('selected');
+        }
+    }
 
     function initSelectionScreen() {
         const sheet = selectionAssets.get('spritesheet_characters');
@@ -183,14 +239,14 @@ window.addEventListener('load', () => {
 
         // Start Game
         if (!window.currentGame) {
-            window.currentGame = new Game(ctx, p1Config, p2Config);
+            window.currentGame = new Game(ctx, p1Config, p2Config, selectedMapTheme);
             // Assign to window.game for debug consistency
             window.game = window.currentGame;
 
             // Initial UI Setup if needed (handled in Game loop)
             requestAnimationFrame(gameLoop);
         } else {
-            window.currentGame.restart(p1Config, p2Config);
+            window.currentGame.restart(p1Config, p2Config, selectedMapTheme);
         }
     });
 

@@ -8,10 +8,11 @@ import { DangerMap } from '../managers/DangerMap.js';
 import { SoundManager } from '../managers/SoundManager.js';
 
 export class Game {
-    constructor(ctx, p1Config = null, p2Config = null) {
+    constructor(ctx, p1Config = null, p2Config = null, mapTheme = null) {
         this.ctx = ctx;
         this.p1Config = p1Config;
         this.p2Config = p2Config;
+        this.mapTheme = mapTheme;
 
         this.debug = true;
         this.assets = new AssetManager();
@@ -29,21 +30,23 @@ export class Game {
             'sheet_bomb': 'assets/spritesheet_bomb.png'
         });
 
-        this.restart(this.p1Config, this.p2Config);
+        this.restart(this.p1Config, this.p2Config, this.mapTheme);
         this.lastInput = {};
     }
 
-    restart(p1Config = null, p2Config = null) {
+    restart(p1Config = null, p2Config = null, mapTheme = null) {
         // Save configs if provided, else keep existing
         if (p1Config) this.p1Config = p1Config;
         if (p2Config) this.p2Config = p2Config;
+        if (mapTheme) this.mapTheme = mapTheme;
+
         this.width = this.ctx.canvas.width;
         this.height = this.ctx.canvas.height;
 
         const cols = Math.floor(this.width / this.tileSize);
         const rows = Math.floor(this.height / this.tileSize);
 
-        this.map = new Map(this.tileSize, cols, rows);
+        this.map = new Map(this.tileSize, cols, rows, this.mapTheme);
 
         // DangerMap 생성 (AI들이 공유)
         this.dangerMap = new DangerMap(this.map);

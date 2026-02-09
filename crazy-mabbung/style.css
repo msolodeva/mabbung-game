@@ -234,7 +234,7 @@ canvas {
     background: #34495e;
     padding: 40px;
     border-radius: 20px;
-    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
     text-align: center;
     border: 4px solid #95a5a6;
     max-width: 800px;
@@ -257,7 +257,7 @@ canvas {
 }
 
 .player-slot {
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     padding: 20px;
     border-radius: 15px;
     width: 200px;
@@ -265,8 +265,13 @@ canvas {
     transition: all 0.3s;
 }
 
-.p1-slot { border-color: #e74c3c; }
-.p2-slot { border-color: #3498db; }
+.p1-slot {
+    border-color: #e74c3c;
+}
+
+.p2-slot {
+    border-color: #3498db;
+}
 
 .player-slot h2 {
     margin: 0 0 15px 0;
@@ -278,7 +283,7 @@ canvas {
     width: 100px;
     height: 100px;
     margin: 0 auto 15px;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
     display: flex;
     justify-content: center;
@@ -380,7 +385,7 @@ canvas {
 
 /* If P2 selects, override border if active, or share if possible. 
    Simplest is just last one wins border color but keep label. */
-   
+
 .char-option.p2-active::before {
     content: "P2";
     position: absolute;
@@ -470,7 +475,52 @@ canvas {
     box-shadow: 0 7px 0 #2980b9;
 }
 
-#menu-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #2980b9;
+box-shadow: 0 2px 0 #2980b9;
+}
+
+/* Map Selection */
+.map-select-section {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.map-grid {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.map-option {
+    width: 80px;
+    height: 60px;
+    border: 3px solid #7f8c8d;
+    border-radius: 8px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+    position: relative;
+    background-color: #333;
+}
+
+.map-option canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.map-option:hover {
+    transform: scale(1.05);
+}
+
+.map-option.selected {
+    border-color: #f1c40f;
+    box-shadow: 0 0 10px #f1c40f;
+}
+
+.map-label {
+    margin-top: 5px;
+    font-size: 16px;
+    color: #ecf0f1;
+    font-weight: bold;
 }

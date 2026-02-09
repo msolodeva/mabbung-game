@@ -1,8 +1,40 @@
+export const MAP_THEMES = {
+    FOREST: {
+        id: 'FOREST',
+        name: 'Forest',
+        filter: 'none',
+        colors: { bg: '#27ae60', wall: '#7f8c8d', block: '#e67e22' },
+        blockChance: 0.4
+    },
+    ICE: {
+        id: 'ICE',
+        name: 'Ice',
+        filter: 'hue-rotate(180deg) brightness(1.2)',
+        colors: { bg: '#2980b9', wall: '#ecf0f1', block: '#3498db' },
+        blockChance: 0.3
+    },
+    DESERT: {
+        id: 'DESERT',
+        name: 'Desert',
+        filter: 'hue-rotate(60deg) sepia(0.4) brightness(1.1)',
+        colors: { bg: '#f1c40f', wall: '#d35400', block: '#e74c3c' },
+        blockChance: 0.5
+    },
+    FACTORY: {
+        id: 'FACTORY',
+        name: 'Factory',
+        filter: 'grayscale(100%) contrast(1.1) brightness(0.9)',
+        colors: { bg: '#7f8c8d', wall: '#2c3e50', block: '#95a5a6' },
+        blockChance: 0.4
+    }
+};
+
 export class Map {
-    constructor(tileSize, cols, rows) {
+    constructor(tileSize, cols, rows, theme = MAP_THEMES.FOREST) {
         this.tileSize = tileSize;
         this.cols = cols;
         this.rows = rows;
+        this.theme = theme;
 
         // Generate map data dynamically
         // 0 = Empty, 1 = Wall (Indestructible), 2 = Breakable
@@ -27,8 +59,8 @@ export class Map {
                 else if (this.isSpawnZone(c, r)) {
                     row.push(0);
                 }
-                // Random breakable blocks (40% chance)
-                else if (Math.random() < 0.4) {
+                // Random breakable blocks based on theme chance
+                else if (Math.random() < this.theme.blockChance) {
                     row.push(2);
                 }
                 // Empty space
@@ -79,8 +111,13 @@ export class Map {
             sh = height / TILE_SHEET_ROWS;
         }
 
+        ctx.save();
+        if (this.theme.filter !== 'none') {
+            ctx.filter = this.theme.filter;
+        }
+
         // Draw a solid background first to hide any seams
-        ctx.fillStyle = '#27ae60'; // Darker grass green
+        ctx.fillStyle = this.theme.colors.bg;
         ctx.fillRect(0, 0, this.cols * this.tileSize, this.rows * this.tileSize);
 
         for (let r = 0; r < this.rows; r++) {
@@ -105,7 +142,7 @@ export class Map {
                         const sx = 0; // First variant
                         ctx.drawImage(sheet, sx, wallSy, sw, sh, x, y - 10, this.tileSize, this.tileSize + 10);
                     } else {
-                        ctx.fillStyle = '#7f8c8d';
+                        ctx.fillStyle = this.theme.colors.wall;
                         ctx.fillRect(x, y, this.tileSize, this.tileSize);
                     }
                 } else if (type === 2) {
@@ -115,7 +152,7 @@ export class Map {
                         const sx = 0;
                         ctx.drawImage(sheet, sx, blockSy, sw, sh, x, y - 5, this.tileSize, this.tileSize + 5);
                     } else {
-                        ctx.fillStyle = '#e67e22'; // Orange
+                        ctx.fillStyle = this.theme.colors.block; // Orange
                         ctx.fillRect(x, y, this.tileSize, this.tileSize);
                     }
                 } else {
@@ -128,6 +165,7 @@ export class Map {
                 }
             }
         }
+        ctx.restore();
     }
 
     isSolid(col, row) {
