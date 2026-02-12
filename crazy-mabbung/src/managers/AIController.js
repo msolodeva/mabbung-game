@@ -53,21 +53,33 @@ export class AIController {
             return;
         }
 
-        // 2. 갇힌 아군 구출 (높은 우선순위)
+        // 2. 갇힌 아군 구출 (높은 우선순위) — 구출 전용 BFS 사용
         const trappedTeammate = this.findTrappedTeammate();
         if (trappedTeammate) {
             const tCol = Math.floor(trappedTeammate.x / player.tileSize);
             const tRow = Math.floor(trappedTeammate.y / player.tileSize);
 
-            // console.log(`AI ${player.team} Rescuing teammate at ${tCol},${tRow}`);
-            const move = this.findNextMove(myCol, myRow, tCol, tRow);
+            const move = this.findRescuePath(myCol, myRow, tCol, tRow);
             if (move) {
                 this.currentDirection = move;
                 return;
             }
         }
 
-        // 3. 아이템 획득 (안전한 경우)
+        // 3. 갇힌 적 처치 (높은 우선순위) — 터치로 즉사시키기
+        const trappedEnemy = this.findTrappedEnemy();
+        if (trappedEnemy) {
+            const eCol = Math.floor(trappedEnemy.x / player.tileSize);
+            const eRow = Math.floor(trappedEnemy.y / player.tileSize);
+
+            const move = this.findRescuePath(myCol, myRow, eCol, eRow);
+            if (move) {
+                this.currentDirection = move;
+                return;
+            }
+        }
+
+        // 4. 아이템 획득 (안전한 경우)
         const nearestItem = this.findNearestItem(myCol, myRow);
         if (nearestItem) {
             const move = this.findNextMove(myCol, myRow, nearestItem.col, nearestItem.row);
@@ -77,7 +89,7 @@ export class AIController {
             }
         }
 
-        // 4. 적 공격 (추적)
+        // 5. 적 공격 (추적)
         const nearestEnemy = this.findNearestEnemy();
         if (nearestEnemy) {
             const enemyCol = Math.floor(nearestEnemy.x / player.tileSize);
@@ -95,7 +107,7 @@ export class AIController {
             }
         }
 
-        // 5. 파밍 (블록 파괴)
+        // 6. 파밍 (블록 파괴)
         const nearestBlock = this.findNearestBreakableBlock(myCol, myRow);
         if (nearestBlock) {
             // 인접하면 멈춰서 폭탄 설치 각을 봄
@@ -111,7 +123,7 @@ export class AIController {
             return;
         }
 
-        // 6. 아무것도 할 게 없으면 랜덤 배회 (제자리 멈춤 방지)
+        // 7. 아무것도 할 게 없으면 랜덤 배회 (제자리 멈춤 방지)
         if (!this.currentDirection || Math.random() < 0.05) {
             this.currentDirection = this.getRandomDirection(myCol, myRow);
         }
@@ -285,12 +297,17 @@ export class AIController {
 
     findTrappedTeammate() {
         const player = this.player;
-        // 가장 가까운 갇힌 아군 찾기
-        const teammates = this.game.players.filter(p =>
-            p !== player &&
-            p.team === player.team &&
-            p.state === 'TRAPPED'
-        );
+        const MAX_RESCUE_DIST = 7; // 맨해튼 거리 7타일 이내만 구출 시도
+
+        const myCol = Math.floor(player.x / player.tileSize);
+        const myRow = Math.floor(player.y / player.tileSize);
+
+        const teammates = this.game.players.filter(p => {
+            if (p === player || p.team !== player.team || p.state !== 'TRAPPED') return false;
+            const tCol = Math.floor(p.x / p.tileSize);
+            const tRow = Math.floor(p.y / p.tileSize);
+            return (Math.abs(myCol - tCol) + Math.abs(myRow - tRow)) <= MAX_RESCUE_DIST;
+        });
 
         if (teammates.length === 0) return null;
 
@@ -299,6 +316,97 @@ export class AIController {
             const distB = Math.hypot(b.x - player.x, b.y - player.y);
             return distA - distB;
         })[0];
+    }
+
+    /**
+     * 근처에서 갇힌 적 찾기 (터치로 처치 대상)
+     * 맨해튼 거리 8타일 이내
+     */
+    findTrappedEnemy() {
+        const player = this.player;
+        const MAX_KILL_DIST = 8;
+
+        const myCol = Math.floor(player.x / player.tileSize);
+        const myRow = Math.floor(player.y / player.tileSize);
+
+        const enemies = this.game.players.filter(p => {
+            if (p === player || p.team === player.team || p.state !== 'TRAPPED') return false;
+            const eCol = Math.floor(p.x / p.tileSize);
+            const eRow = Math.floor(p.y / p.tileSize);
+            return (Math.abs(myCol - eCol) + Math.abs(myRow - eRow)) <= MAX_KILL_DIST;
+        });
+
+        if (enemies.length === 0) return null;
+
+        return enemies.sort((a, b) => {
+            const distA = Math.hypot(a.x - player.x, a.y - player.y);
+            const distB = Math.hypot(b.x - player.x, b.y - player.y);
+            return distA - distB;
+        })[0];
+    }
+
+    /**
+     * 구출 전용 BFS 길찾기
+     * 활성 폭발(dangerLevel===2)만 회피하고, 폭발 예정(dangerLevel===1)은 통과 허용
+     * 갇힌 동료에게 효과적으로 접근 가능
+     */
+    findRescuePath(startCol, startRow, targetCol, targetRow) {
+        if (startCol === targetCol && startRow === targetRow) return null;
+
+        const queue = [{ col: startCol, row: startRow, path: [] }];
+        const visited = new Set();
+        visited.add(`${startCol},${startRow}`);
+
+        const MAX_DEPTH = 15; // 구출은 근거리이므로 탐색 깊이 축소
+
+        const directions = [
+            { key: this.player.controls.up, dc: 0, dr: -1 },
+            { key: this.player.controls.down, dc: 0, dr: 1 },
+            { key: this.player.controls.left, dc: -1, dr: 0 },
+            { key: this.player.controls.right, dc: 1, dr: 0 }
+        ];
+
+        directions.sort(() => Math.random() - 0.5);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            if (current.col === targetCol && current.row === targetRow) {
+                return current.path[0];
+            }
+
+            if (current.path.length >= MAX_DEPTH) continue;
+
+            for (const dir of directions) {
+                const nc = current.col + dir.dc;
+                const nr = current.row + dir.dr;
+                const key = `${nc},${nr}`;
+
+                if (visited.has(key)) continue;
+                if (nc < 0 || nc >= this.game.map.cols || nr < 0 || nr >= this.game.map.rows) continue;
+
+                const isTarget = (nc === targetCol && nr === targetRow);
+
+                // 벽 체크 (목표 지점은 예외)
+                if (!isTarget && this.game.map.isSolid(nc, nr)) continue;
+
+                // 활성 폭발(dangerLevel===2)만 회피, 예정(1)은 허용
+                const cell = this.dangerMap.dangerGrid[nr]?.[nc];
+                if (cell && cell.dangerLevel === 2) continue;
+
+                // 플레이어 블로킹 체크 (갇힌 아군 제외)
+                if (!isTarget && this.isBlockedByPlayer(nc, nr)) continue;
+
+                visited.add(key);
+                queue.push({
+                    col: nc,
+                    row: nr,
+                    path: [...current.path, dir.key]
+                });
+            }
+        }
+
+        return null;
     }
 
     findNearestBreakableBlock(col, row) {

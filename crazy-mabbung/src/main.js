@@ -56,7 +56,11 @@ window.addEventListener('load', () => {
     const selectionAssets = new AssetManager();
     selectionAssets.load({
         'spritesheet_characters': 'assets/spritesheet_characters.png',
-        'sheet_tiles': 'assets/spritesheet_tiles.png'
+        'sheet_tiles': 'assets/spritesheet_tiles.png',
+        'sheet_tiles_ice': 'assets/spritesheet_tiles_ice.png',
+        'sheet_tiles_desert': 'assets/spritesheet_tiles_desert.png',
+        'sheet_tiles_factory': 'assets/spritesheet_tiles_factory.png',
+        'sheet_tiles_volcano': 'assets/spritesheet_tiles_volcano.png'
     });
 
     selectionAssets.onLoadComplete = () => {
