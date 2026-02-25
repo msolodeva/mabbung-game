@@ -1,22 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Save the Mabbung</title>
-    <link rel="stylesheet" href="/src/style.css" />
-  </head>
-  <body>
-    <div id="game-container">
-      <div id="ui-layer">
-        <div id="timer-display">Time: 10</div>
-        <div id="game-over-screen" class="hidden">
-          <h1 id="game-message">Game Over</h1>
-          <button id="reset-button">Try Again</button>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Save the Mabbung</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+
+<body>
+  <div id="game-container">
+    <div id="ui-layer">
+      <div id="timer-display">10</div>
+      <div id="level-title" class="hidden">Level 1</div>
+
+      <!-- Start Screen -->
+      <div id="start-screen" class="hidden">
+        <div class="start-content">
+          <div class="logo-character"><img src="/mabbung_face.png?v=3" width="60" height="60"
+              style="border-radius: 50%; object-fit: cover;" /></div>
+          <h1 class="game-logo">Save the<br>Mabbung</h1>
+          <p class="start-subtitle">Draw a line to protect Mabbung from bees!</p>
+          <button id="play-button">▶ PLAY</button>
         </div>
       </div>
-      <canvas id="game-canvas"></canvas>
+
+      <!-- Level Select Screen -->
+      <div id="level-select-screen" class="hidden">
+        <div class="level-select-content">
+          <h2 class="level-select-title">Select Level</h2>
+          <div id="level-grid"></div>
+          <button id="level-select-back" class="back-btn">← Back</button>
+        </div>
+      </div>
+
+      <!-- Game Over / Win Screen -->
+      <div id="game-over-screen" class="hidden">
+        <h1 id="game-message">Game Over</h1>
+        <div id="stars-display"></div>
+        <div class="result-buttons">
+          <button id="reset-button">🔄 Retry</button>
+          <button id="next-button" class="hidden">▶ Next</button>
+        </div>
+      </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+    <canvas id="game-canvas"></canvas>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>
