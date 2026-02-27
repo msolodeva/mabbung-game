@@ -112,7 +112,16 @@ export class Game {
     }
 
     init() {
-        this.engine = this.Engine.create();
+        this.engine = this.Engine.create({
+            enableSleeping: true
+        });
+        // positionIterations: 높으면 경계 정밀 but 진동 위험, 15가 균형점
+        this.engine.positionIterations = 15;
+        this.engine.velocityIterations = 10;
+        this.engine.constraintIterations = 4;
+
+        // restingThreshold: 너무 높으면 경계 관통 허용 증가
+        Matter.Resolver._restingThreshold = 0.5;
 
         this.render = this.Render.create({
             canvas: this.canvas,
@@ -130,13 +139,15 @@ export class Game {
 
         this.Render.run(this.render);
 
-        this.runner = this.Runner.create();
+        // fixed delta Runner: 프레임이 늦어도 큰 타임스텝으로 tunneling이 생기지 않도록
+        this.runner = this.Runner.create({ isFixed: true, delta: 1000 / 60 });
         this.Runner.run(this.runner, this.engine);
 
         // Physics events
         this.Events.on(this.engine, 'beforeUpdate', () => {
             this.bees.forEach(bee => bee.update());
         });
+
 
         this.Events.on(this.engine, 'collisionStart', (event) => {
             if (this.state !== 'SIMULATING') return;
@@ -293,21 +304,23 @@ export class Game {
             }
         });
 
-        // Create walls (invisible boundaries)
-        const wallOpts = { isStatic: true, render: { visible: false } };
+        // Create walls (두꺼운 경계 — tunneling 방지)
+        const wallOpts = { isStatic: true, render: { visible: false }, friction: 0.3 };
         this.Composite.add(this.engine.world, [
-            this.Bodies.rectangle(-30, this.height / 2, 60, this.height, wallOpts),
-            this.Bodies.rectangle(this.width + 30, this.height / 2, 60, this.height, wallOpts),
-            this.Bodies.rectangle(this.width / 2, -30, this.width, 60, wallOpts)
+            this.Bodies.rectangle(-50, this.height / 2, 100, this.height * 2, wallOpts),   // left
+            this.Bodies.rectangle(this.width + 50, this.height / 2, 100, this.height * 2, wallOpts), // right
+            this.Bodies.rectangle(this.width / 2, -50, this.width * 2, 100, wallOpts),    // top
+            this.Bodies.rectangle(this.width / 2, this.height + 50, this.width * 2, 100, wallOpts)  // bottom safety
         ]);
 
         // Create character (invisible in Matter, custom rendered)
         this.mabbung = this.Bodies.circle(level.character.x, level.character.y, 22, {
             isStatic: false,
-            restitution: 0.3,
+            restitution: 0,
             friction: 0.8,
-            density: 0.004,
-            frictionAir: 0.02,
+            density: 0.005,
+            frictionAir: 0.15,
+            slop: 0.1,
             render: { visible: false }
         });
         this.mabbung.label = 'character';
@@ -343,10 +356,12 @@ export class Game {
 
             // Make Mabbung dynamic so gravity affects it
             Matter.Body.setStatic(this.mabbung, false);
+            Matter.Sleeping.set(this.mabbung, false); // Wake up from sleep
 
             // Allow drawn path to drop too
             if (this.inputHandler && this.inputHandler.pathBody) {
                 Matter.Body.setStatic(this.inputHandler.pathBody, false);
+                Matter.Sleeping.set(this.inputHandler.pathBody, false); // Wake up from sleep
             }
 
             // Start bee spawning from all beehives
@@ -685,6 +700,9 @@ export class Game {
 
         ctx.save();
         ctx.translate(mx, my);
+
+        // 물리 회전과 시각 일치
+        ctx.rotate(this.mabbung.angle);
 
         // Trembling when scared
         if (isScared) {

@@ -1,17 +1,8 @@
-# Mabbung Character Replacement
-
-## Goal
-Replace the game's Mabbung character sprite with the provided image of a child (`IMG_2097.jpg`).
-
-## Plan 
-- [x] Locate the current character sprite usage in the codebase.
-- [x] Extract the child's face from `/Users/seungwan/Downloads/IMG_2097.jpg` and create a suitable transparent sprite.
-- [x] Implement the newly created sprite in the game.
-- [x] Test the game to verify the character appears correctly.
-
-## Working Notes
-- The image is located at `/Users/seungwan/Downloads/IMG_2097.jpg`
-- Successfully created `/public/mabbung_face.png`.
-- Replaced Shiba Dog vector drawing logic in `Game.js` with `ctx.drawImage` utilizing the new sprite.
-- Replaced the emoji in `index.html` with an image tag pointing to the new sprite.
-- Build succeeded.
+- [x] Restate goal + acceptance criteria: Make the bees attack the Mabbung character more intelligently. The bees should try to circumvent obstacles or push harder when blocked, rather than just continuously applying a constant force towards the character's center regardless of blockages.
+- [x] Locate existing implementation / patterns: `src/Bee.js` handles bee movement. `src/InputHandler.js` generates the drawn lines.
+- [x] Design: minimal approach + key decisions: Use `Matter.Query.ray` to detect if the line of sight to Mabbung is blocked. If blocked, apply a tangential force or increased randomized force to help the bees "wrap around" or "push through" the drawn lines.
+- [x] Implement smallest safe slice: Modify `Bee.js` to use raycasting or collision detection to adjust its tracking force direction and magnitude.
+- [ ] Add/adjust tests: Ensure bees don't get stuck infinitely in a straight line and correctly navigate around simple boxes.
+- [ ] Run verification (lint/tests/build/manual repro): Run the dev server and test manually on level 1.
+- [ ] Summarize changes + verification story
+- [ ] Record lessons (if any)

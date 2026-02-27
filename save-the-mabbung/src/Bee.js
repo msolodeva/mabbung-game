@@ -4,10 +4,10 @@ export class Bee {
     constructor(game, x, y) {
         this.game = game;
         this.body = Matter.Bodies.circle(x, y, 6, {
-            restitution: 0.9,
-            friction: 0.05,
+            restitution: 0.1,
+            friction: 0.3,
             density: 0.005,
-            frictionAir: 0.002,
+            frictionAir: 0.01,
             render: {
                 visible: false // Custom rendering
             }
@@ -54,21 +54,89 @@ export class Bee {
         const dist = Math.hypot(dx, dy);
 
         if (dist > 0) {
-            const trackForce = 0.00008;
+            // --- Raycast for Blocked Path (throttled: every 10 frames) ---
+            if (!this._raycastTimer) this._raycastTimer = 0;
+            this._raycastTimer++;
+            if (this._raycastTimer >= 10 || this._isBlocked === undefined) {
+                this._raycastTimer = 0;
+                const allBodies = Matter.Composite.allBodies(this.game.engine.world);
+                // Filter out other bees and the character itself to only check obstacles
+                const obstacleBodies = allBodies.filter(b => {
+                    const label = b.label || '';
+                    const parentLabel = (b.parent && b.parent !== b) ? b.parent.label : '';
+                    return label !== 'bee' && label !== 'character' &&
+                        parentLabel !== 'bee' && parentLabel !== 'character';
+                });
+                const rayCollisions = Matter.Query.ray(obstacleBodies, body.position, this.game.mabbung.position);
+
+                this._isBlocked = false;
+                for (let i = 0; i < rayCollisions.length; i++) {
+                    const hitBody = rayCollisions[i].body;
+                    const hitLabel = hitBody.label;
+                    const parentLabel = hitBody.parent ? hitBody.parent.label : '';
+                    if (hitLabel === 'drawnPath' || parentLabel === 'drawnPath' ||
+                        hitLabel === 'obstacle' || parentLabel === 'obstacle' ||
+                        hitLabel === 'ground' || parentLabel === 'ground') {
+                        this._isBlocked = true;
+                        break;
+                    }
+                }
+            }
+            const isBlocked = this._isBlocked;
 
             this.driftChangeTimer++;
             if (this.driftChangeTimer > 30 + Math.random() * 60) {
-                this.driftAngle += (Math.random() - 0.5) * Math.PI;
-                this.driftChangeTimer = 0;
+                if (isBlocked) {
+                    const angleToMabbung = Math.atan2(dy, dx);
+                    const slideDir = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+                    this.driftAngle = angleToMabbung + slideDir + (Math.random() - 0.5) * 0.5;
+                    this.driftChangeTimer = 0;
+                } else {
+                    this.driftAngle += (Math.random() - 0.5) * Math.PI;
+                    this.driftChangeTimer = 0;
+                }
             }
 
-            const driftX = Math.cos(this.driftAngle) * this.driftSpeed;
-            const driftY = Math.sin(this.driftAngle) * this.driftSpeed;
+            const trackForce = isBlocked ? 0.00012 : 0.00008;
+            const currentDriftSpeed = isBlocked ? this.driftSpeed * 2.5 : this.driftSpeed;
+
+            const driftX = Math.cos(this.driftAngle) * currentDriftSpeed;
+            const driftY = Math.sin(this.driftAngle) * currentDriftSpeed;
 
             Matter.Body.applyForce(body, body.position, {
                 x: (dx / dist) * trackForce + driftX,
                 y: (dy / dist) * trackForce + driftY
             });
+
+            // --- Separation Force (Flocking) ---
+            const separationDist = 20;
+            let sepX = 0;
+            let sepY = 0;
+            let sepCount = 0;
+
+            this.game.bees.forEach(otherBee => {
+                if (otherBee === this) return;
+
+                const obx = otherBee.body.position.x;
+                const oby = otherBee.body.position.y;
+                const sdx = bx - obx;
+                const sdy = by - oby;
+                const sdist = Math.hypot(sdx, sdy);
+
+                if (sdist > 0 && sdist < separationDist) {
+                    sepX += (sdx / sdist) / sdist;
+                    sepY += (sdy / sdist) / sdist;
+                    sepCount++;
+                }
+            });
+
+            if (sepCount > 0) {
+                const sepForceMult = 0.00005;
+                Matter.Body.applyForce(body, body.position, {
+                    x: sepX * sepForceMult,
+                    y: sepY * sepForceMult
+                });
+            }
         }
 
         // Limit speed

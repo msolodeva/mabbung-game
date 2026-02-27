@@ -119,63 +119,96 @@ export class InputHandler {
         this.points = [];
     }
 
+    /**
+     * 입력 포인트 배열을 이동 평균으로 스무딩.
+     * 꺾임이 심한 경우 충돌 메쉬도 뾰족해져 물체가 튀는 원인이 되므로
+     * 물리 바디 생성 전에 포인트를 부드럽게 만들어준다.
+     */
+    smoothPoints(points, passes = 3) {
+        let pts = points;
+        for (let p = 0; p < passes; p++) {
+            const next = [pts[0]]; // 첫 점은 고정
+            for (let i = 1; i < pts.length - 1; i++) {
+                next.push({
+                    x: (pts[i - 1].x + pts[i].x * 2 + pts[i + 1].x) / 4,
+                    y: (pts[i - 1].y + pts[i].y * 2 + pts[i + 1].y) / 4,
+                });
+            }
+            next.push(pts[pts.length - 1]); // 마지막 점은 고정
+            pts = next;
+        }
+        return pts;
+    }
+
     createPhysicsBody() {
+        if (this.points.length < 2) return;
+
+        // ── 물리용 포인트: 시각과 독립적으로 큰 세그먼트만 사용 (이음새 최소화)
+        const PHYSICS_SEGMENT_MIN = 45;
+        const physicsPoints = [this.points[0]];
+        for (let i = 1; i < this.points.length; i++) {
+            const prev = physicsPoints[physicsPoints.length - 1];
+            const curr = this.points[i];
+            const d = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+            if (d >= PHYSICS_SEGMENT_MIN || i === this.points.length - 1) {
+                physicsPoints.push(curr);
+            }
+        }
+
+        // 물리용 포인트만 스무딩 (시각은 건드리지 않음)
+        const smoothed = this.smoothPoints(physicsPoints, 3);
+
         const parts = [];
 
-        for (let i = 0; i < this.points.length; i++) {
-            const p = this.points[i];
-            const circle = Matter.Bodies.circle(p.x, p.y, this.lineWidth / 2, {
-                render: {
-                    fillStyle: this.lineColor,
-                    opacity: this.lineAlpha
-                }
-            });
-            parts.push(circle);
-        }
+        for (let i = 0; i < smoothed.length - 1; i++) {
+            const p1 = smoothed[i];
+            const p2 = smoothed[i + 1];
 
-        for (let i = 0; i < this.points.length - 1; i++) {
-            const p1 = this.points[i];
-            const p2 = this.points[i + 1];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const length = Math.hypot(dx, dy);
+            if (length < 1) continue;
 
-            const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const angle = Math.atan2(dy, dx);
+            const mx = (p1.x + p2.x) / 2;
+            const my = (p1.y + p2.y) / 2;
 
-            const cx = (p1.x + p2.x) / 2;
-            const cy = (p1.y + p2.y) / 2;
-
-            const rect = Matter.Bodies.rectangle(cx, cy, length, this.lineWidth, {
-                angle: angle,
-                render: {
-                    fillStyle: this.lineColor,
-                    opacity: this.lineAlpha
-                }
-            });
-
-            parts.push(rect);
-        }
-
-        if (parts.length > 0) {
-            this.pathBody = Matter.Body.create({
-                parts: parts,
-                isStatic: false,   // initialize as dynamic to compute properties
-                friction: 0.8,
-                restitution: 0.1,
-                density: 0.005,
-                frictionAir: 0.02
-            });
-
-            this.pathBody.label = 'drawnPath';
-            // Keep completely static until startSimulation changes it to dynamic
-            Matter.Body.setStatic(this.pathBody, true);
-
-            // Save relative points for smooth rendering
-            this.pathBody.renderPoints = this.points.map(p => ({
-                x: p.x - this.pathBody.position.x,
-                y: p.y - this.pathBody.position.y
+            parts.push(Matter.Bodies.rectangle(mx, my, length + 2, this.lineWidth, {
+                angle, render: { visible: false }
             }));
-
-            Matter.Composite.add(this.game.engine.world, this.pathBody);
         }
+
+        if (parts.length === 0) return;
+
+        this.pathBody = Matter.Body.create({
+            parts,
+            isStatic: false,
+            friction: 0.8,
+            restitution: 0,
+            density: 0.01,
+            frictionAir: 0.15,
+            slop: 0.1
+        });
+
+        this.pathBody.label = 'drawnPath';
+
+        if (this.pathBody.parts) {
+            this.pathBody.parts.forEach(part => {
+                part.restitution = 0;
+                part.friction = 0.8;
+                part.slop = 0.1;
+            });
+        }
+
+        Matter.Body.setStatic(this.pathBody, true);
+
+        // 렌더링은 원본 this.points 기반 — 사용자가 그린 선 그대로 표시
+        this.pathBody.renderPoints = this.points.map(p => ({
+            x: p.x - this.pathBody.position.x,
+            y: p.y - this.pathBody.position.y
+        }));
+
+        Matter.Composite.add(this.game.engine.world, this.pathBody);
     }
 
     renderDrawing() {
@@ -191,12 +224,13 @@ export class InputHandler {
             ctx.translate(this.pathBody.position.x, this.pathBody.position.y);
             ctx.rotate(this.pathBody.angle);
 
-            ctx.beginPath();
             const pts = this.pathBody.renderPoints;
+            ctx.beginPath();
             ctx.moveTo(pts[0].x, pts[0].y);
             for (let i = 1; i < pts.length; i++) {
                 ctx.lineTo(pts[i].x, pts[i].y);
             }
+
             ctx.strokeStyle = this.lineColor;
             ctx.globalAlpha = this.lineAlpha;
             ctx.lineWidth = this.lineWidth;
@@ -209,7 +243,6 @@ export class InputHandler {
             const pts = this.points;
 
             if (pts.length >= 2) {
-                // Main line
                 ctx.beginPath();
                 ctx.moveTo(pts[0].x, pts[0].y);
                 for (let i = 1; i < pts.length; i++) {
