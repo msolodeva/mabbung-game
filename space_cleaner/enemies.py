@@ -153,7 +153,7 @@ class HeavyEnemy:
         self.state = "entering"
 
         self.fire_timer = 0
-        self.fire_rate = max(40, int(HEAVY_ENEMY_FIRE_RATE_BASE / difficulty))
+        self.fire_rate = max(70, int(HEAVY_ENEMY_FIRE_RATE_BASE * 1.5 / difficulty))
 
     def update(self, enemy_bullets):
         # 움직임 로직: 등장 후 좌우 이동
@@ -166,12 +166,12 @@ class HeavyEnemy:
             if self.rect.left < 0 or self.rect.right > WIDTH:
                 self.speed_x *= -1
 
-        # 발사 로직 (5방향)
+        # 발사 로직 (3방향)
         self.fire_timer += 1
         if self.fire_timer >= self.fire_rate:
-            for i in range(-2, 3):
+            for i in range(-1, 2):
                 vx = i * 2
-                vy = 6
+                vy = 4
                 enemy_bullets.append(
                     EnemyBullet(self.rect.centerx, self.rect.bottom, vx, vy)
                 )
@@ -454,7 +454,7 @@ class LaserEnemy:
 
         self.laser_angle = 0
         self.laser_rotation_speed = LASER_ENEMY_ROTATION_SPEED_BASE * difficulty
-        self.laser_length = 300
+        self.laser_length = 420
 
         self.max_health = (
             LASER_ENEMY_HEALTH_BASE + LASER_ENEMY_HEALTH_SCALE * difficulty
@@ -526,10 +526,11 @@ class LaserEnemy:
 
 class KamikazeEnemy:
     """
-    자폭 적.
-    - 플레이어를 향해 빠르게 돌진
-    - 근접 시 폭발 (범위 데미지)
-    - 경고 표시 (점멸)
+    자폭 적 - 3단계 이동 패턴.
+    1. entering : 화면 위에서 내려와 조준 위치에 도달
+    2. aiming   : 잠깐 멈추며 플레이어를 lock-on (점멸 경고)
+    3. charging : 가속도 + 약한 사인파로 플레이어에게 돌진
+    - 돌진 방향으로 본체가 회전, 엔진 트레일 효과
     """
 
     def __init__(self, difficulty=1.0):
@@ -539,77 +540,190 @@ class KamikazeEnemy:
         self.y = -self.height
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-        self.speed = KAMIKAZE_SPEED_BASE * (1 + (difficulty - 1) * 0.3)
+        self.base_speed = KAMIKAZE_SPEED_BASE * (1 + (difficulty - 1) * 0.3)
+        self.speed = self.base_speed
         self.target = None
         self.timer = 0
         self.warning_blink = False
 
-    def update(self, enemy_bullets, players=None):
-        self.timer += 1
+        # 3단계 행동
+        self.state = "entering"  # entering / aiming / charging
+        self.aim_timer = 0
+        self.aim_duration = 50  # 조준 유지 프레임 (약 0.8초)
+        self.target_entry_y = random.randint(60, 140)  # 진입 후 멈출 Y 위치
 
-        # 타겟 설정 (가장 가까운 플레이어)
-        if players and (self.target is None or self.timer % 60 == 0):
-            alive_players = [p for p in players if p.health > 0]
-            if alive_players:
-                # 가장 가까운 플레이어 찾기
-                closest = min(
-                    alive_players,
-                    key=lambda p: (
+        # 돌진 방향 (aiming 때 고정)
+        self.charge_dx = 0
+        self.charge_dy = 1
+        self.angle = 0  # 그리기용 회전 각도 (도)
+
+        # 사인파 흔들림
+        self.wave_timer = 0
+        self.wave_amp = 2.5  # 좌우 흔들림 폭
+        self.wave_speed = 0.18
+
+        # 트레일 (잔상)
+        self.trail = []  # [(x, y, alpha), ...]
+        self.trail_max = 10
+
+    def _set_target(self, players):
+        """살아있는 플레이어 중 가장 가까운 놈을 타겟으로."""
+        if not players:
+            return
+        alive = [p for p in players if p.health > 0]
+        if alive:
+            self.target = min(
+                alive,
+                key=lambda p: (
+                    (
                         (p.rect.centerx - self.rect.centerx) ** 2
                         + (p.rect.centery - self.rect.centery) ** 2
                     )
-                    ** 0.5,
-                )
-                self.target = closest
+                    ** 0.5
+                ),
+            )
 
-        # 타겟을 향해 이동
-        if self.target:
-            dx = self.target.rect.centerx - self.rect.centerx
-            dy = self.target.rect.centery - self.rect.centery
-            dist = (dx**2 + dy**2) ** 0.5
-            if dist > 0:
-                self.rect.x = int(self.rect.x + (dx / dist) * self.speed)
-                self.rect.y = int(self.rect.y + (dy / dist) * self.speed)
-        else:
-            self.rect.y = int(self.rect.y + self.speed)
+    def update(self, enemy_bullets, players=None):
+        self.timer += 1
 
-        # 경고 점멸
-        if self.timer % 10 < 5:
-            self.warning_blink = True
-        else:
+        # ── 단계 1 : 진입 ──────────────────────────────────
+        if self.state == "entering":
+            self.rect.y += int(self.base_speed * 0.7)
+            if self.rect.y >= self.target_entry_y:
+                self.state = "aiming"
+                self._set_target(players)
+
+        # ── 단계 2 : 조준 ──────────────────────────────────
+        elif self.state == "aiming":
+            self.aim_timer += 1
+            # 점멸 경고
+            self.warning_blink = self.aim_timer % 8 < 4
+
+            # 타겟 방향 계속 업데이트
+            if players:
+                self._set_target(players)
+
+            if self.aim_timer >= self.aim_duration:
+                # 돌진 방향 고정
+                if self.target:
+                    dx = self.target.rect.centerx - self.rect.centerx
+                    dy = self.target.rect.centery - self.rect.centery
+                    dist = max((dx**2 + dy**2) ** 0.5, 1)
+                    self.charge_dx = dx / dist
+                    self.charge_dy = dy / dist
+                else:
+                    self.charge_dx, self.charge_dy = 0, 1
+                # 각도 계산 (위쪽이 0도)
+                self.angle = math.degrees(math.atan2(self.charge_dx, -self.charge_dy))
+                self.speed = self.base_speed * 0.5  # 돌진 초기 속도
+                self.state = "charging"
+
+        # ── 단계 3 : 돌진 ──────────────────────────────────
+        elif self.state == "charging":
             self.warning_blink = False
+            self.wave_timer += 1
+
+            # 가속도 (프레임당 0.25씩 증가, 최대 base_speed * 2.2)
+            self.speed = min(self.speed + 0.25, self.base_speed * 2.2)
+
+            # 수직 방향 성분
+            move_x = self.charge_dx * self.speed
+            move_y = self.charge_dy * self.speed
+
+            # 수직 방향 법선 벡터 기반 사인파 흔들림 (회피 어렵게)
+            perp_x = -self.charge_dy
+            perp_y = self.charge_dx
+            wave = math.sin(self.wave_timer * self.wave_speed) * self.wave_amp
+            move_x += perp_x * wave
+            move_y += perp_y * wave
+
+            self.rect.x = int(self.rect.x + move_x)
+            self.rect.y = int(self.rect.y + move_y)
+
+            # 트레일 기록
+            self.trail.append((self.rect.centerx, self.rect.centery))
+            if len(self.trail) > self.trail_max:
+                self.trail.pop(0)
+
+        # 경고 점멸 (entering 단계에서는 느린 점멸)
+        if self.state == "entering":
+            self.warning_blink = self.timer % 20 < 10
 
     def is_close_to_target(self, threshold=50):
         """타겟과의 거리가 threshold 이하인지 확인."""
         if self.target:
             dx = self.target.rect.centerx - self.rect.centerx
             dy = self.target.rect.centery - self.rect.centery
-            dist = (dx**2 + dy**2) ** 0.5
-            return dist < threshold
+            return (dx**2 + dy**2) ** 0.5 < threshold
         return False
 
     def draw(self, surface):
+        cx, cy = self.rect.center
+        r = self.width // 2
+
+        # 돌진 트레일 (잔상)
+        for i, (tx, ty) in enumerate(self.trail):
+            alpha = int(180 * (i + 1) / len(self.trail)) if self.trail else 0
+            trail_r = max(2, int(r * (i + 1) / len(self.trail) * 0.6))
+            trail_surf = pygame.Surface(
+                (trail_r * 2 + 2, trail_r * 2 + 2), pygame.SRCALPHA
+            )
+            pygame.draw.circle(
+                trail_surf, (255, 140, 0, alpha), (trail_r + 1, trail_r + 1), trail_r
+            )
+            surface.blit(trail_surf, (tx - trail_r - 1, ty - trail_r - 1))
+
         # 경고 원 (점멸)
         if self.warning_blink:
-            pygame.draw.circle(surface, RED, self.rect.center, self.width // 2 + 5, 2)
+            warn_r = r + 5 + int(3 * math.sin(self.timer * 0.4))
+            pygame.draw.circle(surface, RED, (cx, cy), warn_r, 2)
 
-        # 본체 (십자형)
-        pygame.draw.circle(surface, ORANGE, self.rect.center, self.width // 2)
-        pygame.draw.rect(
+        # ── 본체 : 돌진 방향으로 회전하는 삼각형 ──
+        # 각도에 따라 꼭짓점 3개 계산
+        angle_rad = math.radians(self.angle)
+        tip_x = cx + r * math.sin(angle_rad)
+        tip_y = cy - r * math.cos(angle_rad)
+        left_x = cx + r * math.sin(angle_rad + 2.4)
+        left_y = cy - r * math.cos(angle_rad + 2.4)
+        right_x = cx + r * math.sin(angle_rad - 2.4)
+        right_y = cy - r * math.cos(angle_rad - 2.4)
+
+        body_color = (
+            (255, 80, 0)
+            if self.state == "charging"
+            else (255, 160, 0)
+            if self.state == "aiming"
+            else ORANGE
+        )
+        pygame.draw.polygon(
+            surface,
+            body_color,
+            [
+                (int(tip_x), int(tip_y)),
+                (int(left_x), int(left_y)),
+                (int(right_x), int(right_y)),
+            ],
+        )
+        # 외곽선
+        pygame.draw.polygon(
             surface,
             YELLOW,
-            (self.rect.centerx - 3, self.rect.top, 6, self.height),
-        )
-        pygame.draw.rect(
-            surface,
-            YELLOW,
-            (self.rect.left, self.rect.centery - 3, self.width, 6),
+            [
+                (int(tip_x), int(tip_y)),
+                (int(left_x), int(left_y)),
+                (int(right_x), int(right_y)),
+            ],
+            2,
         )
 
-        # 경고 심볼
-        font = pygame.font.SysFont("Arial", 14, bold=True)
-        txt = font.render("!", True, RED)
-        surface.blit(txt, txt.get_rect(center=self.rect.center))
+        # 중심 코어
+        pygame.draw.circle(surface, YELLOW, (cx, cy), 4)
+
+        # 경고 심볼 (aiming 단계에서만)
+        if self.state in ("entering", "aiming"):
+            font = pygame.font.SysFont("Arial", 14, bold=True)
+            txt = font.render("!", True, RED)
+            surface.blit(txt, txt.get_rect(center=(cx, cy)))
 
 
 class FloatingMine:

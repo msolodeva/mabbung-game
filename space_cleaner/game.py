@@ -107,7 +107,7 @@ class Game:
         self.game_over = False
         self.game_paused = False
 
-        # 플레이어 1 (WASD + LSHIFT)
+        # 플레이어 1 (WASD + F/G)
         self.p1 = Player(
             WIDTH // 4,
             HEIGHT - 60,
@@ -117,8 +117,8 @@ class Game:
                 "right": pygame.K_d,
                 "up": pygame.K_w,
                 "down": pygame.K_s,
-                "fire": pygame.K_LSHIFT,
-                "bomb": pygame.K_SPACE,
+                "fire": pygame.K_f,
+                "bomb": pygame.K_g,
             },
         )
 
