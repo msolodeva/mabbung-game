@@ -6,7 +6,6 @@ from constants import (
     MAX_ENEMIES,
     MAX_JUNKS,
     SPAWN_BASE_THRESHOLD,
-    PROB_SUPPORT_ALLY,
     PROB_BASE_ENEMY,
     PROB_MAX_ENEMY,
     SPAWN_HEAVY_THRESHOLD,
@@ -16,10 +15,11 @@ from constants import (
     SPAWN_SPLIT_THRESHOLD,
     SPAWN_LASER_THRESHOLD,
     SPAWN_KAMIKAZE_THRESHOLD,
+    SPAWN_BOSS_CARRIER_THRESHOLD,
     SPAWN_FLOATING_MINE_THRESHOLD,
     ITEM_SPAWN_OFFSET,
 )
-from entities import Item, Ally
+from entities import Item
 from junk import Junk
 from enemies import (
     Enemy,
@@ -30,6 +30,7 @@ from enemies import (
     SplitEnemy,
     LaserEnemy,
     KamikazeEnemy,
+    BossCarrier,
     FloatingMine,
 )
 
@@ -69,19 +70,6 @@ class SpawnManager:
         self.spawn_timer += 1  # 프레임 단위 카운트라고 가정
 
         if self.spawn_timer > spawn_threshold:
-            # 지원군 스폰 (적이 많으면 한 번에 2기 스폰)
-            # 적이 8기 이상일 경우: 최대 2기 동시 스폰, 확률 50%
-            # 그 외: 최대 1기, 확률 2%
-            max_allies = 2 if len(enemies) >= 8 else 1
-            ally_spawn_prob = 0.50 if len(enemies) >= 8 else PROB_SUPPORT_ALLY
-
-            if len(allies) < max_allies and random.random() < ally_spawn_prob:
-                # 필요한 만큼 지원군 스폰 (부족한 수만큼)
-                allies_to_spawn = max_allies - len(allies)
-                spawn_positions = [WIDTH // 3, 2 * WIDTH // 3]  # 좌우 분산 배치
-                for i in range(allies_to_spawn):
-                    allies.append(Ally(spawn_positions[i % 2], HEIGHT + 40))
-
             r = random.random()
 
             # 난이도가 오를수록 적 생성 확률 증가
@@ -107,6 +95,12 @@ class SpawnManager:
                     enemies.append(LaserEnemy(difficulty))
                 elif r2 < SPAWN_KAMIKAZE_THRESHOLD:  # 자폭 적
                     enemies.append(KamikazeEnemy(difficulty))
+                elif r2 < SPAWN_BOSS_CARRIER_THRESHOLD:  # 보스 캐리어 (동시 1기만)
+                    has_carrier = any(isinstance(e, BossCarrier) for e in enemies)
+                    if not has_carrier:
+                        enemies.append(BossCarrier(difficulty))
+                    else:
+                        enemies.append(Enemy(difficulty))
                 elif r2 < SPAWN_FLOATING_MINE_THRESHOLD:  # 떠다니는 기뢰
                     enemies.append(FloatingMine(difficulty))
                 else:
