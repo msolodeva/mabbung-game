@@ -34,6 +34,11 @@ from constants import (
     KAMIKAZE_SPEED_BASE,
     FLOATING_MINE_DRIFT_SPEED,
     FLOATING_MINE_DETECTION_RADIUS,
+    BOSS_CARRIER_HEALTH_BASE,
+    BOSS_CARRIER_HEALTH_SCALE,
+    BOSS_CARRIER_FIRE_RATE,
+    BOSS_CARRIER_PHASE_DURATION,
+    BOSS_CARRIER_DRONE_SPEED,
 )
 
 
@@ -876,3 +881,300 @@ class FloatingMine:
             self.rect.center,
             core_pulse,
         )
+
+
+class CarrierDrone:
+    """
+    보스 캐리어가 소환하는 소형 추적 드론.
+    - 플레이어를 천천히 추적
+    - 단발 사격
+    - 체력 없이 1타에 격추
+    """
+
+    def __init__(self, x, y, difficulty=1.0):
+        self.width = 22
+        self.height = 22
+        self.rect = pygame.Rect(x - 11, y - 11, self.width, self.height)
+
+        self.speed = BOSS_CARRIER_DRONE_SPEED * (1 + (difficulty - 1) * 0.15)
+        self.target = None
+        self.fire_timer = 0
+        self.fire_rate = max(50, int(90 / difficulty))
+        self.timer = 0
+        self.lifetime = 600  # 10초 후 자동 소멸
+
+    def update(self, enemy_bullets, players=None):
+        self.timer += 1
+
+        # 가장 가까운 살아있는 플레이어 추적
+        if players:
+            alive = [p for p in players if p.health > 0]
+            if alive:
+                self.target = min(
+                    alive,
+                    key=lambda p: (
+                        (p.rect.centerx - self.rect.centerx) ** 2
+                        + (p.rect.centery - self.rect.centery) ** 2
+                    ),
+                )
+
+        if self.target and self.target.health > 0:
+            dx = self.target.rect.centerx - self.rect.centerx
+            dy = self.target.rect.centery - self.rect.centery
+            dist = max((dx**2 + dy**2) ** 0.5, 1)
+            self.rect.x = int(self.rect.x + (dx / dist) * self.speed)
+            self.rect.y = int(self.rect.y + (dy / dist) * self.speed)
+
+            # 사격
+            self.fire_timer += 1
+            if self.fire_timer >= self.fire_rate:
+                vx = (dx / dist) * 5
+                vy = (dy / dist) * 5
+                enemy_bullets.append(
+                    EnemyBullet(self.rect.centerx, self.rect.centery, vx, vy)
+                )
+                self.fire_timer = 0
+        else:
+            # 타겟 없으면 아래로 이동
+            self.rect.y += 2
+
+    def is_expired(self):
+        return self.timer >= self.lifetime
+
+    def draw(self, surface):
+        cx, cy = self.rect.center
+        r = self.width // 2
+
+        # 본체 (작은 다이아몬드)
+        pts = [
+            (cx, cy - r),
+            (cx + r, cy),
+            (cx, cy + r),
+            (cx - r, cy),
+        ]
+        pygame.draw.polygon(surface, CYAN, pts)
+        pygame.draw.polygon(surface, WHITE, pts, 1)
+
+        # 중심 코어 (깜빡임)
+        if self.timer % 10 < 5:
+            pygame.draw.circle(surface, YELLOW, (cx, cy), 3)
+        else:
+            pygame.draw.circle(surface, ORANGE, (cx, cy), 3)
+
+
+class BossCarrier:
+    """
+    보스 캐리어 - 3페이즈 순환 공격 패턴.
+    Phase 1: 확산탄 (5방향)
+    Phase 2: 드론 소환 (CarrierDrone 2~3기)
+    Phase 3: 보호막 + 플레이어 조준 집중 사격
+    높은 체력, 격추 시 300점.
+    """
+
+    def __init__(self, difficulty=1.0):
+        self.width = 100
+        self.height = 70
+        self.x = random.randint(50, WIDTH - 50 - self.width)
+        self.y = -self.height
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        self.speed = 1.5
+        self.speed_x = 1.5 * random.choice([-1, 1])
+        self.target_y = random.randint(40, 120)
+        self.state = "entering"  # entering / fighting
+        self.difficulty = difficulty
+
+        # 체력
+        self.max_health = (
+            BOSS_CARRIER_HEALTH_BASE + BOSS_CARRIER_HEALTH_SCALE * difficulty
+        )
+        self.health = self.max_health
+
+        # 페이즈 시스템
+        self.phase = 1  # 1: 확산탄, 2: 드론소환, 3: 보호막+집중사격
+        self.phase_timer = 0
+        self.phase_duration = BOSS_CARRIER_PHASE_DURATION
+
+        # 사격
+        self.fire_timer = 0
+        self.fire_rate = max(40, int(BOSS_CARRIER_FIRE_RATE / difficulty))
+
+        # 보호막
+        self.shield_active = False
+        self.shield_pulse = 0
+
+        # 드론 소환
+        self.drones_spawned = False
+        self.pending_drones = []  # 소환 대기 중인 드론
+
+        # 시각 효과
+        self.glow_timer = 0
+
+    def update(self, enemy_bullets, players=None):
+        self.glow_timer += 1
+
+        # === 진입 ===
+        if self.state == "entering":
+            self.rect.y = int(self.rect.y + self.speed)
+            if self.rect.y >= self.target_y:
+                self.state = "fighting"
+            return
+
+        # === 전투 ===
+        # 좌우 이동
+        self.rect.x = int(self.rect.x + self.speed_x)
+        if self.rect.left < 20 or self.rect.right > WIDTH - 20:
+            self.speed_x *= -1
+
+        # 페이즈 타이머
+        self.phase_timer += 1
+        if self.phase_timer >= self.phase_duration:
+            self.phase_timer = 0
+            self.phase = (self.phase % 3) + 1
+            self.drones_spawned = False
+            self.fire_timer = 0
+
+        # 보호막 상태
+        self.shield_active = self.phase == 3
+        if self.shield_active:
+            self.shield_pulse += 0.15
+
+        # === 페이즈별 행동 ===
+        if self.phase == 1:
+            # Phase 1: 5방향 확산탄
+            self.fire_timer += 1
+            if self.fire_timer >= self.fire_rate:
+                for i in range(5):
+                    angle = -40 + (i * 20)  # -40도 ~ +40도
+                    angle_rad = math.radians(angle)
+                    vx = math.sin(angle_rad) * 4
+                    vy = math.cos(angle_rad) * 4
+                    enemy_bullets.append(
+                        EnemyBullet(self.rect.centerx, self.rect.bottom, vx, vy)
+                    )
+                self.fire_timer = 0
+
+        elif self.phase == 2:
+            # Phase 2: 드론 소환 (1번만)
+            if not self.drones_spawned:
+                self.drones_spawned = True
+                drone_count = random.randint(2, 3)
+                self.pending_drones = []
+                for i in range(drone_count):
+                    offset_x = (i - drone_count // 2) * 30
+                    self.pending_drones.append(
+                        CarrierDrone(
+                            self.rect.centerx + offset_x,
+                            self.rect.bottom + 10,
+                            self.difficulty,
+                        )
+                    )
+
+        elif self.phase == 3:
+            # Phase 3: 보호막 + 플레이어 조준 집중 사격
+            self.fire_timer += 1
+            focused_rate = max(25, int(self.fire_rate * 0.6))
+            if self.fire_timer >= focused_rate and players:
+                alive = [p for p in players if p.health > 0]
+                if alive:
+                    target = random.choice(alive)
+                    dx = target.rect.centerx - self.rect.centerx
+                    dy = target.rect.centery - self.rect.bottom
+                    dist = max((dx**2 + dy**2) ** 0.5, 1)
+                    speed = 6
+                    vx = (dx / dist) * speed
+                    vy = (dy / dist) * speed
+                    # 2발 연사
+                    enemy_bullets.append(
+                        EnemyBullet(self.rect.centerx - 15, self.rect.bottom, vx, vy)
+                    )
+                    enemy_bullets.append(
+                        EnemyBullet(self.rect.centerx + 15, self.rect.bottom, vx, vy)
+                    )
+                self.fire_timer = 0
+
+    def get_pending_drones(self):
+        """소환 대기 중인 드론을 꺼내감."""
+        drones = self.pending_drones
+        self.pending_drones = []
+        return drones
+
+    def draw(self, surface):
+        cx, cy = self.rect.center
+
+        # 보호막 (Phase 3)
+        if self.shield_active:
+            shield_surf = pygame.Surface(
+                (self.width + 30, self.height + 30), pygame.SRCALPHA
+            )
+            shield_alpha = int(80 + 40 * math.sin(self.shield_pulse))
+            pygame.draw.ellipse(
+                shield_surf,
+                (100, 180, 255, shield_alpha),
+                (0, 0, self.width + 30, self.height + 30),
+                3,
+            )
+            pygame.draw.ellipse(
+                shield_surf,
+                (100, 180, 255, shield_alpha // 3),
+                (0, 0, self.width + 30, self.height + 30),
+            )
+            surface.blit(shield_surf, (self.rect.x - 15, self.rect.y - 15))
+
+        # 본체 (대형 전함)
+        # 몸통
+        pygame.draw.rect(
+            surface, DARK_GREY, (self.rect.x + 15, self.rect.y, 70, self.height)
+        )
+        # 날개
+        pygame.draw.polygon(
+            surface,
+            (80, 80, 120),
+            [
+                (self.rect.x, self.rect.y + 20),
+                (self.rect.x + 15, self.rect.y + 10),
+                (self.rect.x + 15, self.rect.y + self.height - 10),
+                (self.rect.x, self.rect.y + self.height - 5),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            (80, 80, 120),
+            [
+                (self.rect.right, self.rect.y + 20),
+                (self.rect.right - 15, self.rect.y + 10),
+                (self.rect.right - 15, self.rect.y + self.height - 10),
+                (self.rect.right, self.rect.y + self.height - 5),
+            ],
+        )
+        # 브릿지 (상부 돔)
+        pygame.draw.ellipse(
+            surface, (100, 100, 180), (self.rect.x + 30, self.rect.y - 5, 40, 25)
+        )
+
+        # 엔진 불빛
+        for offset in [-20, 0, 20]:
+            engine_color = ORANGE if self.glow_timer % 6 < 3 else YELLOW
+            pygame.draw.circle(
+                surface,
+                engine_color,
+                (cx + offset, self.rect.bottom),
+                random.randint(3, 6),
+            )
+
+        # 페이즈 표시등 (3개 작은 원)
+        for i in range(3):
+            lx = self.rect.x + 35 + i * 15
+            ly = self.rect.y + 10
+            color = YELLOW if self.phase == i + 1 else DARK_GREY
+            pygame.draw.circle(surface, color, (lx, ly), 4)
+
+        # HP Bar (더 큼)
+        bar_width = self.width + 10
+        bar_x = self.rect.x - 5
+        ratio = self.health / self.max_health
+        pygame.draw.rect(surface, RED, (bar_x, self.rect.top - 14, bar_width, 7))
+        pygame.draw.rect(
+            surface, GREEN, (bar_x, self.rect.top - 14, int(bar_width * ratio), 7)
+        )
+        pygame.draw.rect(surface, WHITE, (bar_x, self.rect.top - 14, bar_width, 7), 1)

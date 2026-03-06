@@ -48,6 +48,7 @@ SPAWN_GHOST_THRESHOLD = 0.28
 SPAWN_SPLIT_THRESHOLD = 0.36
 SPAWN_LASER_THRESHOLD = 0.42
 SPAWN_KAMIKAZE_THRESHOLD = 0.48
+SPAWN_BOSS_CARRIER_THRESHOLD = 0.52
 SPAWN_FLOATING_MINE_THRESHOLD = 0.60  # 6% -> 12%로 증가
 
 # 아이템 생성 확률 (누적 임계값)
@@ -115,3 +116,55 @@ DAMAGE_FLOATING_MINE = 30
 # --- 쓰레기 (Junk) ---
 JUNK_SPEED_Y_MIN = 2
 JUNK_SPEED_Y_MAX = 5
+
+# --- 블랙홀 (BlackHole) ---
+BLACK_HOLE_DAMAGE_RADIUS = 150  # 데미지가 시작되는 거리 (픽셀)
+BLACK_HOLE_DAMAGE_PER_FRAME = 0.3  # 프레임당 체력 감소 (60FPS 기준 약 18/초)
+
+# --- 보스 캐리어 (BossCarrier) ---
+BOSS_CARRIER_HEALTH_BASE = 150
+BOSS_CARRIER_HEALTH_SCALE = 30
+BOSS_CARRIER_FIRE_RATE = 60
+BOSS_CARRIER_PHASE_DURATION = 180  # 3초 (60FPS 기준)
+BOSS_CARRIER_DRONE_SPEED = 2
+
+# --- 비행기 타입 ---
+SHIP_TYPES = {
+    "falcon": {
+        "name": "Falcon",
+        "health": 140,
+        "speed": 5,
+        "bombs": 3,
+        "color_accent": (255, 220, 50),
+        "description": "Balanced all-rounder",
+        "weapon_style": "normal",
+    },
+    "titan": {
+        "name": "Titan",
+        "health": 220,
+        "speed": 3.5,
+        "bombs": 4,
+        "color_accent": (100, 200, 255),
+        "description": "Slow but very tanky",
+        "weapon_style": "spread",
+    },
+    "phantom": {
+        "name": "Phantom",
+        "health": 90,
+        "speed": 7.5,
+        "bombs": 2,
+        "color_accent": (200, 100, 255),
+        "description": "Fast but fragile",
+        "weapon_style": "rapid",
+    },
+    "viper": {
+        "name": "Viper",
+        "health": 110,
+        "speed": 5,
+        "bombs": 2,
+        "color_accent": (50, 255, 100),
+        "description": "High damage dealer",
+        "weapon_style": "power",
+    },
+}
+SHIP_TYPE_KEYS = list(SHIP_TYPES.keys())

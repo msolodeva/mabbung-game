@@ -31,6 +31,7 @@ from constants import (
     ALLY_LIFETIME,
     ALLY_FIRE_RATE,
     LASER_TRAIL_FADE,
+    SHIP_TYPES,
 )
 from weapons import HomingMissile
 
@@ -40,20 +41,25 @@ class Player:
     플레이어 우주선 클래스.
     - 이동, 체력, 점수, 무기 레벨 관리
     - 체력바 표시 포함
+    - ship_type에 따라 스탯과 외형이 달라짐
     """
 
-    def __init__(self, x, y, color, controls):
+    def __init__(self, x, y, color, controls, ship_type="falcon"):
+        self.ship_type = ship_type
+        ship_data = SHIP_TYPES[ship_type]
+
         self.rect = pygame.Rect(x, y, 40, 40)
         self.color = color
         self.controls = controls
-        self.speed = PLAYER_SPEED
+        self.speed = ship_data["speed"]
         self.score = 0
-        self.max_health = PLAYER_MAX_HEALTH
+        self.max_health = ship_data["health"]
         self.health = self.max_health
         self.weapon_level = 1  # 무기 레벨 (1~3)
-        self.bomb_count = PLAYER_INIT_BOMBS  # 폭탄 개수
-        self.max_bombs = PLAYER_MAX_BOMBS  # 최대 폭탄 개수
+        self.bomb_count = ship_data["bombs"]
+        self.max_bombs = ship_data["bombs"]
         self.weapon_timer = 0  # 무기 강화 지속 시간 프레임
+        self.weapon_style = ship_data["weapon_style"]
 
         # 새로운 아이템 상태
         self.has_shield = False  # 쉴드 (1회 피격 방어)
@@ -148,10 +154,21 @@ class Player:
             surface.blit(magnet_surf, (self.rect.centerx - 40, self.rect.centery - 40))
 
     def _draw_ship(self, surface, cx, top, color):
-        """우주선 그리기 (색상 별도 지정 가능)."""
+        """비행기 타입별 우주선 그리기."""
+        if self.ship_type == "titan":
+            self._draw_titan(surface, cx, top, color)
+        elif self.ship_type == "phantom":
+            self._draw_phantom(surface, cx, top, color)
+        elif self.ship_type == "viper":
+            self._draw_viper(surface, cx, top, color)
+        else:
+            self._draw_falcon(surface, cx, top, color)
+
+    def _draw_falcon(self, surface, cx, top, color):
+        """Falcon: 균형 잡힌 기본형 실루엣."""
         # 중심 본체
         body_rect = pygame.Rect(cx - 8, top + 10, 16, 30)
-        if len(color) == 4:  # 알파값 있음
+        if len(color) == 4:
             s = pygame.Surface((16, 30), pygame.SRCALPHA)
             s.fill(color)
             surface.blit(s, (cx - 8, top + 10))
@@ -159,39 +176,116 @@ class Player:
             pygame.draw.rect(surface, color, body_rect)
 
         # 머리 부분 (삼각형)
-        head_points = [
-            (cx, top),
-            (cx - 8, top + 10),
-            (cx + 8, top + 10),
-        ]
-        if len(color) == 4:
-            pygame.draw.polygon(surface, color, head_points)
-        else:
-            pygame.draw.polygon(surface, color, head_points)
+        head_points = [(cx, top), (cx - 8, top + 10), (cx + 8, top + 10)]
+        pygame.draw.polygon(surface, color, head_points)
 
         # 왼쪽 날개
-        left_wing = [
-            (cx - 8, top + 15),
-            (cx - 20, top + 40),
-            (cx - 8, top + 35),
-        ]
-        if len(color) == 4:
-            pygame.draw.polygon(surface, color, left_wing)
-        else:
-            pygame.draw.polygon(surface, color, left_wing)
+        left_wing = [(cx - 8, top + 15), (cx - 20, top + 40), (cx - 8, top + 35)]
+        pygame.draw.polygon(surface, color, left_wing)
 
         # 오른쪽 날개
-        right_wing = [
-            (cx + 8, top + 15),
-            (cx + 20, top + 40),
-            (cx + 8, top + 35),
-        ]
-        if len(color) == 4:
-            pygame.draw.polygon(surface, color, right_wing)
-        else:
-            pygame.draw.polygon(surface, color, right_wing)
+        right_wing = [(cx + 8, top + 15), (cx + 20, top + 40), (cx + 8, top + 35)]
+        pygame.draw.polygon(surface, color, right_wing)
 
-        # 조종석 (포인트)
+        # 조종석
+        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
+        pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 4)
+
+    def _draw_titan(self, surface, cx, top, color):
+        """Titan: 넓고 두꺼운 탱커 실루엣."""
+        # 넓은 본체
+        body_rect = pygame.Rect(cx - 10, top + 8, 20, 32)
+        if len(color) == 4:
+            s = pygame.Surface((20, 32), pygame.SRCALPHA)
+            s.fill(color)
+            surface.blit(s, (cx - 10, top + 8))
+        else:
+            pygame.draw.rect(surface, color, body_rect)
+
+        # 둥근 머리
+        head_points = [(cx, top + 2), (cx - 10, top + 12), (cx + 10, top + 12)]
+        pygame.draw.polygon(surface, color, head_points)
+
+        # 넓은 왼쪽 날개
+        left_wing = [(cx - 10, top + 12), (cx - 25, top + 38), (cx - 10, top + 30)]
+        pygame.draw.polygon(surface, color, left_wing)
+        # 날개 보강판
+        left_armor = [(cx - 14, top + 20), (cx - 25, top + 34), (cx - 14, top + 34)]
+        pygame.draw.polygon(surface, color, left_armor)
+
+        # 넓은 오른쪽 날개
+        right_wing = [(cx + 10, top + 12), (cx + 25, top + 38), (cx + 10, top + 30)]
+        pygame.draw.polygon(surface, color, right_wing)
+        right_armor = [(cx + 14, top + 20), (cx + 25, top + 34), (cx + 14, top + 34)]
+        pygame.draw.polygon(surface, color, right_armor)
+
+        # 조종석 (약간 더 큼)
+        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
+        pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 5)
+
+    def _draw_phantom(self, surface, cx, top, color):
+        """Phantom: 날렵하고 가벼운 스피드형 실루엣."""
+        # 날렵한 본체
+        body_rect = pygame.Rect(cx - 6, top + 6, 12, 34)
+        if len(color) == 4:
+            s = pygame.Surface((12, 34), pygame.SRCALPHA)
+            s.fill(color)
+            surface.blit(s, (cx - 6, top + 6))
+        else:
+            pygame.draw.rect(surface, color, body_rect)
+
+        # 뾰족한 머리
+        head_points = [(cx, top - 2), (cx - 6, top + 10), (cx + 6, top + 10)]
+        pygame.draw.polygon(surface, color, head_points)
+
+        # 뒤로 젖혀진 날렵한 날개
+        left_wing = [(cx - 6, top + 22), (cx - 18, top + 40), (cx - 6, top + 36)]
+        pygame.draw.polygon(surface, color, left_wing)
+
+        right_wing = [(cx + 6, top + 22), (cx + 18, top + 40), (cx + 6, top + 36)]
+        pygame.draw.polygon(surface, color, right_wing)
+
+        # 작은 조종석
+        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
+        pygame.draw.circle(surface, cockpit_color, (cx, top + 16), 3)
+
+    def _draw_viper(self, surface, cx, top, color):
+        """Viper: 각진 공격적인 실루엣."""
+        # 본체
+        body_rect = pygame.Rect(cx - 7, top + 8, 14, 32)
+        if len(color) == 4:
+            s = pygame.Surface((14, 32), pygame.SRCALPHA)
+            s.fill(color)
+            surface.blit(s, (cx - 7, top + 8))
+        else:
+            pygame.draw.rect(surface, color, body_rect)
+
+        # 날카로운 머리 (더 뾰족)
+        head_points = [(cx, top - 4), (cx - 7, top + 12), (cx + 7, top + 12)]
+        pygame.draw.polygon(surface, color, head_points)
+
+        # 각진 날개 (앞으로 돌출)
+        left_wing = [
+            (cx - 7, top + 14),
+            (cx - 22, top + 30),
+            (cx - 15, top + 40),
+            (cx - 7, top + 32),
+        ]
+        pygame.draw.polygon(surface, color, left_wing)
+
+        right_wing = [
+            (cx + 7, top + 14),
+            (cx + 22, top + 30),
+            (cx + 15, top + 40),
+            (cx + 7, top + 32),
+        ]
+        pygame.draw.polygon(surface, color, right_wing)
+
+        # 포구 장식 (앞쪽 라인)
+        barrel_color = WHITE if len(color) == 3 else (*WHITE, color[3])
+        pygame.draw.line(surface, barrel_color, (cx, top - 4), (cx, top + 6), 2)
+
+        # 조종석
         cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
         pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 4)
 
@@ -199,16 +293,18 @@ class Player:
 class Laser:
     """
     플레이어가 발사하는 레이저.
-    위쪽으로 이동 (Y 감소).
+    위쪽으로 이동 (Y 감소). speed_x로 좌우 이동 가능.
     """
 
     def __init__(self, x, y, color):
         self.rect = pygame.Rect(x - 2, y, 4, 15)
         self.color = color
         self.speed = -10  # 위로 이동
+        self.speed_x = 0  # 좌우 이동 (Titan 산탄용)
 
     def update(self):
         self.rect.y += self.speed
+        self.rect.x += self.speed_x
 
     def draw(self, surface):
         pygame.draw.rect(surface, self.color, self.rect)

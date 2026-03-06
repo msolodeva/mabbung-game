@@ -18,7 +18,7 @@ from constants import (
 )
 from entities import Explosion, HitSpark
 from weapons import PiercingLaser, PlasmaWave
-from enemies import SplitEnemy, LaserEnemy
+from enemies import SplitEnemy, LaserEnemy, BossCarrier
 from utils import point_to_line_distance
 
 
@@ -154,6 +154,22 @@ class CollisionManager:
                         # 체력이 있는 적 처리
                         if hasattr(enemy, "health"):
                             damage = 20 if is_special else 10
+                            # Viper 비행기는 데미지 1.5배
+                            if (
+                                proj.color == RED
+                                and hasattr(self.game.p1, "weapon_style")
+                                and self.game.p1.weapon_style == "power"
+                            ):
+                                damage = int(damage * 1.5)
+                            elif (
+                                proj.color != RED
+                                and hasattr(self.game.p2, "weapon_style")
+                                and self.game.p2.weapon_style == "power"
+                            ):
+                                damage = int(damage * 1.5)
+                            # BossCarrier 보호막 시 데미지 반감
+                            if isinstance(enemy, BossCarrier) and enemy.shield_active:
+                                damage = damage // 2
                             enemy.health -= damage
                             if enemy.health <= 0:
                                 self.game.enemies.remove(enemy)
@@ -176,10 +192,11 @@ class CollisionManager:
                                 if self.game.snd_explosion:
                                     self.game.snd_explosion.play()
                                 # 레이저 색상으로 플레이어 구분하여 점수 부여
+                                score = 300 if isinstance(enemy, BossCarrier) else 100
                                 if proj.color == RED:
-                                    self.game.p1.score += 100
+                                    self.game.p1.score += score
                                 else:
-                                    self.game.p2.score += 100
+                                    self.game.p2.score += score
                         else:
                             # 일반 적 원샷
                             self.game.enemies.remove(enemy)
@@ -284,9 +301,9 @@ class CollisionManager:
                 player.special_weapon = r_weapon
                 player.special_weapon_timer = 1200  # 20초
             elif item.kind == "health":
-                player.health = min(PLAYER_MAX_HEALTH, player.health + HEAL_AMOUNT)
+                player.health = min(player.max_health, player.health + HEAL_AMOUNT)
             elif item.kind == "bomb":
-                player.bomb_count = min(PLAYER_MAX_BOMBS, player.bomb_count + 1)
+                player.bomb_count = min(player.max_bombs, player.bomb_count + 1)
             elif item.kind == "shield":
                 player.has_shield = True
             elif item.kind == "slow":
