@@ -3,6 +3,7 @@
 
 import pygame
 import random
+import math
 
 from constants import (
     WIDTH,
@@ -95,63 +96,159 @@ class Junk:
         center = pygame.math.Vector2(self.rect.center)
 
         if self.type == "asteroid":
+            # 기준 다각형 점 (회전 적용)
             rotated_points = [pt.rotate(self.angle) + center for pt in self.points]
-            pygame.draw.polygon(surface, GREY, rotated_points)
+
+            # 음영(그림자) 파트 (약간 오른쪽 아래로 오프셋)
+            shadow_points = [
+                pygame.math.Vector2(pt.x + 3, pt.y + 3) for pt in rotated_points
+            ]
+            pygame.draw.polygon(surface, (40, 40, 40), shadow_points)
+
+            # 메인 암석 바디
+            base_color = (100, 100, 100) if self.color == BLUE else (120, 90, 80)
+            light_color = (140, 140, 140) if self.color == BLUE else (160, 120, 100)
+
+            pygame.draw.polygon(surface, base_color, rotated_points)
+
+            # 하이라이트 (왼쪽 위에서 빛이 온다고 가정, 약간 축소 및 오프셋)
+            highlight_points = [
+                pygame.math.Vector2(pt.x - 2, pt.y - 2) for pt in rotated_points
+            ]
+            pygame.draw.polygon(surface, light_color, highlight_points, 3)
+
+            # 크레이터 및 디테일 라인 (회전 적용)
             pygame.draw.polygon(surface, DARK_GREY, rotated_points, 2)
-            # 코어 표시
-            pygame.draw.circle(
-                surface, self.color, (int(center.x), int(center.y)), self.size // 7
-            )
             for p1, p2 in self.detail_lines:
                 rp1 = p1.rotate(self.angle) + center
                 rp2 = p2.rotate(self.angle) + center
-                pygame.draw.line(surface, DARK_GREY, rp1, rp2, 1)
+                pygame.draw.line(surface, (80, 80, 80), rp1, rp2, 2)
+
+            # 타겟 코어 (광물)
+            core_r = max(4, self.size // 8)
+            pygame.draw.circle(
+                surface, DARK_GREY, (int(center.x), int(center.y)), core_r + 2
+            )
+            pygame.draw.circle(
+                surface, self.color, (int(center.x), int(center.y)), core_r
+            )
+            # 코어 반짝임
+            if pygame.time.get_ticks() % 1000 < 100:
+                pygame.draw.circle(
+                    surface, WHITE, (int(center.x - 1), int(center.y - 1)), 2
+                )
+
         elif self.type == "satellite":
             # 인공 위성 그리기
-            panel_surf = pygame.Surface((40, 8), pygame.SRCALPHA)
-            pygame.draw.rect(panel_surf, (100, 100, 255), (0, 0, 40, 8))
-            pygame.draw.rect(panel_surf, WHITE, (0, 0, 40, 8), 1)
+            # 패널 (디테일 추가)
+            panel_surf = pygame.Surface((44, 12), pygame.SRCALPHA)
+            pygame.draw.rect(panel_surf, (50, 80, 150), (0, 0, 44, 12), border_radius=2)
+            # 태양 전지판 그리드
+            for i in range(4, 44, 8):
+                pygame.draw.line(panel_surf, (100, 150, 255), (i, 0), (i, 12), 1)
+            pygame.draw.line(panel_surf, (100, 150, 255), (0, 6), (44, 6), 1)
+            pygame.draw.rect(panel_surf, WHITE, (0, 0, 44, 12), 1)
 
             rotated_panel = pygame.transform.rotate(panel_surf, self.angle)
             surface.blit(rotated_panel, rotated_panel.get_rect(center=center))
 
-            body_surf = pygame.Surface((16, 16), pygame.SRCALPHA)
-            pygame.draw.rect(body_surf, LIGHT_GREY, (0, 0, 16, 16))
-            pygame.draw.rect(body_surf, DARK_GREY, (0, 0, 16, 16), 1)
-            pygame.draw.circle(body_surf, self.color, (8, 8), 4)
+            # 본체
+            body_surf = pygame.Surface((20, 20), pygame.SRCALPHA)
+            pygame.draw.rect(
+                body_surf, (150, 150, 160), (0, 0, 20, 20), border_radius=3
+            )
+            pygame.draw.rect(
+                body_surf, (80, 80, 90), (0, 0, 20, 20), 2, border_radius=3
+            )
+            # 패널 결합부
+            pygame.draw.rect(body_surf, DARK_GREY, (8, -2, 4, 24))
+            # 코어 라이트
+            pygame.draw.circle(body_surf, DARK_GREY, (10, 10), 6)
+            pygame.draw.circle(body_surf, self.color, (10, 10), 4)
+
+            # 안테나 및 깜빡이는 신호등
+            pygame.draw.line(body_surf, DARK_GREY, (10, 0), (10, -8), 2)
+            blink_color = RED if pygame.time.get_ticks() % 500 < 250 else (100, 0, 0)
+            pygame.draw.circle(body_surf, blink_color, (10, -8), 2)
 
             rotated_body = pygame.transform.rotate(body_surf, self.angle)
             surface.blit(rotated_body, rotated_body.get_rect(center=center))
 
         else:
-            # 우주 정거장 그리기 (십자 모양)
+            # 우주 정거장 그리기 (십자 모양 모듈식)
             sz = self.size
             surf = pygame.Surface((sz * 2, sz * 2), pygame.SRCALPHA)
             cx, cy = sz, sz  # 서피스 중심
             arm = int(sz * 0.45)
-            w = int(sz * 0.18)
-            mod = int(sz * 0.18)
-            hub_r = int(sz * 0.18)
+            w = int(sz * 0.2)
+            mod = int(sz * 0.22)
+            hub_r = int(sz * 0.22)
 
-            # 가로 팔
-            pygame.draw.rect(surf, LIGHT_GREY, (cx - arm, cy - w // 2, arm * 2, w))
+            # 그림자 레이어
+            pygame.draw.rect(
+                surf, (40, 40, 40), (cx - arm + 2, cy - w // 2 + 2, arm * 2, w)
+            )
+            pygame.draw.rect(
+                surf, (40, 40, 40), (cx - w // 2 + 2, cy - arm + 2, w, arm * 2)
+            )
+
+            # 가로 팔 (입체감)
+            pygame.draw.rect(surf, (160, 160, 170), (cx - arm, cy - w // 2, arm * 2, w))
+            pygame.draw.line(
+                surf,
+                (200, 200, 210),
+                (cx - arm, cy - w // 2),
+                (cx + arm, cy - w // 2),
+                2,
+            )  # 하이라이트
             pygame.draw.rect(surf, DARK_GREY, (cx - arm, cy - w // 2, arm * 2, w), 1)
+
             # 세로 팔
-            pygame.draw.rect(surf, LIGHT_GREY, (cx - w // 2, cy - arm, w, arm * 2))
+            pygame.draw.rect(surf, (160, 160, 170), (cx - w // 2, cy - arm, w, arm * 2))
+            pygame.draw.line(
+                surf,
+                (200, 200, 210),
+                (cx - w // 2, cy - arm),
+                (cx - w // 2, cy + arm),
+                2,
+            )
             pygame.draw.rect(surf, DARK_GREY, (cx - w // 2, cy - arm, w, arm * 2), 1)
-            # 팔 끝 모듈 (4방향)
-            for dx, dy in [
-                (arm - mod, -mod // 2),
-                (-arm, -mod // 2),
-                (-mod // 2, arm - mod),
-                (-mod // 2, -arm),
-            ]:
-                pygame.draw.rect(surf, GREY, (cx + dx, cy + dy, mod, mod))
-                pygame.draw.rect(surf, DARK_GREY, (cx + dx, cy + dy, mod, mod), 1)
+
+            # 팔 끝 모듈 (4방향) - 태양광 패널 라인 추가
+            for i, (dx, dy) in enumerate(
+                [
+                    (arm - mod, -mod // 2),
+                    (-arm, -mod // 2),
+                    (-mod // 2, arm - mod),
+                    (-mod // 2, -arm),
+                ]
+            ):
+                mod_rect = pygame.Rect(cx + dx, cy + dy, mod, mod)
+                pygame.draw.rect(surf, (120, 120, 130), mod_rect, border_radius=2)
+                pygame.draw.rect(surf, DARK_GREY, mod_rect, 2, border_radius=2)
+
+                # 창문/라이트 장식
+                light_color = self.color if i % 2 == 0 else (255, 255, 100)
+                pygame.draw.rect(surf, light_color, (cx + dx + 2, cy + dy + 2, 4, 4))
+                pygame.draw.rect(
+                    surf, light_color, (cx + dx + mod - 6, cy + dy + mod - 6, 4, 4)
+                )
+
             # 중앙 허브
-            pygame.draw.circle(surf, GREY, (cx, cy), hub_r)
-            pygame.draw.circle(surf, self.color, (cx, cy), hub_r - 3)
-            pygame.draw.circle(surf, DARK_GREY, (cx, cy), hub_r, 1)
+            pygame.draw.circle(surf, (140, 140, 150), (cx, cy), hub_r)
+            pygame.draw.circle(surf, DARK_GREY, (cx, cy), hub_r, 2)
+            # 메인 타겟 코어
+            pygame.draw.circle(surf, DARK_GREY, (cx, cy), hub_r - 2)
+            pygame.draw.circle(surf, self.color, (cx, cy), hub_r - 4)
+            # 코어 유리 반사
+            pygame.draw.arc(
+                surf,
+                WHITE,
+                (cx - hub_r + 6, cy - hub_r + 6, hub_r * 2 - 12, hub_r * 2 - 12),
+                math.radians(20),
+                math.radians(70),
+                2,
+            )
 
             rotated_surf = pygame.transform.rotate(surf, self.angle)
             surface.blit(

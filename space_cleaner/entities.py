@@ -166,128 +166,540 @@ class Player:
 
     def _draw_falcon(self, surface, cx, top, color):
         """Falcon: 균형 잡힌 기본형 실루엣."""
-        # 중심 본체
-        body_rect = pygame.Rect(cx - 8, top + 10, 16, 30)
-        if len(color) == 4:
-            s = pygame.Surface((16, 30), pygame.SRCALPHA)
-            s.fill(color)
-            surface.blit(s, (cx - 8, top + 10))
-        else:
-            pygame.draw.rect(surface, color, body_rect)
+        # 엔진 화염
+        flame_h = random.randint(10, 18)
+        pygame.draw.polygon(
+            surface,
+            (255, 100, 0),
+            [(cx - 4, top + 30), (cx + 4, top + 30), (cx, top + 30 + flame_h)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 200, 0),
+            [(cx - 2, top + 30), (cx + 2, top + 30), (cx, top + 30 + flame_h - 4)],
+        )
 
-        # 머리 부분 (삼각형)
-        head_points = [(cx, top), (cx - 8, top + 10), (cx + 8, top + 10)]
-        pygame.draw.polygon(surface, color, head_points)
+        # 본체 쉐이딩용 표면
+        ship_surf = pygame.Surface((40, 40), pygame.SRCALPHA)
+        center_x = 20
+        c_top = 0
+        base_color = color[:3]
+
+        # 어두운 외곽선/그림자 (아래 레이어)
+        dark_color = (
+            max(0, base_color[0] - 60),
+            max(0, base_color[1] - 60),
+            max(0, base_color[2] - 60),
+        )
+        # 밝은 하이라이트 (위 레이어)
+        light_color = (
+            min(255, base_color[0] + 60),
+            min(255, base_color[1] + 60),
+            min(255, base_color[2] + 60),
+        )
 
         # 왼쪽 날개
-        left_wing = [(cx - 8, top + 15), (cx - 20, top + 40), (cx - 8, top + 35)]
-        pygame.draw.polygon(surface, color, left_wing)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x - 8, c_top + 15),
+                (center_x - 20, c_top + 40),
+                (center_x - 8, c_top + 35),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x - 6, c_top + 17),
+                (center_x - 17, c_top + 38),
+                (center_x - 6, c_top + 34),
+            ],
+        )
 
         # 오른쪽 날개
-        right_wing = [(cx + 8, top + 15), (cx + 20, top + 40), (cx + 8, top + 35)]
-        pygame.draw.polygon(surface, color, right_wing)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x + 8, c_top + 15),
+                (center_x + 20, c_top + 40),
+                (center_x + 8, c_top + 35),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x + 6, c_top + 17),
+                (center_x + 17, c_top + 38),
+                (center_x + 6, c_top + 34),
+            ],
+        )
 
-        # 조종석
-        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
-        pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 4)
+        # 중심 본체
+        pygame.draw.rect(ship_surf, dark_color, (center_x - 8, c_top + 10, 16, 20))
+        pygame.draw.rect(ship_surf, base_color, (center_x - 6, c_top + 10, 12, 20))
+        # 꼬리 부분 수직 미익
+        pygame.draw.polygon(
+            ship_surf,
+            light_color,
+            [
+                (center_x - 2, c_top + 20),
+                (center_x + 2, c_top + 20),
+                (center_x, c_top + 35),
+            ],
+        )
+
+        # 머리 부분 (삼각형)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [(center_x, c_top), (center_x - 8, c_top + 11), (center_x + 8, c_top + 11)],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            light_color,
+            [
+                (center_x, c_top + 2),
+                (center_x - 6, c_top + 10),
+                (center_x + 6, c_top + 10),
+            ],
+        )
+
+        # 조종석 (그라데이션 효과 흉내)
+        pygame.draw.ellipse(ship_surf, (0, 0, 0), (center_x - 4, c_top + 14, 8, 10))
+        pygame.draw.ellipse(
+            ship_surf, (100, 200, 255), (center_x - 3, c_top + 15, 6, 8)
+        )
+        pygame.draw.ellipse(
+            ship_surf, WHITE, (center_x - 1, c_top + 16, 3, 3)
+        )  # 반사광
+
+        # 투명도 적용
+        if len(color) == 4:
+            ship_surf.set_alpha(color[3])
+
+        surface.blit(ship_surf, (cx - 20, top))
 
     def _draw_titan(self, surface, cx, top, color):
         """Titan: 넓고 두꺼운 탱커 실루엣."""
-        # 넓은 본체
-        body_rect = pygame.Rect(cx - 10, top + 8, 20, 32)
+        # 트윈 엔진 화염
+        flame_h = random.randint(12, 20)
+        pygame.draw.polygon(
+            surface,
+            (255, 50, 0),
+            [(cx - 10, top + 32), (cx - 4, top + 32), (cx - 7, top + 32 + flame_h)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 200, 0),
+            [(cx - 9, top + 32), (cx - 5, top + 32), (cx - 7, top + 32 + flame_h - 5)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 50, 0),
+            [(cx + 4, top + 32), (cx + 10, top + 32), (cx + 7, top + 32 + flame_h)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 200, 0),
+            [(cx + 5, top + 32), (cx + 9, top + 32), (cx + 7, top + 32 + flame_h - 5)],
+        )
+
+        ship_surf = pygame.Surface((50, 42), pygame.SRCALPHA)
+        center_x = 25
+        c_top = 0
+        base_color = color[:3]
+
+        dark_color = (
+            max(0, base_color[0] - 50),
+            max(0, base_color[1] - 50),
+            max(0, base_color[2] - 50),
+        )
+        light_color = (
+            min(255, base_color[0] + 50),
+            min(255, base_color[1] + 50),
+            min(255, base_color[2] + 50),
+        )
+
+        # 가장 바깥쪽 무거운 장갑 (그림자 포함)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x - 14, c_top + 20),
+                (center_x - 25, c_top + 34),
+                (center_x - 14, c_top + 34),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x + 14, c_top + 20),
+                (center_x + 25, c_top + 34),
+                (center_x + 14, c_top + 34),
+            ],
+        )
+        # 날개
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x - 10, c_top + 12),
+                (center_x - 23, c_top + 36),
+                (center_x - 10, c_top + 30),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x + 10, c_top + 12),
+                (center_x + 23, c_top + 36),
+                (center_x + 10, c_top + 30),
+            ],
+        )
+
+        # 본체 장갑판 (여러 겹)
+        pygame.draw.rect(
+            ship_surf, dark_color, (center_x - 12, c_top + 8, 24, 25), border_radius=3
+        )
+        pygame.draw.rect(
+            ship_surf, base_color, (center_x - 10, c_top + 9, 20, 23), border_radius=2
+        )
+        pygame.draw.rect(ship_surf, light_color, (center_x - 6, c_top + 10, 12, 10))
+
+        # 둥근 머리 범퍼
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x, c_top + 2),
+                (center_x - 11, c_top + 12),
+                (center_x + 11, c_top + 12),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            light_color,
+            [
+                (center_x, c_top + 4),
+                (center_x - 8, c_top + 11),
+                (center_x + 8, c_top + 11),
+            ],
+        )
+
+        # 조종석 (두꺼운 장갑 유리)
+        pygame.draw.rect(ship_surf, (0, 50, 50), (center_x - 4, c_top + 15, 8, 5))
+        pygame.draw.rect(ship_surf, (150, 255, 255), (center_x - 3, c_top + 16, 6, 3))
+
+        # 에너지 노드 (발광 효과)
+        glow_alpha = 150 + int(math.sin(pygame.time.get_ticks() * 0.01) * 100)
+        pygame.draw.circle(
+            ship_surf, (0, 255, 255, glow_alpha), (center_x - 14, c_top + 26), 2
+        )
+        pygame.draw.circle(
+            ship_surf, (0, 255, 255, glow_alpha), (center_x + 14, c_top + 26), 2
+        )
+
         if len(color) == 4:
-            s = pygame.Surface((20, 32), pygame.SRCALPHA)
-            s.fill(color)
-            surface.blit(s, (cx - 10, top + 8))
-        else:
-            pygame.draw.rect(surface, color, body_rect)
+            ship_surf.set_alpha(color[3])
 
-        # 둥근 머리
-        head_points = [(cx, top + 2), (cx - 10, top + 12), (cx + 10, top + 12)]
-        pygame.draw.polygon(surface, color, head_points)
-
-        # 넓은 왼쪽 날개
-        left_wing = [(cx - 10, top + 12), (cx - 25, top + 38), (cx - 10, top + 30)]
-        pygame.draw.polygon(surface, color, left_wing)
-        # 날개 보강판
-        left_armor = [(cx - 14, top + 20), (cx - 25, top + 34), (cx - 14, top + 34)]
-        pygame.draw.polygon(surface, color, left_armor)
-
-        # 넓은 오른쪽 날개
-        right_wing = [(cx + 10, top + 12), (cx + 25, top + 38), (cx + 10, top + 30)]
-        pygame.draw.polygon(surface, color, right_wing)
-        right_armor = [(cx + 14, top + 20), (cx + 25, top + 34), (cx + 14, top + 34)]
-        pygame.draw.polygon(surface, color, right_armor)
-
-        # 조종석 (약간 더 큼)
-        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
-        pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 5)
+        surface.blit(ship_surf, (cx - 25, top))
 
     def _draw_phantom(self, surface, cx, top, color):
         """Phantom: 날렵하고 가벼운 스피드형 실루엣."""
+        # 푸른색 이온 엔진 화염 (매우 길고 얇게)
+        flame_h = random.randint(15, 25)
+        pygame.draw.polygon(
+            surface,
+            (0, 150, 255),
+            [(cx - 3, top + 32), (cx + 3, top + 32), (cx, top + 32 + flame_h)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (150, 255, 255),
+            [(cx - 1, top + 32), (cx + 1, top + 32), (cx, top + 32 + flame_h - 8)],
+        )
+
+        ship_surf = pygame.Surface((40, 42), pygame.SRCALPHA)
+        center_x = 20
+        c_top = 0
+        base_color = color[:3]
+
+        dark_color = (
+            max(0, base_color[0] - 70),
+            max(0, base_color[1] - 70),
+            max(0, base_color[2] - 70),
+        )
+        neon_color = (
+            min(255, base_color[0] + 100),
+            min(255, base_color[1] + 100),
+            min(255, base_color[2] + 100),
+        )
+
+        # 뒤로 젖혀진 날렵한 날개 (그림자)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x - 6, c_top + 22),
+                (center_x - 18, c_top + 42),
+                (center_x - 6, c_top + 38),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x + 6, c_top + 22),
+                (center_x + 18, c_top + 42),
+                (center_x + 6, c_top + 38),
+            ],
+        )
+        # 밝은 날개 라인
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x - 5, c_top + 24),
+                (center_x - 16, c_top + 40),
+                (center_x - 5, c_top + 36),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x + 5, c_top + 24),
+                (center_x + 16, c_top + 40),
+                (center_x + 5, c_top + 36),
+            ],
+        )
+
+        # 날개 네온 엣지
+        pygame.draw.line(
+            ship_surf,
+            neon_color,
+            (center_x - 6, c_top + 22),
+            (center_x - 18, c_top + 42),
+            1,
+        )
+        pygame.draw.line(
+            ship_surf,
+            neon_color,
+            (center_x + 6, c_top + 22),
+            (center_x + 18, c_top + 42),
+            1,
+        )
+
         # 날렵한 본체
-        body_rect = pygame.Rect(cx - 6, top + 6, 12, 34)
-        if len(color) == 4:
-            s = pygame.Surface((12, 34), pygame.SRCALPHA)
-            s.fill(color)
-            surface.blit(s, (cx - 6, top + 6))
-        else:
-            pygame.draw.rect(surface, color, body_rect)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x - 6, c_top + 34),
+                (center_x + 6, c_top + 34),
+                (center_x, c_top + 6),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x - 4, c_top + 32),
+                (center_x + 4, c_top + 32),
+                (center_x, c_top + 6),
+            ],
+        )
 
         # 뾰족한 머리
-        head_points = [(cx, top - 2), (cx - 6, top + 10), (cx + 6, top + 10)]
-        pygame.draw.polygon(surface, color, head_points)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x, c_top - 2),
+                (center_x - 6, c_top + 10),
+                (center_x + 6, c_top + 10),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            neon_color,
+            [(center_x, c_top), (center_x - 4, c_top + 8), (center_x + 4, c_top + 8)],
+        )
 
-        # 뒤로 젖혀진 날렵한 날개
-        left_wing = [(cx - 6, top + 22), (cx - 18, top + 40), (cx - 6, top + 36)]
-        pygame.draw.polygon(surface, color, left_wing)
+        # V자형 조종석
+        pygame.draw.polygon(
+            ship_surf,
+            (0, 0, 0),
+            [
+                (center_x, c_top + 18),
+                (center_x - 3, c_top + 13),
+                (center_x + 3, c_top + 13),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            (255, 200, 255),
+            [
+                (center_x, c_top + 17),
+                (center_x - 2, c_top + 14),
+                (center_x + 2, c_top + 14),
+            ],
+        )
 
-        right_wing = [(cx + 6, top + 22), (cx + 18, top + 40), (cx + 6, top + 36)]
-        pygame.draw.polygon(surface, color, right_wing)
+        if len(color) == 4:
+            ship_surf.set_alpha(color[3])
 
-        # 작은 조종석
-        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
-        pygame.draw.circle(surface, cockpit_color, (cx, top + 16), 3)
+        surface.blit(ship_surf, (cx - 20, top))
 
     def _draw_viper(self, surface, cx, top, color):
         """Viper: 각진 공격적인 실루엣."""
+        # 3중 분출 엔진
+        flame_h = random.randint(8, 14)
+        pygame.draw.polygon(
+            surface,
+            (200, 0, 255),
+            [(cx - 6, top + 30), (cx - 2, top + 30), (cx - 4, top + 30 + flame_h)],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 100, 255),
+            [(cx - 2, top + 32), (cx + 2, top + 32), (cx, top + 32 + flame_h + 4)],
+        )  # 중앙 주 엔진
+        pygame.draw.polygon(
+            surface,
+            (200, 0, 255),
+            [(cx + 2, top + 30), (cx + 6, top + 30), (cx + 4, top + 30 + flame_h)],
+        )
+
+        ship_surf = pygame.Surface((44, 42), pygame.SRCALPHA)
+        center_x = 22
+        c_top = 0
+        base_color = color[:3]
+
+        dark_color = (
+            max(0, base_color[0] - 60),
+            max(0, base_color[1] - 60),
+            max(0, base_color[2] - 60),
+        )
+        light_color = (
+            min(255, base_color[0] + 70),
+            min(255, base_color[1] + 70),
+            min(255, base_color[2] + 70),
+        )
+
+        # 전진형 각진 날개 (전진익)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x - 7, c_top + 14),
+                (center_x - 22, c_top + 28),
+                (center_x - 15, c_top + 40),
+                (center_x - 7, c_top + 32),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x - 7, c_top + 16),
+                (center_x - 20, c_top + 28),
+                (center_x - 14, c_top + 38),
+                (center_x - 7, c_top + 30),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x + 7, c_top + 14),
+                (center_x + 22, c_top + 28),
+                (center_x + 15, c_top + 40),
+                (center_x + 7, c_top + 32),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            base_color,
+            [
+                (center_x + 7, c_top + 16),
+                (center_x + 20, c_top + 28),
+                (center_x + 14, c_top + 38),
+                (center_x + 7, c_top + 30),
+            ],
+        )
+
         # 본체
-        body_rect = pygame.Rect(cx - 7, top + 8, 14, 32)
-        if len(color) == 4:
-            s = pygame.Surface((14, 32), pygame.SRCALPHA)
-            s.fill(color)
-            surface.blit(s, (cx - 7, top + 8))
-        else:
-            pygame.draw.rect(surface, color, body_rect)
+        pygame.draw.rect(ship_surf, dark_color, (center_x - 7, c_top + 8, 14, 24))
+        pygame.draw.rect(ship_surf, base_color, (center_x - 5, c_top + 8, 10, 22))
 
-        # 날카로운 머리 (더 뾰족)
-        head_points = [(cx, top - 4), (cx - 7, top + 12), (cx + 7, top + 12)]
-        pygame.draw.polygon(surface, color, head_points)
+        # 날카로운 머리 (더 뾰족하고 레이어드 됨)
+        pygame.draw.polygon(
+            ship_surf,
+            dark_color,
+            [
+                (center_x, c_top - 4),
+                (center_x - 7, c_top + 12),
+                (center_x + 7, c_top + 12),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            light_color,
+            [
+                (center_x, c_top - 2),
+                (center_x - 4, c_top + 10),
+                (center_x + 4, c_top + 10),
+            ],
+        )
 
-        # 각진 날개 (앞으로 돌출)
-        left_wing = [
-            (cx - 7, top + 14),
-            (cx - 22, top + 30),
-            (cx - 15, top + 40),
-            (cx - 7, top + 32),
-        ]
-        pygame.draw.polygon(surface, color, left_wing)
-
-        right_wing = [
-            (cx + 7, top + 14),
-            (cx + 22, top + 30),
-            (cx + 15, top + 40),
-            (cx + 7, top + 32),
-        ]
-        pygame.draw.polygon(surface, color, right_wing)
+        # 무기 탑재 부위 강조 (날개 중앙)
+        pygame.draw.rect(ship_surf, (100, 100, 100), (center_x - 16, c_top + 22, 4, 8))
+        pygame.draw.rect(ship_surf, (100, 100, 100), (center_x + 12, c_top + 22, 4, 8))
+        pygame.draw.line(
+            ship_surf, RED, (center_x - 14, c_top + 20), (center_x - 14, c_top + 30), 2
+        )
+        pygame.draw.line(
+            ship_surf, RED, (center_x + 14, c_top + 20), (center_x + 14, c_top + 30), 2
+        )
 
         # 포구 장식 (앞쪽 라인)
-        barrel_color = WHITE if len(color) == 3 else (*WHITE, color[3])
-        pygame.draw.line(surface, barrel_color, (cx, top - 4), (cx, top + 6), 2)
+        pygame.draw.line(
+            ship_surf, light_color, (center_x, c_top - 4), (center_x, c_top + 6), 2
+        )
 
-        # 조종석
-        cockpit_color = WHITE if len(color) == 3 else (*WHITE, color[3])
-        pygame.draw.circle(surface, cockpit_color, (cx, top + 18), 4)
+        # 다각형 조종석
+        pygame.draw.polygon(
+            ship_surf,
+            (0, 0, 0),
+            [
+                (center_x, c_top + 14),
+                (center_x - 5, c_top + 18),
+                (center_x, c_top + 22),
+                (center_x + 5, c_top + 18),
+            ],
+        )
+        pygame.draw.polygon(
+            ship_surf,
+            (50, 255, 100),
+            [
+                (center_x, c_top + 15),
+                (center_x - 3, c_top + 18),
+                (center_x, c_top + 21),
+                (center_x + 3, c_top + 18),
+            ],
+        )
+
+        if len(color) == 4:
+            ship_surf.set_alpha(color[3])
+
+        surface.blit(ship_surf, (cx - 22, top))
 
 
 class Laser:

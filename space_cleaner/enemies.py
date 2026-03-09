@@ -121,13 +121,31 @@ class Enemy:
 
     def draw(self, surface):
         # UFO 모양 그리기 (보라색 돔 + 녹색 하단)
-        pygame.draw.ellipse(surface, PURPLE, (self.rect.x + 10, self.rect.y, 30, 20))
-        pygame.draw.ellipse(surface, GREEN, (self.rect.x, self.rect.y + 10, 50, 20))
-        # 창문/라이트
-        for i in range(3):
-            lx = self.rect.x + 10 + i * 15
-            ly = self.rect.y + 20
-            pygame.draw.circle(surface, YELLOW, (lx, ly), 3)
+        # 하단 원반 (그라데이션 효과 흉내)
+        pygame.draw.ellipse(
+            surface, (0, 150, 0), (self.rect.x, self.rect.y + 10, 50, 20)
+        )  # 그림자/바닥
+        pygame.draw.ellipse(
+            surface, GREEN, (self.rect.x + 2, self.rect.y + 11, 46, 16)
+        )  # 밝은 면
+
+        # 보라색 돔 (투명도 및 하이라이트)
+        dome_surf = pygame.Surface((30, 20), pygame.SRCALPHA)
+        pygame.draw.ellipse(dome_surf, (150, 50, 255, 200), (0, 0, 30, 20))
+        pygame.draw.ellipse(dome_surf, (200, 150, 255, 200), (4, 2, 16, 8))  # 반사광
+        surface.blit(dome_surf, (self.rect.x + 10, self.rect.y))
+
+        # 회전하는 창문/라이트 (timer 기반)
+        self.move_timer += 1
+        for i in range(4):
+            # 시간에 따라 위치 이동 (회전하는 링 효과)
+            offset = (i * 25 + self.move_timer * 3) % 100
+            # 0~100 사이의 값을 -25~25(좌우)로 매핑하고 사인으로 깊이감
+            pos_x = self.rect.x + 25 + int(math.cos(offset * math.pi / 50) * 20)
+            if math.sin(offset * math.pi / 50) > 0:  # 앞쪽에 있을 때만 그림
+                ly = self.rect.y + +18
+                pygame.draw.circle(surface, YELLOW, (pos_x, ly), 3)
+                pygame.draw.circle(surface, WHITE, (pos_x, ly), 1)
 
 
 class HeavyEnemy:
@@ -183,17 +201,78 @@ class HeavyEnemy:
             self.fire_timer = 0
 
     def draw(self, surface):
+        # 쌍발 엔진 불꽃
+        flame_h = random.randint(15, 25)
+        flame_y = self.rect.bottom - 5
+        pygame.draw.polygon(
+            surface,
+            (255, 50, 0),
+            [
+                (self.rect.x + 15, flame_y),
+                (self.rect.x + 25, flame_y),
+                (self.rect.x + 20, flame_y + flame_h),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            (255, 50, 0),
+            [
+                (self.rect.x + 55, flame_y),
+                (self.rect.x + 65, flame_y),
+                (self.rect.x + 60, flame_y + flame_h),
+            ],
+        )
+
         # 거대 UFO 본체
-        pygame.draw.rect(surface, DARK_GREY, (self.rect.x + 20, self.rect.y, 40, 60))
-        pygame.draw.ellipse(surface, RED, (self.rect.x, self.rect.y + 20, 80, 40))
+        # 후방 구조물
+        pygame.draw.rect(
+            surface,
+            (40, 40, 40),
+            (self.rect.x + 20, self.rect.y, 40, 60),
+            border_radius=4,
+        )
+        pygame.draw.rect(
+            surface,
+            (80, 80, 80),
+            (self.rect.x + 25, self.rect.y + 5, 30, 50),
+            border_radius=2,
+        )
+
+        # 메인 원반 (층이 나뉜 구조)
+        pygame.draw.ellipse(
+            surface, (150, 20, 20), (self.rect.x, self.rect.y + 20, 80, 40)
+        )  # 하단 그림자/어두운 면
+        pygame.draw.ellipse(
+            surface, RED, (self.rect.x + 2, self.rect.y + 22, 76, 36)
+        )  # 상단 밝은 면
+        pygame.draw.ellipse(
+            surface, (255, 100, 100), (self.rect.x + 10, self.rect.y + 25, 60, 20)
+        )  # 중심부
+
+        # 무기 포대
         pygame.draw.rect(surface, YELLOW, (self.rect.x + 10, self.rect.y + 30, 10, 10))
         pygame.draw.rect(surface, YELLOW, (self.rect.x + 60, self.rect.y + 30, 10, 10))
+        pygame.draw.circle(surface, ORANGE, (self.rect.x + 15, self.rect.y + 35), 3)
+        pygame.draw.circle(surface, ORANGE, (self.rect.x + 65, self.rect.y + 35), 3)
+
+        # 점멸하는 코어
+        if pygame.time.get_ticks() % 500 < 250:
+            pygame.draw.circle(surface, WHITE, (self.rect.centerx, self.rect.y + 35), 6)
+        else:
+            pygame.draw.circle(
+                surface, YELLOW, (self.rect.centerx, self.rect.y + 35), 6
+            )
 
         # HP Bar
         ratio = self.health / self.max_health
         pygame.draw.rect(surface, RED, (self.rect.x, self.rect.top - 10, self.width, 5))
         pygame.draw.rect(
-            surface, GREEN, (self.rect.x, self.rect.top - 10, self.width * ratio, 5)
+            surface,
+            GREEN,
+            (self.rect.x, self.rect.top - 10, int(self.width * ratio), 5),
+        )
+        pygame.draw.rect(
+            surface, WHITE, (self.rect.x, self.rect.top - 10, self.width, 5), 1
         )
 
 
@@ -225,11 +304,36 @@ class Interceptor:
             (self.rect.left, self.rect.top),
             (self.rect.right, self.rect.top),
         ]
-        pygame.draw.polygon(surface, CYAN, points)
-        # 엔진 불꽃
-        pygame.draw.circle(
-            surface, ORANGE, (self.rect.centerx, self.rect.top), random.randint(3, 8)
+        # 긴 엔진 트레일
+        trail_h = random.randint(20, 35)
+        pygame.draw.polygon(
+            surface,
+            (0, 200, 255),
+            [
+                (self.rect.centerx - 4, self.rect.top),
+                (self.rect.centerx + 4, self.rect.top),
+                (self.rect.centerx, self.rect.top - trail_h),
+            ],
         )
+        pygame.draw.polygon(
+            surface,
+            WHITE,
+            [
+                (self.rect.centerx - 1, self.rect.top),
+                (self.rect.centerx + 1, self.rect.top),
+                (self.rect.centerx, self.rect.top - trail_h + 10),
+            ],
+        )
+
+        # 본체 쉐이딩
+        pygame.draw.polygon(surface, (0, 150, 150), points)  # 어두운 톤
+        inner_points = [
+            (self.rect.centerx, self.rect.bottom - 4),
+            (self.rect.left + 4, self.rect.top + 2),
+            (self.rect.right - 4, self.rect.top + 2),
+        ]
+        pygame.draw.polygon(surface, CYAN, inner_points)  # 밝은 톤
+        pygame.draw.polygon(surface, WHITE, points, 1)  # 라인 처리
 
 
 class SniperEnemy:
@@ -276,6 +380,16 @@ class SniperEnemy:
                 self.fire_timer = 0
 
     def draw(self, surface):
+        # 조준선 (발사 직전에 붉어짐)
+        if self.state == "sniping" and self.fire_timer > self.fire_rate - 15:
+            pygame.draw.line(
+                surface,
+                (255, 0, 0, 100),
+                (self.rect.centerx, self.rect.bottom),
+                (self.rect.centerx, HEIGHT),
+                1,
+            )
+
         # 긴 육각형 형태
         pts = [
             (self.rect.centerx, self.rect.top),
@@ -283,8 +397,34 @@ class SniperEnemy:
             (self.rect.centerx, self.rect.bottom),
             (self.rect.left, self.rect.centery),
         ]
+        pygame.draw.polygon(surface, (40, 40, 40), pts)
         pygame.draw.polygon(surface, WHITE, pts, 2)
-        pygame.draw.circle(surface, RED, self.rect.center, 5)
+
+        # 내부 디테일 (십자선과 코어)
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (self.rect.left + 5, self.rect.centery),
+            (self.rect.right - 5, self.rect.centery),
+            1,
+        )
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (self.rect.centerx, self.rect.top + 5),
+            (self.rect.centerx, self.rect.bottom - 5),
+            1,
+        )
+
+        # 렌즈 (점멸)
+        if self.state == "sniping":
+            lens_color = RED if self.fire_timer % 10 < 5 else (150, 0, 0)
+        else:
+            lens_color = (100, 0, 0)
+        pygame.draw.circle(surface, lens_color, self.rect.center, 6)
+        pygame.draw.circle(
+            surface, WHITE, (self.rect.centerx - 2, self.rect.centery - 2), 2
+        )
 
 
 class GhostEnemy:
@@ -323,22 +463,53 @@ class GhostEnemy:
             self.is_ghost = False
 
     def draw(self, surface):
-        alpha = 100 if self.is_ghost else 255
-        s = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        # 구름/유령 형태
+        alpha = 80 if self.is_ghost else 220  # 무적일 때 더 투명하게
+
+        # 잔상 흔들림 계산
+        wobble_x1 = int(math.sin(self.timer * 0.1) * 3)
+        wobble_x2 = int(math.cos(self.timer * 0.13) * 3)
+
+        s = pygame.Surface((self.width + 10, self.height + 10), pygame.SRCALPHA)
+        # 글로우 외곽
         pygame.draw.circle(
             s,
-            (*self.color, alpha),
-            (self.width // 2, self.height // 2),
-            self.width // 2,
+            (*self.color[:3], alpha // 2),
+            (self.width // 2 + 5, self.height // 2 + 5),
+            self.width // 2 + 3,
         )
+        # 구름/유령 형태 본체
         pygame.draw.circle(
-            s, (255, 255, 255, alpha), (self.width // 2 - 10, self.height // 2 - 5), 5
+            s,
+            (*self.color[:3], alpha),
+            (self.width // 2 + 5 + wobble_x1, self.height // 2 + 5),
+            self.width // 2 - 2,
         )
-        pygame.draw.circle(
-            s, (255, 255, 255, alpha), (self.width // 2 + 10, self.height // 2 - 5), 5
+        # 유령 눈
+        eye_color = (255, 255, 255, alpha) if not self.is_ghost else (255, 0, 0, alpha)
+        pygame.draw.ellipse(
+            s,
+            eye_color,
+            (self.width // 2 - 10 + wobble_x2, self.height // 2 - 5, 6, 10),
         )
-        surface.blit(s, (self.rect.x, self.rect.y))
+        pygame.draw.ellipse(
+            s, eye_color, (self.width // 2 + 4 + wobble_x2, self.height // 2 - 5, 6, 10)
+        )
+        # 눈동자
+        if not self.is_ghost:
+            pygame.draw.circle(
+                s,
+                (0, 0, 0, alpha),
+                (self.width // 2 - 7 + wobble_x2, self.height // 2 - 1),
+                2,
+            )
+            pygame.draw.circle(
+                s,
+                (0, 0, 0, alpha),
+                (self.width // 2 + 7 + wobble_x2, self.height // 2 - 1),
+                2,
+            )
+
+        surface.blit(s, (self.rect.x - 5, self.rect.y - 5))
 
 
 class SplitEnemy:
@@ -375,28 +546,70 @@ class SplitEnemy:
         self.pulse += 0.1
 
     def draw(self, surface):
+        # 펄스 진동 계산
+        pulse_offset = int(6 * pygame.math.Vector2(1, 0).rotate(self.pulse * 15).x)
+        pulse_radius = self.width // 3 + int(math.sin(self.pulse * 5) * 3)
+
+        # 발광 글로우 뒤에 그리기
+        glow = pygame.Surface((self.width * 2, self.height * 2), pygame.SRCALPHA)
+        pygame.draw.circle(
+            glow, (0, 250, 100, 50), (self.width, self.height), self.width // 2 + 5
+        )
+        surface.blit(
+            glow, (self.rect.x - self.width // 2, self.rect.y - self.height // 2)
+        )
+
         # 핵 분열 모양 (두 개의 원이 겹침)
-        pulse_offset = int(5 * pygame.math.Vector2(1, 0).rotate(self.pulse * 10).x)
+        # 왼쪽/위쪽 셀
         pygame.draw.circle(
             surface,
             GREEN,
-            (self.rect.centerx - pulse_offset, self.rect.centery),
-            self.width // 3,
+            (self.rect.centerx - pulse_offset, self.rect.centery - pulse_offset // 2),
+            pulse_radius,
         )
         pygame.draw.circle(
             surface,
+            (100, 255, 100),
+            (
+                self.rect.centerx - pulse_offset - 3,
+                self.rect.centery - pulse_offset // 2 - 3,
+            ),
+            4,
+        )  # 하이라이트
+
+        # 오른쪽/아래쪽 셀
+        pygame.draw.circle(
+            surface,
             ORANGE,
-            (self.rect.centerx + pulse_offset, self.rect.centery),
-            self.width // 3,
+            (self.rect.centerx + pulse_offset, self.rect.centery + pulse_offset // 2),
+            pulse_radius,
         )
-        # 중심 코어
-        pygame.draw.circle(surface, YELLOW, self.rect.center, 5)
+        pygame.draw.circle(
+            surface,
+            (255, 200, 100),
+            (
+                self.rect.centerx + pulse_offset - 3,
+                self.rect.centery + pulse_offset // 2 - 3,
+            ),
+            4,
+        )
+
+        # 중심 코어 결합부 (에너지 링)
+        pygame.draw.ellipse(
+            surface, YELLOW, (self.rect.centerx - 8, self.rect.centery - 4, 16, 8), 2
+        )
+        pygame.draw.circle(surface, WHITE, self.rect.center, 4)
 
         # HP Bar
         ratio = self.health / self.max_health
-        pygame.draw.rect(surface, RED, (self.rect.x, self.rect.top - 8, self.width, 4))
+        pygame.draw.rect(surface, RED, (self.rect.x, self.rect.top - 10, self.width, 5))
         pygame.draw.rect(
-            surface, GREEN, (self.rect.x, self.rect.top - 8, self.width * ratio, 4)
+            surface,
+            GREEN,
+            (self.rect.x, self.rect.top - 10, int(self.width * ratio), 5),
+        )
+        pygame.draw.rect(
+            surface, WHITE, (self.rect.x, self.rect.top - 10, self.width, 5), 1
         )
 
     def on_death(self):
@@ -430,14 +643,36 @@ class MiniEnemy:
         self.rect.y = int(self.rect.y + self.speed_y)
 
     def draw(self, surface):
-        # 작은 삼각형
+        # 꼬리 잔상
+        trail_surf = pygame.Surface((self.width, self.height * 2), pygame.SRCALPHA)
+        pygame.draw.circle(
+            trail_surf, (255, 100, 0, 100), (self.width // 2, self.height), 6
+        )
+        surface.blit(trail_surf, (self.rect.x, self.rect.y - self.height // 2))
+
+        # 작고 날카로운 크리스탈 형태
         points = [
             (self.rect.centerx, self.rect.top),
-            (self.rect.left, self.rect.bottom),
-            (self.rect.right, self.rect.bottom),
+            (self.rect.left, self.rect.centery),
+            (self.rect.centerx, self.rect.bottom),
+            (self.rect.right, self.rect.centery),
         ]
         pygame.draw.polygon(surface, ORANGE, points)
-        pygame.draw.circle(surface, YELLOW, self.rect.center, 3)
+        pygame.draw.polygon(surface, YELLOW, points, 1)  # 테두리
+        # 밝은 면
+        pygame.draw.polygon(
+            surface,
+            (255, 200, 100),
+            [
+                (self.rect.centerx, self.rect.top),
+                (self.rect.left, self.rect.centery),
+                (self.rect.centerx, self.rect.bottom),
+            ],
+        )
+        # 코어
+        pygame.draw.circle(
+            surface, WHITE, (self.rect.centerx - 1, self.rect.centery), 2
+        )
 
 
 class LaserEnemy:
@@ -495,37 +730,71 @@ class LaserEnemy:
         return ((self.rect.centerx, self.rect.centery), (int(end_x), int(end_y)))
 
     def draw(self, surface):
-        # 본체 (육각형)
+        # 본체 (이중 육각형 및 글로우)
         center = self.rect.center
-        points = []
+
+        # 글로우 효과
+        glow_surf = pygame.Surface((self.width + 20, self.height + 20), pygame.SRCALPHA)
+        pygame.draw.circle(
+            glow_surf,
+            (0, 200, 255, 60),
+            (self.width // 2 + 10, self.height // 2 + 10),
+            self.width // 2 + 8,
+        )
+        surface.blit(glow_surf, (self.rect.x - 10, self.rect.y - 10))
+
+        # 외곽 육각형
+        points_outer = []
+        points_inner = []
         for i in range(6):
-            angle = i * 60
+            angle = i * 60 + (
+                self.laser_angle if self.state == "firing" else 0
+            )  # 발사 중에는 회전
             angle_rad = angle * (3.14159 / 180)
-            px = center[0] + 20 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).x
-            py = center[1] + 20 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).y
-            points.append((int(px), int(py)))
-        pygame.draw.polygon(surface, CYAN, points)
-        pygame.draw.polygon(surface, WHITE, points, 2)
+
+            # 외부 꼭짓점
+            px = center[0] + 22 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).x
+            py = center[1] + 22 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).y
+            points_outer.append((int(px), int(py)))
+
+            # 내부 꼭짓점
+            px_in = center[0] + 14 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).x
+            py_in = center[1] + 14 * pygame.math.Vector2(1, 0).rotate_rad(angle_rad).y
+            points_inner.append((int(px_in), int(py_in)))
+
+        pygame.draw.polygon(surface, (20, 100, 150), points_outer)  # 어두운 톤
+        pygame.draw.polygon(surface, CYAN, points_outer, 2)
+        pygame.draw.polygon(surface, WHITE, points_inner)  # 밝은 내부
 
         # 회전하는 레이저 빔
         if self.state == "firing":
             laser_line = self.get_laser_line()
             if laser_line:
-                # 레이저 광선 (반투명)
+                # 레이저 광선 (반투명 글로우)
                 s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                pygame.draw.line(s, (255, 0, 0, 100), laser_line[0], laser_line[1], 5)
+                pygame.draw.line(s, (255, 50, 50, 150), laser_line[0], laser_line[1], 8)
+                pygame.draw.line(
+                    s, (255, 100, 100, 200), laser_line[0], laser_line[1], 4
+                )
                 surface.blit(s, (0, 0))
-                # 레이저 코어 (불투명)
-                pygame.draw.line(surface, RED, laser_line[0], laser_line[1], 2)
+                # 레이저 코어 (불투명 흰색)
+                pygame.draw.line(surface, WHITE, laser_line[0], laser_line[1], 2)
 
-        # 중심 코어
-        pygame.draw.circle(surface, RED, center, 8)
+        # 중심 코어 (커졌다 작아짐)
+        core_r = 6 + int(math.sin(pygame.time.get_ticks() * 0.01) * 2)
+        pygame.draw.circle(surface, RED, center, core_r)
+        pygame.draw.circle(surface, WHITE, center, core_r - 2)
 
         # HP Bar
         ratio = self.health / self.max_health
         pygame.draw.rect(surface, RED, (self.rect.x, self.rect.top - 10, self.width, 5))
         pygame.draw.rect(
-            surface, GREEN, (self.rect.x, self.rect.top - 10, self.width * ratio, 5)
+            surface,
+            GREEN,
+            (self.rect.x, self.rect.top - 10, int(self.width * ratio), 5),
+        )
+        pygame.draw.rect(
+            surface, WHITE, (self.rect.x, self.rect.top - 10, self.width, 5), 1
         )
 
 
@@ -669,66 +938,95 @@ class KamikazeEnemy:
         # 돌진 트레일 (잔상)
         for i, (tx, ty) in enumerate(self.trail):
             alpha = int(180 * (i + 1) / len(self.trail)) if self.trail else 0
-            trail_r = max(2, int(r * (i + 1) / len(self.trail) * 0.6))
+            trail_r = max(2, int((r + 2) * (i + 1) / len(self.trail) * 0.7))
             trail_surf = pygame.Surface(
-                (trail_r * 2 + 2, trail_r * 2 + 2), pygame.SRCALPHA
+                (trail_r * 2 + 4, trail_r * 2 + 4), pygame.SRCALPHA
+            )
+            # 트레일 레이어
+            pygame.draw.circle(
+                trail_surf,
+                (255, 50, 0, alpha // 2),
+                (trail_r + 2, trail_r + 2),
+                trail_r + 2,
             )
             pygame.draw.circle(
-                trail_surf, (255, 140, 0, alpha), (trail_r + 1, trail_r + 1), trail_r
+                trail_surf, (255, 140, 0, alpha), (trail_r + 2, trail_r + 2), trail_r
             )
-            surface.blit(trail_surf, (tx - trail_r - 1, ty - trail_r - 1))
+            surface.blit(trail_surf, (tx - trail_r - 2, ty - trail_r - 2))
 
-        # 경고 원 (점멸)
+        # 경고 원 (점멸 및 회전하는 조준선)
         if self.warning_blink:
-            warn_r = r + 5 + int(3 * math.sin(self.timer * 0.4))
+            warn_r = r + 8 + int(4 * math.sin(self.timer * 0.5))
             pygame.draw.circle(surface, RED, (cx, cy), warn_r, 2)
+            # 타겟팅 크로스헤어
+            for i in range(4):
+                hang = math.radians(self.timer * 5 + i * 90)
+                hx1 = cx + (warn_r - 4) * math.cos(hang)
+                hy1 = cy + (warn_r - 4) * math.sin(hang)
+                hx2 = cx + (warn_r + 6) * math.cos(hang)
+                hy2 = cy + (warn_r + 6) * math.sin(hang)
+                pygame.draw.line(surface, RED, (hx1, hy1), (hx2, hy2), 2)
 
         # ── 본체 : 돌진 방향으로 회전하는 삼각형 ──
-        # 각도에 따라 꼭짓점 3개 계산
         angle_rad = math.radians(self.angle)
-        tip_x = cx + r * math.sin(angle_rad)
-        tip_y = cy - r * math.cos(angle_rad)
-        left_x = cx + r * math.sin(angle_rad + 2.4)
-        left_y = cy - r * math.cos(angle_rad + 2.4)
-        right_x = cx + r * math.sin(angle_rad - 2.4)
-        right_y = cy - r * math.cos(angle_rad - 2.4)
+        # 더 날카로운 각도
+        tip_x = cx + (r + 5) * math.sin(angle_rad)
+        tip_y = cy - (r + 5) * math.cos(angle_rad)
+        left_x = cx + r * math.sin(angle_rad + 2.5)
+        left_y = cy - r * math.cos(angle_rad + 2.5)
+        right_x = cx + r * math.sin(angle_rad - 2.5)
+        right_y = cy - r * math.cos(angle_rad - 2.5)
 
-        body_color = (
-            (255, 80, 0)
-            if self.state == "charging"
-            else (255, 160, 0)
-            if self.state == "aiming"
-            else ORANGE
-        )
+        # 내부 구조물(엔진 결합부)
+        back_x = cx + (r - 5) * math.sin(angle_rad + 3.14)
+        back_y = cy - (r - 5) * math.cos(angle_rad + 3.14)
+
+        if self.state == "charging":
+            body_color = (255, 50, 0)
+            edge_color = YELLOW
+        elif self.state == "aiming":
+            body_color = (200, 100, 0)
+            edge_color = ORANGE
+        else:
+            body_color = (150, 100, 50)
+            edge_color = DARK_GREY
+
         pygame.draw.polygon(
             surface,
             body_color,
             [
                 (int(tip_x), int(tip_y)),
                 (int(left_x), int(left_y)),
+                (int(back_x), int(back_y)),
                 (int(right_x), int(right_y)),
             ],
         )
-        # 외곽선
+
+        # 외곽선 / 장갑 패널 라인
         pygame.draw.polygon(
             surface,
-            YELLOW,
+            edge_color,
             [
                 (int(tip_x), int(tip_y)),
                 (int(left_x), int(left_y)),
+                (int(back_x), int(back_y)),
                 (int(right_x), int(right_y)),
             ],
             2,
         )
+        pygame.draw.line(
+            surface, edge_color, (int(tip_x), int(tip_y)), (int(back_x), int(back_y)), 1
+        )  # 중앙선
 
-        # 중심 코어
-        pygame.draw.circle(surface, YELLOW, (cx, cy), 4)
+        # 중심 코어 (빛남)
+        core_color = WHITE if self.warning_blink else YELLOW
+        pygame.draw.circle(surface, core_color, (cx, cy), 4)
 
-        # 경고 심볼 (aiming 단계에서만)
+        # 경고 심볼 (aiming 단계에서만 뚜렷하게)
         if self.state in ("entering", "aiming"):
-            font = pygame.font.SysFont("Arial", 14, bold=True)
+            font = pygame.font.SysFont("Arial", 16, bold=True)
             txt = font.render("!", True, RED)
-            surface.blit(txt, txt.get_rect(center=(cx, cy)))
+            surface.blit(txt, txt.get_rect(center=(cx, cy - 25)))
 
 
 class FloatingMine:
@@ -826,61 +1124,95 @@ class FloatingMine:
 
     def draw(self, surface):
         # 글로우 효과 (외곽 발광)
-        glow_surf = pygame.Surface((self.width + 20, self.height + 20), pygame.SRCALPHA)
+        glow_surf = pygame.Surface((self.width + 40, self.height + 40), pygame.SRCALPHA)
         glow_alpha = 80 + int(40 * math.sin(self.pulse_timer * 2))
 
         if self.triggered:
-            # 트리거 시 빨간색 점멸
             blink = self.trigger_timer % 6 < 3
             glow_color = (
-                (255, 50, 50, glow_alpha) if blink else (255, 150, 50, glow_alpha)
+                (255, 50, 50, glow_alpha + 50) if blink else (255, 100, 0, glow_alpha)
             )
             core_color = RED if blink else ORANGE
+            spike_color = WHITE if blink else YELLOW
         else:
             glow_color = (*self.glow_color, glow_alpha)
             core_color = self.base_color
+            spike_color = YELLOW
 
-        # 외곽 글로우
+        # 여러 겹의 부드러운 외곽 글로우
         pygame.draw.circle(
             glow_surf,
             glow_color,
-            (self.width // 2 + 10, self.height // 2 + 10),
+            (self.width // 2 + 20, self.height // 2 + 20),
             self.width // 2 + self.glow_radius,
         )
-        surface.blit(glow_surf, (self.rect.x - 10, self.rect.y - 10))
+        pygame.draw.circle(
+            glow_surf,
+            (glow_color[0], glow_color[1], glow_color[2], glow_alpha // 2),
+            (self.width // 2 + 20, self.height // 2 + 20),
+            self.width // 2 + self.glow_radius + 5,
+        )
+        surface.blit(glow_surf, (self.rect.x - 20, self.rect.y - 20))
 
-        # 본체 (동그란 기뢰)
-        pygame.draw.circle(surface, core_color, self.rect.center, self.width // 2)
+        # 본체 (입체감 있는 동그란 기뢰)
+        pygame.draw.circle(
+            surface,
+            (
+                max(0, core_color[0] - 40),
+                max(0, core_color[1] - 40),
+                max(0, core_color[2] - 40),
+            ),
+            self.rect.center,
+            self.width // 2,
+        )
+        pygame.draw.circle(
+            surface,
+            core_color,
+            (self.rect.centerx - 2, self.rect.centery - 2),
+            self.width // 2 - 2,
+        )
 
-        # 스파이크 (8방향)
+        # 스파이크 (8방향, 더 뼈대 같은 느낌)
         for i in range(8):
-            angle = i * 45 + self.pulse_timer * 10
+            angle = i * 45 + self.pulse_timer * 20  # 조금 더 빨리 회전
             angle_rad = angle * (math.pi / 180)
-            spike_length = 8 + self.glow_radius
-            start_x = self.rect.centerx + (self.width // 2 - 2) * math.cos(angle_rad)
-            start_y = self.rect.centery + (self.width // 2 - 2) * math.sin(angle_rad)
+            spike_length = 8 + self.glow_radius + (4 if self.triggered else 0)
+
+            start_x = self.rect.centerx + (self.width // 2 - 4) * math.cos(angle_rad)
+            start_y = self.rect.centery + (self.width // 2 - 4) * math.sin(angle_rad)
             end_x = self.rect.centerx + (self.width // 2 + spike_length) * math.cos(
                 angle_rad
             )
             end_y = self.rect.centery + (self.width // 2 + spike_length) * math.sin(
                 angle_rad
             )
+
+            # 스파이크 라인
             pygame.draw.line(
                 surface,
-                YELLOW if not self.triggered else RED,
+                DARK_GREY,
+                (int(start_x), int(start_y)),
+                (int(end_x), int(end_y)),
+                4,
+            )
+            pygame.draw.line(
+                surface,
+                spike_color,
                 (int(start_x), int(start_y)),
                 (int(end_x), int(end_y)),
                 2,
             )
+            # 스파이크 끝부분 센서 노드
+            pygame.draw.circle(surface, spike_color, (int(end_x), int(end_y)), 2)
 
-        # 중심 코어
-        core_pulse = int(4 + 2 * math.sin(self.pulse_timer * 3))
-        pygame.draw.circle(
-            surface,
-            YELLOW if not self.triggered else WHITE,
-            self.rect.center,
-            core_pulse,
-        )
+        # 중심 코어 (기계적인 눈 느낌)
+        core_pulse = int(5 + 3 * math.sin(self.pulse_timer * 3))
+        if self.triggered:
+            pygame.draw.circle(surface, WHITE, self.rect.center, core_pulse + 2)
+            pygame.draw.circle(surface, RED, self.rect.center, core_pulse)
+        else:
+            pygame.draw.circle(surface, DARK_GREY, self.rect.center, core_pulse + 2)
+            pygame.draw.circle(surface, CYAN, self.rect.center, core_pulse)
 
 
 class CarrierDrone:
@@ -945,21 +1277,43 @@ class CarrierDrone:
         cx, cy = self.rect.center
         r = self.width // 2
 
-        # 본체 (작은 다이아몬드)
-        pts = [
-            (cx, cy - r),
-            (cx + r, cy),
-            (cx, cy + r),
-            (cx - r, cy),
-        ]
-        pygame.draw.polygon(surface, CYAN, pts)
-        pygame.draw.polygon(surface, WHITE, pts, 1)
+        # 드론 글로우 효과
+        glow_surf = pygame.Surface((self.width + 10, self.height + 10), pygame.SRCALPHA)
+        pygame.draw.circle(
+            glow_surf,
+            (0, 255, 255, 50),
+            (self.width // 2 + 5, self.height // 2 + 5),
+            r + 2,
+        )
+        surface.blit(glow_surf, (self.rect.x - 5, self.rect.y - 5))
 
-        # 중심 코어 (깜빡임)
-        if self.timer % 10 < 5:
-            pygame.draw.circle(surface, YELLOW, (cx, cy), 3)
+        # 본체 (작은 다이아몬드 + 외부 패널)
+        pts_outer = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
+        pts_inner = [
+            (cx, cy - r + 3),
+            (cx + r - 3, cy),
+            (cx, cy + r - 3),
+            (cx - r + 3, cy),
+        ]
+
+        pygame.draw.polygon(surface, (30, 80, 150), pts_outer)
+        pygame.draw.polygon(surface, CYAN, pts_inner)
+        pygame.draw.polygon(surface, WHITE, pts_outer, 1)
+
+        # 추진기 불꽃 (위쪽)
+        pygame.draw.circle(
+            surface, (0, 200, 255), (cx, cy - r - 2), 2 + int(math.sin(self.timer) * 2)
+        )
+
+        # 중심 코어 (깜빡임, 발사 직전에 더 밝게)
+        is_firing = self.fire_timer > self.fire_rate - 10
+        core_size = 4 if is_firing else 3
+
+        if is_firing or self.timer % 10 < 5:
+            pygame.draw.circle(surface, WHITE, (cx, cy), core_size + 1)
+            pygame.draw.circle(surface, YELLOW, (cx, cy), core_size)
         else:
-            pygame.draw.circle(surface, ORANGE, (cx, cy), 3)
+            pygame.draw.circle(surface, ORANGE, (cx, cy), core_size)
 
 
 class BossCarrier:
@@ -1041,11 +1395,11 @@ class BossCarrier:
 
         # === 페이즈별 행동 ===
         if self.phase == 1:
-            # Phase 1: 5방향 확산탄
+            # Phase 1: 3방향 확산탄
             self.fire_timer += 1
             if self.fire_timer >= self.fire_rate:
-                for i in range(5):
-                    angle = -40 + (i * 20)  # -40도 ~ +40도
+                for i in range(3):
+                    angle = -20 + (i * 20)  # -20도 ~ +20도
                     angle_rad = math.radians(angle)
                     vx = math.sin(angle_rad) * 4
                     vy = math.cos(angle_rad) * 4
@@ -1102,79 +1456,139 @@ class BossCarrier:
     def draw(self, surface):
         cx, cy = self.rect.center
 
-        # 보호막 (Phase 3)
+        # 보호막 (Phase 3) - 에너지 셀 구면 보호막처럼 연출
         if self.shield_active:
             shield_surf = pygame.Surface(
-                (self.width + 30, self.height + 30), pygame.SRCALPHA
+                (self.width + 40, self.height + 40), pygame.SRCALPHA
             )
-            shield_alpha = int(80 + 40 * math.sin(self.shield_pulse))
-            pygame.draw.ellipse(
-                shield_surf,
-                (100, 180, 255, shield_alpha),
-                (0, 0, self.width + 30, self.height + 30),
-                3,
-            )
-            pygame.draw.ellipse(
-                shield_surf,
-                (100, 180, 255, shield_alpha // 3),
-                (0, 0, self.width + 30, self.height + 30),
-            )
-            surface.blit(shield_surf, (self.rect.x - 15, self.rect.y - 15))
+            pulse_val = math.sin(self.shield_pulse)
+            shield_alpha = int(100 + 50 * pulse_val)
 
-        # 본체 (대형 전함)
-        # 몸통
+            # 다중 레이어 보호막
+            pygame.draw.ellipse(
+                shield_surf,
+                (50, 150, 255, shield_alpha // 3),
+                (0, 0, self.width + 40, self.height + 40),
+            )
+            pygame.draw.ellipse(
+                shield_surf,
+                (150, 200, 255, shield_alpha),
+                (0, 0, self.width + 40, self.height + 40),
+                4,
+            )
+            pygame.draw.ellipse(
+                shield_surf,
+                WHITE,
+                (5, 5, self.width + 30, self.height + 30),
+                1 + int(pulse_val),
+            )
+
+            surface.blit(shield_surf, (self.rect.x - 20, self.rect.y - 20))
+
+        # 본체 (초거대 전함 텍스처링)
+        # 그림자 효과용 배경
         pygame.draw.rect(
-            surface, DARK_GREY, (self.rect.x + 15, self.rect.y, 70, self.height)
-        )
-        # 날개
-        pygame.draw.polygon(
-            surface,
-            (80, 80, 120),
-            [
-                (self.rect.x, self.rect.y + 20),
-                (self.rect.x + 15, self.rect.y + 10),
-                (self.rect.x + 15, self.rect.y + self.height - 10),
-                (self.rect.x, self.rect.y + self.height - 5),
-            ],
-        )
-        pygame.draw.polygon(
-            surface,
-            (80, 80, 120),
-            [
-                (self.rect.right, self.rect.y + 20),
-                (self.rect.right - 15, self.rect.y + 10),
-                (self.rect.right - 15, self.rect.y + self.height - 10),
-                (self.rect.right, self.rect.y + self.height - 5),
-            ],
-        )
-        # 브릿지 (상부 돔)
-        pygame.draw.ellipse(
-            surface, (100, 100, 180), (self.rect.x + 30, self.rect.y - 5, 40, 25)
+            surface, (20, 20, 30), (self.rect.x + 12, self.rect.y + 2, 76, self.height)
         )
 
-        # 엔진 불빛
-        for offset in [-20, 0, 20]:
-            engine_color = ORANGE if self.glow_timer % 6 < 3 else YELLOW
-            pygame.draw.circle(
+        # 기갑 날개 (여러 겹)
+        left_wing_pts = [
+            (self.rect.x - 10, self.rect.y + 25),
+            (self.rect.x + 15, self.rect.y + 10),
+            (self.rect.x + 15, self.rect.y + self.height - 15),
+            (self.rect.x - 5, self.rect.y + self.height - 5),
+        ]
+        pygame.draw.polygon(surface, (60, 60, 80), left_wing_pts)
+        pygame.draw.polygon(
+            surface, (100, 100, 130), left_wing_pts, 3
+        )  # 날개 테두리 하이라이트
+
+        right_wing_pts = [
+            (self.rect.right + 10, self.rect.y + 25),
+            (self.rect.right - 15, self.rect.y + 10),
+            (self.rect.right - 15, self.rect.y + self.height - 15),
+            (self.rect.right + 5, self.rect.y + self.height - 5),
+        ]
+        pygame.draw.polygon(surface, (60, 60, 80), right_wing_pts)
+        pygame.draw.polygon(surface, (100, 100, 130), right_wing_pts, 3)
+
+        # 메인 장갑판 (가운데 줄무늬 포함)
+        pygame.draw.rect(
+            surface, (70, 70, 90), (self.rect.x + 15, self.rect.y, 70, self.height)
+        )
+        # 장갑 패널 라인
+        for i in range(1, 5):
+            ly = self.rect.y + i * (self.height // 5)
+            pygame.draw.line(
+                surface, DARK_GREY, (self.rect.x + 15, ly), (self.rect.x + 85, ly), 2
+            )
+
+        # 전면부 대형 장갑
+        pygame.draw.polygon(
+            surface,
+            (90, 90, 110),
+            [
+                (self.rect.x + 25, self.rect.bottom),
+                (self.rect.x + 75, self.rect.bottom),
+                (self.rect.x + 50, self.rect.bottom + 15),
+            ],
+        )
+
+        # 브릿지 (상부 돔형 관제탑)
+        pygame.draw.ellipse(
+            surface, (40, 40, 60), (self.rect.x + 30, self.rect.y - 15, 40, 30)
+        )
+        pygame.draw.ellipse(
+            surface, (150, 200, 255), (self.rect.x + 35, self.rect.y - 10, 30, 15)
+        )  # 유리창
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (self.rect.x + 40, self.rect.y - 5),
+            (self.rect.x + 60, self.rect.y - 5),
+            2,
+        )  # 하이라이트
+
+        # 드론 방출 베이 (Phase 2에서 빛남)
+        bay_color = CYAN if self.phase == 2 and not self.drones_spawned else DARK_GREY
+        pygame.draw.rect(
+            surface, bay_color, (self.rect.x + 25, self.rect.bottom - 20, 15, 10)
+        )
+        pygame.draw.rect(
+            surface, bay_color, (self.rect.x + 60, self.rect.bottom - 20, 15, 10)
+        )
+
+        # 대형 엔진 불빛 (4개)
+        for offset in [-30, -10, 10, 30]:
+            engine_color = (255, 100, 0) if self.glow_timer % 8 < 4 else YELLOW
+            flame_p = random.randint(5, 12)
+            pygame.draw.polygon(
                 surface,
                 engine_color,
-                (cx + offset, self.rect.bottom),
-                random.randint(3, 6),
+                [
+                    (cx + offset - 6, self.rect.y),
+                    (cx + offset + 6, self.rect.y),
+                    (cx + offset, self.rect.y - flame_p),
+                ],
             )
+            pygame.draw.circle(surface, WHITE, (cx + offset, self.rect.y), 3)
 
-        # 페이즈 표시등 (3개 작은 원)
+        # 페이즈 표시등 (3개 작은 원, 무기 게이지)
         for i in range(3):
-            lx = self.rect.x + 35 + i * 15
-            ly = self.rect.y + 10
-            color = YELLOW if self.phase == i + 1 else DARK_GREY
-            pygame.draw.circle(surface, color, (lx, ly), 4)
+            lx = self.rect.x + 30 + i * 20
+            ly = self.rect.y + 15
+            color = RED if self.phase == i + 1 else (50, 0, 0)
+            pygame.draw.circle(surface, color, (lx, ly), 5)
+            if self.phase == i + 1:
+                pygame.draw.circle(surface, WHITE, (lx, ly), 2)
 
-        # HP Bar (더 큼)
-        bar_width = self.width + 10
-        bar_x = self.rect.x - 5
+        # HP Bar (훨씬 크고 보스답게 표시)
+        bar_width = self.width + 40
+        bar_x = self.rect.x - 20
         ratio = self.health / self.max_health
-        pygame.draw.rect(surface, RED, (bar_x, self.rect.top - 14, bar_width, 7))
+        bar_y = self.rect.top - 25
+        pygame.draw.rect(surface, (50, 0, 0), (bar_x, bar_y, bar_width, 10))
         pygame.draw.rect(
-            surface, GREEN, (bar_x, self.rect.top - 14, int(bar_width * ratio), 7)
+            surface, (255, 50, 50), (bar_x, bar_y, int(bar_width * ratio), 10)
         )
-        pygame.draw.rect(surface, WHITE, (bar_x, self.rect.top - 14, bar_width, 7), 1)
+        pygame.draw.rect(surface, WHITE, (bar_x, bar_y, bar_width, 10), 2)

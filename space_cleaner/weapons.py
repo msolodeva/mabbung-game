@@ -49,8 +49,9 @@ class HomingMissile:
                 if candidates:
                     self.target = min(
                         candidates,
-                        key=lambda e: (e.rect.centerx - px) ** 2
-                        + (e.rect.centery - py) ** 2,
+                        key=lambda e: (
+                            (e.rect.centerx - px) ** 2 + (e.rect.centery - py) ** 2
+                        ),
                     )
 
         if self.target:
@@ -83,8 +84,29 @@ class HomingMissile:
     def draw(self, surface):
         # 회전된 미사일 그리기
         missile_surf = pygame.Surface((20, 20), pygame.SRCALPHA)
-        pygame.draw.rect(missile_surf, self.color, (5, 0, 10, 20))
-        pygame.draw.polygon(missile_surf, WHITE, [(5, 0), (15, 0), (10, -5)])
+
+        # 미사일 꼬리 불꽃
+        flame_h = random.randint(4, 8)
+        pygame.draw.polygon(
+            missile_surf, (255, 100, 0), [(7, 20), (13, 20), (10, 20 + flame_h)]
+        )
+        pygame.draw.polygon(
+            missile_surf, (255, 200, 0), [(8, 20), (12, 20), (10, 20 + flame_h - 2)]
+        )
+
+        # 미사일 본체 (쉐이딩)
+        pygame.draw.rect(missile_surf, (40, 40, 40), (6, 5, 8, 15))
+        pygame.draw.rect(missile_surf, WHITE, (8, 5, 4, 15))
+
+        # 미사일 머리 (빨간색 콘)
+        pygame.draw.polygon(missile_surf, (200, 0, 0), [(6, 5), (14, 5), (10, 0)])
+        pygame.draw.polygon(missile_surf, (255, 50, 50), [(8, 5), (12, 5), (10, 2)])
+
+        # 미사일 날개
+        pygame.draw.polygon(missile_surf, (100, 100, 100), [(6, 15), (2, 20), (6, 20)])
+        pygame.draw.polygon(
+            missile_surf, (100, 100, 100), [(14, 15), (18, 20), (14, 20)]
+        )
 
         rotated_surf = pygame.transform.rotate(missile_surf, -self.angle - 90)
         surface.blit(rotated_surf, rotated_surf.get_rect(center=self.rect.center))
@@ -106,9 +128,42 @@ class PiercingLaser:
         self.rect.y += self.speed
 
     def draw(self, surface):
-        # 빛나는 효과와 함께 그리기
+        # 빛나는 효과 (글로우)
+        glow_surf = pygame.Surface((18, 50), pygame.SRCALPHA)
+        pygame.draw.rect(
+            glow_surf, (*self.color[:3], 100), (0, 0, 18, 50), border_radius=4
+        )
+        pygame.draw.rect(
+            glow_surf, (*self.color[:3], 200), (3, 2, 12, 46), border_radius=3
+        )
+        surface.blit(glow_surf, (self.rect.x - 6, self.rect.y - 5))
+
+        # 레이저 코어 (매우 밝음)
         pygame.draw.rect(surface, WHITE, self.rect)
-        pygame.draw.rect(surface, self.color, self.rect, 2)
+
+        # 전면부 뾰족한 에너지 스파크
+        spark_y = self.rect.y - random.randint(2, 6)
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (self.rect.centerx, self.rect.y),
+            (self.rect.centerx, spark_y),
+            2,
+        )
+        pygame.draw.line(
+            surface,
+            self.color,
+            (self.rect.left, self.rect.y),
+            (self.rect.centerx, spark_y),
+            1,
+        )
+        pygame.draw.line(
+            surface,
+            self.color,
+            (self.rect.right, self.rect.y),
+            (self.rect.centerx, spark_y),
+            1,
+        )
 
 
 class PlasmaWave:
@@ -126,6 +181,7 @@ class PlasmaWave:
         self.speed = 5
         self.lifetime = 60
         self.alpha = 200
+        self.hit_enemies = set()
 
     @property
     def rect(self):
@@ -145,13 +201,58 @@ class PlasmaWave:
 
     def draw(self, surface):
         if self.alpha > 0:
-            s = pygame.Surface((self.radius * 2, self.radius * 2), pygame.SRCALPHA)
+            surf_size = self.radius * 2
+            s = pygame.Surface((surf_size, surf_size), pygame.SRCALPHA)
+
+            # 파동의 여러 레이어 (입체감)
+            # 바깥쪽 흐릿한 파동
             pygame.draw.arc(
                 s,
-                (*self.color, self.alpha),
-                (0, 0, self.radius * 2, self.radius * 2),
+                (*self.color[:3], int(self.alpha * 0.4)),
+                (0, 0, surf_size, surf_size),
                 math.radians(45),
                 math.radians(135),
-                10,
+                int(15 * (self.radius / self.max_radius) + 5),
             )
+            # 중간 밝은 파동
+            pygame.draw.arc(
+                s,
+                (*self.color[:3], self.alpha),
+                (5, 5, surf_size - 10, surf_size - 10),
+                math.radians(50),
+                math.radians(130),
+                max(2, int(8 * (1 - self.radius / self.max_radius))),
+            )
+            # 중심부 날카로운 코어 라인
+            core_alpha = min(255, int(self.alpha * 1.5))
+            pygame.draw.arc(
+                s,
+                (255, 255, 255, core_alpha),
+                (10, 10, surf_size - 20, surf_size - 20),
+                math.radians(55),
+                math.radians(125),
+                2,
+            )
+
+            # 파동 내부에 지지직거리는 에너지 라인 (번개 효과)
+            if self.radius > 20 and self.alpha > 50:
+                for _ in range(3):
+                    angle = math.radians(random.uniform(50, 130))
+                    r_offset = random.uniform(-10, 10)
+                    ex1 = surf_size // 2 + (self.radius / 2 + r_offset) * math.cos(
+                        angle
+                    )
+                    ey1 = surf_size // 2 - (self.radius / 2 + r_offset) * math.sin(
+                        angle
+                    )
+                    ex2 = surf_size // 2 + (self.radius / 2 + r_offset + 10) * math.cos(
+                        angle + 0.1
+                    )
+                    ey2 = surf_size // 2 - (self.radius / 2 + r_offset + 10) * math.sin(
+                        angle + 0.1
+                    )
+                    pygame.draw.line(
+                        s, (150, 255, 255, self.alpha), (ex1, ey1), (ex2, ey2), 1
+                    )
+
             surface.blit(s, (self.x - self.radius, self.y - self.radius))

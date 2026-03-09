@@ -140,8 +140,8 @@ class CollisionManager:
                         if getattr(enemy, "is_ghost", False):
                             continue
 
-                        # 관통 레이저인 경우 이미 맞은 적인지 확인
-                        if isinstance(proj, PiercingLaser):
+                        # 관통 레이저나 플라즈마 파동인 경우 이미 맞은 적인지 확인
+                        if isinstance(proj, (PiercingLaser, PlasmaWave)):
                             if enemy in proj.hit_enemies:
                                 continue
                             proj.hit_enemies.add(enemy)

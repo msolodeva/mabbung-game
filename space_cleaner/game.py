@@ -4,6 +4,7 @@
 import pygame
 import random
 import sys
+import math
 
 from constants import (
     WIDTH,
@@ -200,23 +201,50 @@ class Game:
         """모든 충돌 검사 수행 (CollisionManager 위임)."""
         self.collision_manager.update()
 
-    def _draw_hud_bar(self, surface, x, y, width, height, ratio, color):
-        """HUD용 반투명 막대 그리기."""
-        # 배경 (반투명 어두운 회색)
+    def _draw_hud_bar(self, surface, x, y, width, height, ratio, default_color):
+        """HUD용 반투명 막대 그리기 (그라데이션 & 네온 효과)."""
+        # 체력 비율에 따른 색상 변경
+        if ratio > 0.5:
+            color = GREEN
+        elif ratio > 0.2:
+            color = YELLOW
+        else:
+            color = RED
+
+        # 배경 (반투명 어두운 회색, 둥근 모서리)
         bg_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-        bg_surf.fill((50, 50, 50, 100))
+        pygame.draw.rect(
+            bg_surf, (20, 20, 30, 180), (0, 0, width, height), border_radius=4
+        )
         surface.blit(bg_surf, (x, y))
 
-        # 채우기 (반투명 색상)
+        # 채우기 (현재 체력 부분)
         fill_width = int(width * max(0, min(1, ratio)))
         if fill_width > 0:
             fill_surf = pygame.Surface((fill_width, height), pygame.SRCALPHA)
-            fill_surf.fill((*color, 150))
+            # 메인 컬러
+            pygame.draw.rect(
+                fill_surf, (*color, 200), (0, 0, fill_width, height), border_radius=4
+            )
+            # 밝은 하이라이트 (상단)
+            pygame.draw.rect(
+                fill_surf,
+                (255, 255, 255, 100),
+                (0, 0, fill_width, height // 2),
+                border_radius=4,
+            )
             surface.blit(fill_surf, (x, y))
 
-        # 테두리 (반투명 흰색)
+            # 글로우 효과 (채워진 끝부분)
+            glow_surf = pygame.Surface((10, height + 4), pygame.SRCALPHA)
+            pygame.draw.ellipse(glow_surf, (*color, 150), (0, 0, 10, height + 4))
+            surface.blit(glow_surf, (x + fill_width - 5, y - 2))
+
+        # 테두리 (정교한 사이버 느낌)
         border_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-        pygame.draw.rect(border_surf, (255, 255, 255, 80), (0, 0, width, height), 1)
+        pygame.draw.rect(
+            border_surf, (*color, 100), (0, 0, width, height), 1, border_radius=4
+        )
         surface.blit(border_surf, (x, y))
 
     def run(self):
@@ -288,15 +316,28 @@ class Game:
     def _draw_select_screen(self):
         """비행기 선택 화면 그리기."""
         self.select_blink_timer += 1
-        self.screen.fill(BLACK)
 
-        # 타이틀
-        title = self.title_font.render("SELECT YOUR SHIP", True, WHITE)
+        # 동적인 모던 배경 (격자 무늬 또는 그라데이션)
+        self.screen.fill((10, 15, 25))
+        for i in range(0, WIDTH, 40):
+            pygame.draw.line(self.screen, (20, 30, 45), (i, 0), (i, HEIGHT), 1)
+        for i in range(0, HEIGHT, 40):
+            pygame.draw.line(self.screen, (20, 30, 45), (0, i), (WIDTH, i), 1)
+
+        # 타이틀 (글로우 효과)
+        title_str = "SELECT YOUR SHIP"
+        title_glow = self.title_font.render(title_str, True, (0, 150, 255))
+        title = self.title_font.render(title_str, True, WHITE)
+        self.screen.blit(title_glow, (WIDTH // 2 - title.get_width() // 2 + 2, 32))
+        self.screen.blit(title_glow, (WIDTH // 2 - title.get_width() // 2 - 2, 28))
         self.screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 30))
 
-        # 구분선
+        # 중앙 네온 구분선
         pygame.draw.line(
-            self.screen, GREY, (WIDTH // 2, 80), (WIDTH // 2, HEIGHT - 50), 1
+            self.screen, (0, 100, 200), (WIDTH // 2, 100), (WIDTH // 2, HEIGHT - 50), 2
+        )
+        pygame.draw.line(
+            self.screen, (0, 200, 255), (WIDTH // 2, 100), (WIDTH // 2, HEIGHT - 50), 1
         )
 
         # P1 영역 (좌측)
@@ -328,9 +369,31 @@ class Game:
         ship_key = SHIP_TYPE_KEYS[ship_index]
         ship_data = SHIP_TYPES[ship_key]
 
-        # 플레이어 라벨
+        # 유리 질감 패널 배경
+        panel_w = 400
+        panel_h = 450
+        panel_rect = pygame.Rect(x_center - panel_w // 2, 100, panel_w, panel_h)
+
+        # 반투명 배경
+        panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        pygame.draw.rect(
+            panel_surf, (20, 25, 35, 200), (0, 0, panel_w, panel_h), border_radius=15
+        )
+        # 패널 테두리 (확정 시 색상 변경)
+        border_color = player_color if confirmed else (80, 90, 110, 150)
+        border_width = 3 if confirmed else 1
+        pygame.draw.rect(
+            panel_surf,
+            border_color,
+            (0, 0, panel_w, panel_h),
+            border_width,
+            border_radius=15,
+        )
+        self.screen.blit(panel_surf, panel_rect.topleft)
+
+        # 플레이어 라벨 (패널 겹치게 위쪽에)
         label = self.large_font.render(player_label, True, player_color)
-        self.screen.blit(label, (x_center - label.get_width() // 2, 80))
+        self.screen.blit(label, (x_center - label.get_width() // 2, 110))
 
         # 비행기 미리보기 (임시 Player 생성)
         preview_player = Player(
@@ -341,53 +404,54 @@ class Game:
             ship_type=ship_key,
         )
         # 미리보기 위치
-        preview_y = 200
+        preview_y = 220
+        # 슬라이드 애니메이션 효과 추가 가능
         preview_player._draw_ship(self.screen, x_center, preview_y, player_color)
 
-        # 화살표 (위/아래)
+        # 화살표 (위/아래) 애니메이션
         if not confirmed:
-            arrow_alpha = int(150 + 100 * abs((self.select_blink_timer % 60) / 30 - 1))
+            arrow_offset = int(5 * math.sin(self.select_blink_timer * 0.1))
             # 위 화살표
             pygame.draw.polygon(
                 self.screen,
-                WHITE,
+                (200, 200, 200),
                 [
-                    (x_center, preview_y - 30),
-                    (x_center - 12, preview_y - 15),
-                    (x_center + 12, preview_y - 15),
+                    (x_center, preview_y - 45 + arrow_offset),
+                    (x_center - 15, preview_y - 25 + arrow_offset),
+                    (x_center + 15, preview_y - 25 + arrow_offset),
                 ],
             )
             # 아래 화살표
             pygame.draw.polygon(
                 self.screen,
-                WHITE,
+                (200, 200, 200),
                 [
-                    (x_center, preview_y + 75),
-                    (x_center - 12, preview_y + 60),
-                    (x_center + 12, preview_y + 60),
+                    (x_center, preview_y + 85 - arrow_offset),
+                    (x_center - 15, preview_y + 65 - arrow_offset),
+                    (x_center + 15, preview_y + 65 - arrow_offset),
                 ],
             )
 
-        # 비행기 이름
+        # 비행기 이름 (강조)
         name_color = ship_data["color_accent"]
         name_txt = self.title_font.render(ship_data["name"], True, name_color)
-        self.screen.blit(name_txt, (x_center - name_txt.get_width() // 2, 290))
+        self.screen.blit(name_txt, (x_center - name_txt.get_width() // 2, 310))
 
         # 설명
-        desc_txt = self.font.render(ship_data["description"], True, GREY)
-        self.screen.blit(desc_txt, (x_center - desc_txt.get_width() // 2, 340))
+        desc_txt = self.font.render(ship_data["description"], True, (180, 190, 200))
+        self.screen.blit(desc_txt, (x_center - desc_txt.get_width() // 2, 360))
 
         # 스탯 바
-        bar_x = x_center - 100
-        bar_y = 380
-        bar_width = 200
-        bar_height = 16
-        bar_gap = 30
+        bar_x = x_center - 120
+        bar_y = 400
+        bar_width = 240
+        bar_height = 12
+        bar_gap = 25
 
         stats = [
             ("HP", ship_data["health"] / 220, GREEN),
-            ("SPEED", ship_data["speed"] / 7.5, CYAN),
-            ("BOMBS", ship_data["bombs"] / 4, ORANGE),
+            ("SPD", ship_data["speed"] / 7.5, CYAN),
+            ("BMB", ship_data["bombs"] / 4, ORANGE),
         ]
 
         # 무기 스타일 표시
@@ -401,18 +465,32 @@ class Game:
         for i, (stat_name, ratio, color) in enumerate(stats):
             sy = bar_y + i * bar_gap
             # 라벨
-            stat_label = self.small_font.render(stat_name, True, WHITE)
-            self.screen.blit(stat_label, (bar_x, sy - 2))
-            # 바 배경
+            stat_label = self.small_font.render(stat_name, True, (150, 160, 170))
+            self.screen.blit(stat_label, (bar_x, sy - 4))
+
+            # 바 배경 (네온 스타일)
             pygame.draw.rect(
-                self.screen, (40, 40, 40), (bar_x + 55, sy, bar_width - 55, bar_height)
+                self.screen,
+                (30, 40, 50),
+                (bar_x + 40, sy, bar_width - 40, bar_height),
+                border_radius=6,
             )
             # 바 채우기
-            fill_w = int((bar_width - 55) * ratio)
-            pygame.draw.rect(self.screen, color, (bar_x + 55, sy, fill_w, bar_height))
+            fill_w = int((bar_width - 40) * ratio)
+            if fill_w > 0:
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (bar_x + 40, sy, fill_w, bar_height),
+                    border_radius=6,
+                )
             # 바 테두리
             pygame.draw.rect(
-                self.screen, WHITE, (bar_x + 55, sy, bar_width - 55, bar_height), 1
+                self.screen,
+                (80, 90, 100),
+                (bar_x + 40, sy, bar_width - 40, bar_height),
+                1,
+                border_radius=6,
             )
 
         # 무기 타입
@@ -422,21 +500,28 @@ class Game:
         weapon_txt = self.font.render(weapon_text, True, weapon_color)
         self.screen.blit(
             weapon_txt,
-            (x_center - weapon_txt.get_width() // 2, bar_y + len(stats) * bar_gap + 5),
+            (x_center - weapon_txt.get_width() // 2, bar_y + len(stats) * bar_gap + 10),
         )
 
-        # 확정 상태
+        # 확정 상태 표시 및 조작법
         if confirmed:
-            blink = (self.select_blink_timer // 20) % 2 == 0
+            blink = (self.select_blink_timer // 15) % 2 == 0
             if blink:
-                ready_txt = self.title_font.render("READY!", True, YELLOW)
+                ready_txt = self.title_font.render("READY!", True, player_color)
+                # 글로우 효과
+                ready_glow = self.title_font.render("READY!", True, WHITE)
                 self.screen.blit(
-                    ready_txt, (x_center - ready_txt.get_width() // 2, 540)
+                    ready_txt, (x_center - ready_txt.get_width() // 2, 570)
+                )
+                self.screen.blit(
+                    ready_glow,
+                    (x_center - ready_txt.get_width() // 2, 570),
+                    special_flags=pygame.BLEND_ADD,
                 )
         else:
             # 조작법
-            ctrl_txt = self.small_font.render(controls_text, True, GREY)
-            self.screen.blit(ctrl_txt, (x_center - ctrl_txt.get_width() // 2, 560))
+            ctrl_txt = self.small_font.render(controls_text, True, (130, 140, 150))
+            self.screen.blit(ctrl_txt, (x_center - ctrl_txt.get_width() // 2, 580))
 
     def handle_events(self):
         """이벤트 처리."""
@@ -929,64 +1014,155 @@ class Game:
             for spark in self.hit_sparks:
                 spark.draw(shake_surface)
 
-            # HUD (흔들림 영향 없음)
-            p1_score_txt = self.font.render(f"P1 (RED): {self.p1.score}", True, RED)
-            # P2는 점수가 왼쪽에 오도록 형식 변경
-            p2_score_txt = self.font.render(f"{self.p2.score} :P2 (BLUE)", True, BLUE)
-            shake_surface.blit(p1_score_txt, (20, 20))
-            # P2 점수는 오른쪽 정렬 (화면 오른쪽 끝에서 20픽셀 여백)
-            shake_surface.blit(
-                p2_score_txt, (WIDTH - p2_score_txt.get_width() - 20, 20)
-            )
-
-            # 폭탄 개수 표시
-            p1_bomb_txt = self.font.render(f"Bomb: {self.p1.bomb_count}", True, ORANGE)
-            # P2는 숫자가 왼쪽에 오도록 형식 변경
-            p2_bomb_txt = self.font.render(f"{self.p2.bomb_count} :Bomb", True, ORANGE)
-            shake_surface.blit(p1_bomb_txt, (20, 50))
-            # P2 폭탄도 오른쪽 정렬
-            shake_surface.blit(p2_bomb_txt, (WIDTH - p2_bomb_txt.get_width() - 20, 50))
-
-            # 체력바 표시 (HUD) - 작고 반투명하게 변경
-            self._draw_hud_bar(
-                shake_surface,
-                20,
-                80,
-                120,
-                10,
-                self.p1.health / self.p1.max_health,
-                GREEN,
-            )
-            # P2 체력바도 오른쪽 정렬
-            self._draw_hud_bar(
-                shake_surface,
-                WIDTH - 120 - 20,  # 체력바 너비(120) + 여백(20)
-                80,
-                120,
-                10,
-                self.p2.health / self.p2.max_health,
-                GREEN,
-            )
-
         # 화면 흔들림 적용하여 메인 화면에 블릿
         self.screen.blit(
             shake_surface, (self.screen_shake.offset_x, self.screen_shake.offset_y)
         )
 
+        # HUD는 화면 흔들림에 영향받지 않도록 self.screen에 직접 그림
+        if not self.game_over:
+            # 상단 반투명 유리 질감 배경 (가독성 향상)
+            top_bg = pygame.Surface((WIDTH, 80), pygame.SRCALPHA)
+            pygame.draw.rect(top_bg, (10, 15, 20, 180), (0, 0, WIDTH, 80))
+            pygame.draw.line(top_bg, (40, 50, 70, 200), (0, 79), (WIDTH, 79), 2)
+            self.screen.blit(top_bg, (0, 0))
+
+            # --- P1 HUD ---
+            # Player 1 아이콘 (별 모양 또는 다이아몬드)
+            pygame.draw.polygon(
+                self.screen, RED, [(30, 25), (35, 30), (30, 35), (25, 30)]
+            )
+            p1_score_txt = self.font.render(f"{self.p1.score}", True, WHITE)
+            self.screen.blit(p1_score_txt, (50, 20))
+
+            # 폭탄 개수 표시 (사각형 아이콘 연속된 형태)
+            bomb_y_pos = 50
+            for i in range(self.p1.max_bombs):
+                bx = 30 + i * 15
+                if i < self.p1.bomb_count:
+                    # 글로우 효과
+                    pygame.draw.circle(
+                        self.screen, (*ORANGE, 100), (bx + 5, bomb_y_pos + 5), 8
+                    )
+                    pygame.draw.circle(
+                        self.screen, (255, 200, 50), (bx + 5, bomb_y_pos + 5), 5
+                    )
+                else:
+                    pygame.draw.circle(
+                        self.screen, (50, 50, 50), (bx + 5, bomb_y_pos + 5), 5, 1
+                    )
+
+            # 체력바 표시 (P1: 왼쪽 상단 기준 약간 시프트)
+            self._draw_hud_bar(
+                self.screen,
+                120,
+                25,
+                200,
+                12,
+                self.p1.health / self.p1.max_health,
+                GREEN,
+            )
+
+            # --- P2 HUD ---
+            # Player 2 아이콘
+            right_offset = WIDTH - 20
+            pygame.draw.polygon(
+                self.screen,
+                BLUE,
+                [
+                    (right_offset - 10, 25),
+                    (right_offset - 5, 30),
+                    (right_offset - 10, 35),
+                    (right_offset - 15, 30),
+                ],
+            )
+            p2_score_txt = self.font.render(f"{self.p2.score}", True, WHITE)
+            self.screen.blit(
+                p2_score_txt, (right_offset - 30 - p2_score_txt.get_width(), 20)
+            )
+
+            # 폭탄 개수 표시 (P2)
+            p2_bomb_start_x = right_offset - 30
+            for i in range(self.p2.max_bombs):
+                bx = p2_bomb_start_x - i * 15
+                if i < self.p2.bomb_count:
+                    pygame.draw.circle(
+                        self.screen, (*ORANGE, 100), (bx - 5, bomb_y_pos + 5), 8
+                    )
+                    pygame.draw.circle(
+                        self.screen, (255, 200, 50), (bx - 5, bomb_y_pos + 5), 5
+                    )
+                else:
+                    pygame.draw.circle(
+                        self.screen, (50, 50, 50), (bx - 5, bomb_y_pos + 5), 5, 1
+                    )
+
+            # 체력바 표시 (P2)
+            p2_bar_w = 200
+            self._draw_hud_bar(
+                self.screen,
+                right_offset - 120 - p2_bar_w,
+                25,
+                p2_bar_w,
+                12,
+                self.p2.health / self.p2.max_health,
+                GREEN,
+            )
+
         if self.game_paused:
-            # 일시정지 오버레이
+            # 일시정지 오버레이 (화면 전체 어둡게)
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 150))
+            overlay.fill((0, 0, 0, 180))
             self.screen.blit(overlay, (0, 0))
 
-            pause_txt = self.large_font.render("PAUSED", True, YELLOW)
-            resume_txt = self.font.render("Press ESC to Resume", True, WHITE)
-            restart_txt = self.font.render("Press 'R' to Restart", True, WHITE)
-            quit_txt = self.font.render("Close Window to Quit", True, WHITE)
-
-            self.screen.blit(
-                pause_txt, (WIDTH // 2 - pause_txt.get_width() // 2, HEIGHT // 2 - 80)
+            # 모달 창 배경
+            modal_w, modal_h = 400, 300
+            modal_rect = pygame.Rect(
+                WIDTH // 2 - modal_w // 2, HEIGHT // 2 - modal_h // 2, modal_w, modal_h
             )
+            modal_surf = pygame.Surface((modal_w, modal_h), pygame.SRCALPHA)
+            pygame.draw.rect(
+                modal_surf,
+                (20, 25, 35, 230),
+                (0, 0, modal_w, modal_h),
+                border_radius=15,
+            )
+            pygame.draw.rect(
+                modal_surf,
+                (0, 150, 255, 150),
+                (0, 0, modal_w, modal_h),
+                2,
+                border_radius=15,
+            )
+            # 모달 장식선
+            pygame.draw.line(
+                modal_surf, (0, 200, 255, 200), (20, 70), (modal_w - 20, 70), 2
+            )
+            self.screen.blit(modal_surf, modal_rect)
+
+            # 글로우 타이틀
+            pause_txt = self.large_font.render("PAUSED", True, WHITE)
+            pause_glow = self.large_font.render("PAUSED", True, (0, 150, 255))
+            cx, cy = WIDTH // 2, HEIGHT // 2 - modal_h // 2 + 35
+            self.screen.blit(
+                pause_glow,
+                (
+                    cx - pause_glow.get_width() // 2 + 2,
+                    cy - pause_glow.get_height() // 2 + 2,
+                ),
+            )
+            self.screen.blit(
+                pause_txt,
+                (cx - pause_txt.get_width() // 2, cy - pause_txt.get_height() // 2),
+            )
+
+            # 텍스트들
+            resume_txt = self.font.render("Press ESC to Resume", True, (200, 210, 220))
+            restart_txt = self.font.render(
+                "Press 'R' to Restart", True, (200, 210, 220)
+            )
+            quit_txt = self.font.render("Close Window to Quit", True, (150, 160, 170))
+
             self.screen.blit(
                 resume_txt, (WIDTH // 2 - resume_txt.get_width() // 2, HEIGHT // 2)
             )
@@ -997,26 +1173,62 @@ class Game:
             self.screen.blit(
                 quit_txt, (WIDTH // 2 - quit_txt.get_width() // 2, HEIGHT // 2 + 80)
             )
+
         elif self.game_over:
-            # 게임 오버 화면
+            # 게임 오버 오버레이
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
+            overlay.fill((30, 0, 0, 200))  # 약간 붉은 톤
             self.screen.blit(overlay, (0, 0))
 
-            go_txt = self.large_font.render("GAME OVER", True, YELLOW)
-            sco_txt = self.font.render(
-                f"P1 Total: {self.p1.score} | P2 Total: {self.p2.score}", True, WHITE
+            # 모달 창 배경
+            modal_w, modal_h = 500, 300
+            modal_rect = pygame.Rect(
+                WIDTH // 2 - modal_w // 2, HEIGHT // 2 - modal_h // 2, modal_w, modal_h
             )
-            res_txt = self.font.render("Press 'R' to Restart", True, WHITE)
+            modal_surf = pygame.Surface((modal_w, modal_h), pygame.SRCALPHA)
+            pygame.draw.rect(
+                modal_surf,
+                (40, 15, 15, 230),
+                (0, 0, modal_w, modal_h),
+                border_radius=15,
+            )
+            pygame.draw.rect(
+                modal_surf,
+                (255, 50, 50, 150),
+                (0, 0, modal_w, modal_h),
+                2,
+                border_radius=15,
+            )
+            pygame.draw.line(
+                modal_surf, (255, 100, 100, 200), (20, 80), (modal_w - 20, 80), 2
+            )
+            self.screen.blit(modal_surf, modal_rect)
+
+            # 글로우 타이틀
+            go_txt = self.large_font.render("GAME OVER", True, WHITE)
+            go_glow = self.large_font.render("GAME OVER", True, RED)
+            cx, cy = WIDTH // 2, HEIGHT // 2 - modal_h // 2 + 40
+            self.screen.blit(
+                go_glow,
+                (cx - go_glow.get_width() // 2 + 2, cy - go_glow.get_height() // 2 + 2),
+            )
+            self.screen.blit(
+                go_txt, (cx - go_txt.get_width() // 2, cy - go_txt.get_height() // 2)
+            )
+
+            # 점수 및 부가 텍스트
+            sco_txt = self.font.render(
+                f"P1 Score: {self.p1.score}   |   P2 Score: {self.p2.score}",
+                True,
+                YELLOW,
+            )
+            res_txt = self.font.render("Press 'R' to Restart", True, (200, 210, 220))
 
             self.screen.blit(
-                go_txt, (WIDTH // 2 - go_txt.get_width() // 2, HEIGHT // 2 - 100)
+                sco_txt, (WIDTH // 2 - sco_txt.get_width() // 2, HEIGHT // 2 + 10)
             )
             self.screen.blit(
-                sco_txt, (WIDTH // 2 - sco_txt.get_width() // 2, HEIGHT // 2)
-            )
-            self.screen.blit(
-                res_txt, (WIDTH // 2 - res_txt.get_width() // 2, HEIGHT // 2 + 50)
+                res_txt, (WIDTH // 2 - res_txt.get_width() // 2, HEIGHT // 2 + 70)
             )
 
         pygame.display.flip()
