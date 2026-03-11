@@ -14,6 +14,7 @@ class BrawlArena {
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
         this.selectedMapId = 'open'; // Default map
         this.selectedDifficulty = AI_DIFFICULTY.NORMAL; // Default difficulty
+        this.teamMode = 'vs'; // 'vs' or 'same'
 
         this.init();
     }
@@ -23,6 +24,7 @@ class BrawlArena {
         this.setupLobby();
         this.setupMapSelection();
         this.setupDifficultySelection();
+        this.setupTeamModeToggle();
         this.setupEventListeners();
     }
 
@@ -99,13 +101,46 @@ class BrawlArena {
         });
     }
 
+    setupTeamModeToggle() {
+        const vsBtn = document.getElementById('mode-vs');
+        const sameBtn = document.getElementById('mode-same');
+        if (!vsBtn || !sameBtn) return;
+
+        const updateTeamModeUI = () => {
+            const p2Panel = document.querySelector('.player-selection.player2');
+            const p2Title = document.querySelector('.player-selection.player2 .player-title');
+
+            if (this.teamMode === 'same') {
+                vsBtn.classList.remove('active');
+                sameBtn.classList.add('active');
+                if (p2Panel) p2Panel.classList.add('same-team');
+                if (p2Title) p2Title.textContent = '🔵 PLAYER 2';
+            } else {
+                sameBtn.classList.remove('active');
+                vsBtn.classList.add('active');
+                if (p2Panel) p2Panel.classList.remove('same-team');
+                if (p2Title) p2Title.textContent = '🔴 PLAYER 2';
+            }
+        };
+
+        vsBtn.addEventListener('click', () => {
+            this.teamMode = 'vs';
+            updateTeamModeUI();
+        });
+
+        sameBtn.addEventListener('click', () => {
+            this.teamMode = 'same';
+            updateTeamModeUI();
+        });
+    }
+
     startGame() {
         document.getElementById('lobby-screen').classList.add('hidden');
         document.getElementById('game-screen').classList.remove('hidden');
 
         const canvas = document.getElementById('game-canvas');
         const mapData = MAPS[this.selectedMapId];
-        this.game = new Game(canvas, this.player1Brawler, this.player2Brawler, mapData);
+        this.game = new Game(canvas, this.player1Brawler, this.player2Brawler, mapData, this.teamMode);
         this.game.aiDifficulty = this.selectedDifficulty; // 난이도 설정
         this.game.init();
         this.game.start();

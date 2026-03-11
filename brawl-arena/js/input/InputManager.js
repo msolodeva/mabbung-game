@@ -156,19 +156,19 @@ export class InputManager {
         const controlsContainer = document.getElementById('controls');
         if (controlsContainer) {
             controlsContainer.innerHTML = `
-                <div class="control-hints">
-                    <div class="player-controls p1">
-                        <div class="player-label">🔵 P1 (Blue Team)</div>
-                        <div class="keys"><b>WASD</b> 이동/조준</div>
-                        <div class="keys"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                <div class="control-hints" style="padding: 0 30px; bottom: 20px;">
+                    <div class="player-controls p1" style="padding: 15px 20px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border-width: 3px;">
+                        <div class="player-label" style="font-size: 1.1rem; margin-bottom: 8px;">🔵 P1 (Blue Team)</div>
+                        <div class="keys" style="font-size: 1.0rem;"><b>WASD</b> 이동/조준</div>
+                        <div class="keys" style="font-size: 1.0rem;"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
                     </div>
-                    <div class="pause-hint">
-                        <div class="keys"><b>ESC</b> 일시정지</div>
+                    <div class="pause-hint" style="padding: 10px 20px; background: rgba(0, 0, 0, 0.8); border-radius: 10px;">
+                        <div class="keys" style="font-size: 0.95rem;"><b>ESC</b> 일시정지</div>
                     </div>
-                    <div class="player-controls p2">
-                        <div class="player-label">🔴 P2 (Red Team)</div>
-                        <div class="keys"><b>방향키</b> 이동/조준</div>
-                        <div class="keys"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                    <div class="player-controls p2" style="padding: 15px 20px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border-width: 3px;">
+                        <div class="player-label" style="font-size: 1.1rem; margin-bottom: 8px;">🔴 P2 (Red Team)</div>
+                        <div class="keys" style="font-size: 1.0rem;"><b>방향키</b> 이동/조준</div>
+                        <div class="keys" style="font-size: 1.0rem;"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
                     </div>
                 </div>
             `;

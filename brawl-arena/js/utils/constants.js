@@ -235,6 +235,38 @@ export const BRAWLERS = {
         description: '지역 장악 전문가 - 발 밑을 조심해',
         superDescription: '🌵 가시 덫: 지속 피해와 슬로우를 주는 가시밭 생성',
     },
+
+    // =====================================
+    // MORTIS - Assassin (Dash Melee)
+    // =====================================
+    // ✅ STRONG vs: Poco (burst kills before heal), Colt (closes gap instantly)
+    // ❌ WEAK vs: Shelly (burst at close range), Nita (tanks too much)
+    // =====================================
+    MORTIS: {
+        id: 'mortis',
+        name: 'Mortis',
+        role: 'ASSASSIN',
+        emoji: '⚰️',
+        color: '#7d3c98',
+        health: 3200,
+        speed: 320,
+        attackDamage: 900,
+        attackProjectiles: 0,
+        attackSpread: 0,
+        attackRange: 180,
+        attackSpeed: 400,
+        dashSpeed: 1200,
+        dashDuration: 150,
+        dashDamageRadius: 60,
+        ammoMax: 3,
+        ammoReloadTime: 2000,
+        superCharge: 5,
+        superDamage: 1000,
+        superHealPercent: 1.0,
+        superProjectiles: 3,
+        description: '어둠의 암살자 - 돌진으로 적을 베어낸다',
+        superDescription: '🦇 박쥐 소환: 관통하는 박쥐로 적에게 데미지를 주고 회복',
+    },
 };
 
 export const PROJECTILE_CONFIG = {

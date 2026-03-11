@@ -28,9 +28,10 @@ export class Game {
      * @param {string} player2Brawler - 플레이어 2의 브롤러 ID (예: 'COLT')
      * @param {Object} mapData - 맵 데이터 (mapData.js에서 가져옴)
      */
-    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP) {
+    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP, teamMode = 'vs') {
         this.player1BrawlerId = player1Brawler;
         this.player2BrawlerId = player2Brawler;
+        this.teamMode = teamMode;
 
         // Initialize systems
         this.map = new GameMap(mapData);
@@ -97,21 +98,28 @@ export class Game {
         this.player = this.player1;
         this.playerTeam = TEAMS.BLUE;
 
-        // Create Player 2 (Red team)
+        // Create Player 2
+        const player2Team = this.teamMode === 'same' ? TEAMS.BLUE : TEAMS.RED;
         const Player2Class = BRAWLER_CLASSES[this.player2BrawlerId];
-        const player2Spawn = this.map.getSpawnPosition(TEAMS.RED);
-        this.player2 = new Player2Class(TEAMS.RED, player2Spawn.x, player2Spawn.y);
+        const player2Spawn = this.map.getSpawnPosition(player2Team);
+        this.player2 = new Player2Class(player2Team, player2Spawn.x, player2Spawn.y);
         this.player2.isPlayer = true;
         this.player2.playerNumber = 2;
         this.brawlers.push(this.player2);
 
-        // Create blue team bots (2 more to make 3 total including player 1)
-        this.createTeamBot(TEAMS.BLUE);
-        this.createTeamBot(TEAMS.BLUE);
-
-        // Create red team bots (2 more to make 3 total including player 2)
-        this.createTeamBot(TEAMS.RED);
-        this.createTeamBot(TEAMS.RED);
+        if (this.teamMode === 'same') {
+            // Same team: P1 + P2 + 1 bot = 3 blue, 3 red bots
+            this.createTeamBot(TEAMS.BLUE);
+            this.createTeamBot(TEAMS.RED);
+            this.createTeamBot(TEAMS.RED);
+            this.createTeamBot(TEAMS.RED);
+        } else {
+            // VS mode: P1 + 2 blue bots = 3, P2 + 2 red bots = 3
+            this.createTeamBot(TEAMS.BLUE);
+            this.createTeamBot(TEAMS.BLUE);
+            this.createTeamBot(TEAMS.RED);
+            this.createTeamBot(TEAMS.RED);
+        }
 
         // Resume audio context on first interaction
         document.addEventListener('click', () => this.audioManager.resume(), { once: true });
@@ -278,29 +286,33 @@ export class Game {
             const content = overlay.querySelector('.pause-content');
             content.style.cssText = `
                 background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
-                padding: 40px 60px;
-                border-radius: 20px;
+                padding: 50px 80px;
+                border-radius: 24px;
                 text-align: center;
                 color: white;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-                border: 3px solid #3498db;
+                box-shadow: 0 15px 50px rgba(0,0,0,0.7);
+                border: 4px solid #3498db;
             `;
             const h1 = overlay.querySelector('h1');
             h1.style.cssText = `
-                font-size: 48px;
-                margin-bottom: 20px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                font-size: 64px;
+                margin-bottom: 30px;
+                text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+                font-family: 'Lilita One', cursive;
             `;
             const p = overlay.querySelector('p');
             p.style.cssText = `
-                font-size: 18px;
-                margin-bottom: 30px;
-                color: #bdc3c7;
+                font-size: 24px;
+                margin-bottom: 40px;
+                color: #ecf0f1;
+                font-weight: bold;
+                text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
             `;
             const btn = overlay.querySelector('#resume-btn');
             btn.style.cssText = `
-                padding: 15px 40px;
-                font-size: 20px;
+                padding: 20px 50px;
+                font-size: 26px;
+                font-family: 'Lilita One', cursive;
                 background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
                 border: none;
                 border-radius: 10px;

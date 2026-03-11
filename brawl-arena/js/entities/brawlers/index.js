@@ -3,12 +3,14 @@ import { Nita } from './Nita.js';
 import { Colt } from './Colt.js';
 import { Poco } from './Poco.js';
 import { Spike } from './Spike.js';
+import { Mortis } from './Mortis.js';
 
-// 5 Brawlers with balanced counter relationships
+// 6 Brawlers with balanced counter relationships
 export const BRAWLER_CLASSES = {
     shelly: Shelly,
     nita: Nita,
     colt: Colt,
     poco: Poco,
     spike: Spike,
+    mortis: Mortis,
 };

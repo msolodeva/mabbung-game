@@ -643,8 +643,8 @@ export class Brawler extends Entity {
 
     renderSuperChargeBar(ctx, x, y) {
         const barWidth = 50;
-        const barHeight = 4;
-        const barY = y + this.radius + 35;
+        const barHeight = 10;
+        const barY = y + this.radius + 40;
 
         // Black background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -766,9 +766,9 @@ export class Brawler extends Entity {
     }
 
     renderPolishedHealthBar(ctx, x, y) {
-        const barWidth = 70;
-        const barHeight = 10;
-        const barY = y - this.radius - 30;
+        const barWidth = 80;
+        const barHeight = 14;
+        const barY = y - this.radius - 35;
 
         // Black Border/Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -791,18 +791,22 @@ export class Brawler extends Entity {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight / 2);
 
-        // Health Text
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 10px Arial';
+        // Health Text with outline for contrast
+        ctx.font = 'bold 16px "Lilita One", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(Math.ceil(this.health), x, barY + barHeight - 1);
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.strokeText(Math.ceil(this.health), x, barY + barHeight / 2 + 1);
+        ctx.fillStyle = 'white';
+        ctx.fillText(Math.ceil(this.health), x, barY + barHeight / 2 + 1);
     }
 
     renderPolishedAmmo(ctx, x, y) {
         const ammoY = y + this.radius + 25;
-        const spacing = 16;
-        const width = 12;
-        const height = 5;
+        const spacing = 22;
+        const width = 16;
+        const height = 12;
         const totalWidth = this.ammoMax * spacing;
         const startX = x - totalWidth / 2 + spacing / 2;
 
@@ -833,14 +837,24 @@ export class Brawler extends Entity {
     }
 
     renderPremiumGemsIndicator(ctx, x, y) {
-        const gemY = y - this.radius - 50;
+        const gemY = y - this.radius - 60;
         ctx.save();
-        ctx.shadowBlur = 10;
+
+        // Background pill for contrast
+        const text = `💎 ${this.gems}`;
+        ctx.font = 'bold 22px "Lilita One", Arial';
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(this.gems.toString()).width + 45;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.beginPath();
+        ctx.roundRect(x - textWidth / 2 - 6, gemY - 18, textWidth + 12, 32, 16);
+        ctx.fill();
+
+        // Gem text with glow
+        ctx.shadowBlur = 12;
         ctx.shadowColor = '#9b59b6';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px "Lilita One", Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`💎 ${this.gems}`, x, gemY);
+        ctx.fillText(text, x, gemY);
         ctx.restore();
     }
 }
