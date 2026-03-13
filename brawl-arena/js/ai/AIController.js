@@ -1133,6 +1133,7 @@ export class AIController {
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
         const difficulty = this.game.aiDifficulty;
+        const evasionSkill = typeof difficulty.evasionSkill === 'number' ? difficulty.evasionSkill : 1;
 
         // Aim and shoot
         if (this.brawler.canAttack()) {
@@ -1169,7 +1170,7 @@ export class AIController {
         // Strafe movement with human-like variation
         const now = Date.now();
         const timeSinceLastChange = now - this.lastStrafeChange;
-        const strafeChangeInterval = 800 + Math.random() * 400; // 800-1200ms
+        const strafeChangeInterval = 2000 + Math.random() * 1500; // 2000-3500ms
 
         // Change strafe direction periodically instead of every frame
         if (timeSinceLastChange >= strafeChangeInterval) {
@@ -1177,20 +1178,23 @@ export class AIController {
             this.lastStrafeChange = now;
         }
 
-        // Random angle variation (73-107 degrees instead of fixed 90)
-        const strafeAngle = (Math.PI / 2) + (Math.random() - 0.5) * 0.6;
+        // Random angle variation (reduced for less sudden dodging)
+        const strafeAngle = (Math.PI / 2) + (Math.random() - 0.5) * 0.1;
         const strafeDir = toTarget.rotate(strafeAngle * this.strafeSide).normalize();
 
-        // Keep optimal distance
+        // Keep optimal distance (evasion skill affects how often we strafe/back off)
+        const attemptEvasion = Math.random() < evasionSkill;
         if (distance < this.brawler.attackRange * 0.5) {
-            // Too close, back up
-            this.brawler.moveDirection = toTarget.normalize().multiply(-1);
+            // Too close, back up (sometimes fail to back off)
+            this.brawler.moveDirection = attemptEvasion
+                ? toTarget.normalize().multiply(-1)
+                : toTarget.normalize();
         } else if (distance > this.brawler.attackRange * 0.9) {
             // Too far, move closer
             this.brawler.moveDirection = toTarget.normalize();
         } else {
-            // Strafe
-            this.brawler.moveDirection = strafeDir;
+            // Strafe (sometimes just move straight, making it easier to hit)
+            this.brawler.moveDirection = attemptEvasion ? strafeDir : toTarget.normalize();
         }
 
         this.avoidWallsEnhanced();

@@ -134,16 +134,16 @@ export const BRAWLERS = {
         role: 'TANK',
         emoji: '🚀',
         color: '#e74c3c',
-        health: 4400,
+        health: 5000,
         speed: 250,
-        attackDamage: 880,
+        attackDamage: 1000,
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 350,
         attackSpeed: 900,
         ammoMax: 3,
         ammoReloadTime: 1200,
-        superCharge: 8,        // 8 히트로 충전
+        superCharge: 6,        // 6 히트로 충전
         superDamage: 1200,
         description: '불굴의 탱커 - 유도 미사일로 도망치는 적을 추적한다',
         superDescription: '🚀 유도 미사일: 가장 가까운 적을 자동으로 추적하는 미사일 발사',
@@ -161,7 +161,7 @@ export const BRAWLERS = {
         role: 'MARKSMAN',
         emoji: '🤠',
         color: '#4a90d9',
-        health: 2800,
+        health: 2600,
         speed: 290,
         attackDamage: 360,
         attackProjectiles: 6,
@@ -188,7 +188,7 @@ export const BRAWLERS = {
         role: 'SUPPORT',
         emoji: '🎸',
         color: '#2ecc71',
-        health: 4000,
+        health: 3600,
         speed: 260,
         attackDamage: 700,
         attackProjectiles: 1,
@@ -217,7 +217,7 @@ export const BRAWLERS = {
         role: 'CONTROLLER',
         emoji: '🌵',
         color: '#27ae60',
-        health: 2400,
+        health: 2600,
         speed: 250,
         attackDamage: 560,
         attackProjectiles: 1,
@@ -319,6 +319,9 @@ export const AI_DIFFICULTY = {
         retreatThreshold: 0.5,         // 체력 50% 이하면 후퇴 (겁많음)
         wasteSuperChance: 0.3,         // 30% 확률로 슈퍼 낭비
 
+        // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
+        evasionSkill: 0.45,
+
         // 움직임
         pathUpdateFrequency: 1000,     // 경로 업데이트 느림
         stuckThreshold: 1000,          // 막혔을 때 반응 느림
@@ -329,16 +332,19 @@ export const AI_DIFFICULTY = {
         id: 'normal',
         name: '보통',
 
-        aimInaccuracy: 0.3,            // ±0.3 라디안 (약 17도)
-        aimWobble: 0.1,
-        aimRotationSpeed: Math.PI * 2, // 360도/s - 보통 조준 회전
+        aimInaccuracy: 0.4,            // ±0.4 라디안 (약 23도)
+        aimWobble: 0.14,
+        aimRotationSpeed: Math.PI * 1.6, // 288도/s - 느린 조준 회전
 
-        reactionDelay: 200,
-        decisionInterval: 500,
+        reactionDelay: 260,
+        decisionInterval: 620,
 
-        poorDecisionChance: 0.15,      // 15% 확률로 실수
-        retreatThreshold: 0.3,
+        poorDecisionChance: 0.2,       // 20% 확률로 실수
+        retreatThreshold: 0.25,
         wasteSuperChance: 0.1,
+
+        // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
+        evasionSkill: 0.65,
 
         pathUpdateFrequency: 500,
         stuckThreshold: 500,
@@ -359,6 +365,9 @@ export const AI_DIFFICULTY = {
         poorDecisionChance: 0.05,      // 5% 확률로 실수
         retreatThreshold: 0.2,
         wasteSuperChance: 0.02,
+
+        // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
+        evasionSkill: 0.85,
 
         pathUpdateFrequency: 300,
         stuckThreshold: 300,

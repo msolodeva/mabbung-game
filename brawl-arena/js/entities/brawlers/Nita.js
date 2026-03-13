@@ -19,7 +19,7 @@ export class Nita extends Brawler {
             this.position.y + direction.y * 25,
             direction,
             {
-                speed: 450,
+                speed: 550,
                 damage: this.config.attackDamage,
                 size: 25,
                 range: this.config.attackRange,
@@ -47,7 +47,7 @@ export class Nita extends Brawler {
             spawnPos.y,
             direction,
             {
-                speed: 350,                    // 미사일 속도
+                speed: 420,                    // 미사일 속도
                 damage: this.config.superDamage, // 설정된 데미지 사용
                 size: 15,                      // 미사일 크기
                 range: 800,                    // 최대 비행 거리
