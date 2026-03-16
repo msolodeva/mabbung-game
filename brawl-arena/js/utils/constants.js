@@ -306,9 +306,9 @@ export const AI_DIFFICULTY = {
         name: '쉬움',
 
         // 조준 실수
-        aimInaccuracy: 0.8,           // ±0.8 라디안 (약 45도)
-        aimWobble: 0.3,                // 조준 떨림 진폭
-        aimRotationSpeed: Math.PI,     // 180도/s - 느린 조준 회전
+        aimInaccuracy: 1.5,           // ±1.5 라디안 (약 85도) - 대폭 증가
+        aimWobble: 0.6,                // 조준 떨림 진폭 - 대폭 증가
+        aimRotationSpeed: Math.PI * 0.5, // 90도/s - 매우 느린 조준 회전
 
         // 반응 속도
         reactionDelay: 400,            // 적 발견 후 400ms 딜레이
@@ -320,7 +320,7 @@ export const AI_DIFFICULTY = {
         wasteSuperChance: 0.3,         // 30% 확률로 슈퍼 낭비
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.45,
+        evasionSkill: 0.1,             // 매우 낮은 회피율 (거의 피하지 않음)
 
         // 움직임
         pathUpdateFrequency: 1000,     // 경로 업데이트 느림
@@ -332,9 +332,9 @@ export const AI_DIFFICULTY = {
         id: 'normal',
         name: '보통',
 
-        aimInaccuracy: 0.4,            // ±0.4 라디안 (약 23도)
-        aimWobble: 0.14,
-        aimRotationSpeed: Math.PI * 1.6, // 288도/s - 느린 조준 회전
+        aimInaccuracy: 1.0,            // ±1.0 라디안 (약 57도)
+        aimWobble: 0.4,
+        aimRotationSpeed: Math.PI * 0.8, // 144도/s - 느린 조준 회전
 
         reactionDelay: 260,
         decisionInterval: 620,
@@ -344,7 +344,7 @@ export const AI_DIFFICULTY = {
         wasteSuperChance: 0.1,
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.65,
+        evasionSkill: 0.2,             // 낮은 회피율
 
         pathUpdateFrequency: 500,
         stuckThreshold: 500,
@@ -355,9 +355,9 @@ export const AI_DIFFICULTY = {
         id: 'hard',
         name: '어려움',
 
-        aimInaccuracy: 0.1,            // ±0.1 라디안 (약 6도)
-        aimWobble: 0.02,
-        aimRotationSpeed: Math.PI * 4, // 720도/s - 빠른 조준 회전
+        aimInaccuracy: 0.5,            // ±0.5 라디안 (약 28도)
+        aimWobble: 0.2,
+        aimRotationSpeed: Math.PI * 1.5, // 270도/s - 보통 조준 속도
 
         reactionDelay: 50,
         decisionInterval: 200,
@@ -367,7 +367,7 @@ export const AI_DIFFICULTY = {
         wasteSuperChance: 0.02,
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.85,
+        evasionSkill: 0.3,             // 소폭 낮은 회피율 (이전보다 피하기 쉬움)
 
         pathUpdateFrequency: 300,
         stuckThreshold: 300,
