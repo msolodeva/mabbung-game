@@ -64,7 +64,7 @@ class SpawnManager:
 
         # 난이도가 오를수록 스폰 주기 빨라짐
         spawn_threshold = max(
-            5, (SPAWN_BASE_THRESHOLD - int((difficulty - 1) * 8)) // int(spawn_mul)
+            5, int((SPAWN_BASE_THRESHOLD - (difficulty - 1) * 8) / spawn_mul)
         )
 
         self.spawn_timer += 1  # 프레임 단위 카운트라고 가정
@@ -74,6 +74,10 @@ class SpawnManager:
 
             # 난이도가 오를수록 적 생성 확률 증가
             enemy_prob = min(PROB_MAX_ENEMY, PROB_BASE_ENEMY + (difficulty - 1) * 0.05)
+
+            # 벨트가 활성화된 경우 적 확률을 낮춤 (대신 Junk가 더 많이 나옴)
+            if env_manager.active_belt:
+                enemy_prob *= 0.6  # 적 비중 40% 감소
 
             # 화면 내 객체 수 제한
             if r < enemy_prob and len(enemies) < MAX_ENEMIES:

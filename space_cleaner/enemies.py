@@ -1224,9 +1224,9 @@ class CarrierDrone:
     """
 
     def __init__(self, x, y, difficulty=1.0):
-        self.width = 22
-        self.height = 22
-        self.rect = pygame.Rect(x - 11, y - 11, self.width, self.height)
+        self.width = 24
+        self.height = 24
+        self.rect = pygame.Rect(x - 12, y - 12, self.width, self.height)
 
         self.speed = BOSS_CARRIER_DRONE_SPEED * (1 + (difficulty - 1) * 0.15)
         self.target = None
@@ -1235,8 +1235,15 @@ class CarrierDrone:
         self.timer = 0
         self.lifetime = 600  # 10초 후 자동 소멸
 
+        # 추가된 시각 효과 속성
+        self.rotation = 0
+        self.angle_to_target = 180  # 기본적으로 아래쪽을 향함
+        self.pulse = 0
+
     def update(self, enemy_bullets, players=None):
         self.timer += 1
+        self.rotation += 5  # 장식용 회전
+        self.pulse = math.sin(self.timer * 0.1) * 0.5 + 0.5
 
         # 가장 가까운 살아있는 플레이어 추적
         if players:
@@ -1254,6 +1261,10 @@ class CarrierDrone:
             dx = self.target.rect.centerx - self.rect.centerx
             dy = self.target.rect.centery - self.rect.centery
             dist = max((dx**2 + dy**2) ** 0.5, 1)
+            
+            # 각도 업데이트 (시각용)
+            self.angle_to_target = math.degrees(math.atan2(dy, dx)) + 90
+            
             self.rect.x = int(self.rect.x + (dx / dist) * self.speed)
             self.rect.y = int(self.rect.y + (dy / dist) * self.speed)
 
@@ -1269,51 +1280,77 @@ class CarrierDrone:
         else:
             # 타겟 없으면 아래로 이동
             self.rect.y += 2
+            self.angle_to_target = 180
 
     def is_expired(self):
         return self.timer >= self.lifetime
 
     def draw(self, surface):
         cx, cy = self.rect.center
-        r = self.width // 2
-
-        # 드론 글로우 효과
-        glow_surf = pygame.Surface((self.width + 10, self.height + 10), pygame.SRCALPHA)
+        
+        # 1. 드론 글로우 효과 (더 크고 펄싱함)
+        glow_size = self.width + 16 + int(self.pulse * 4)
+        glow_surf = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
         pygame.draw.circle(
             glow_surf,
-            (0, 255, 255, 50),
-            (self.width // 2 + 5, self.height // 2 + 5),
-            r + 2,
+            (0, 150, 255, 40),
+            (glow_size // 2, glow_size // 2),
+            glow_size // 2,
         )
-        surface.blit(glow_surf, (self.rect.x - 5, self.rect.y - 5))
+        surface.blit(glow_surf, (cx - glow_size // 2, cy - glow_size // 2))
 
-        # 본체 (작은 다이아몬드 + 외부 패널)
-        pts_outer = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
-        pts_inner = [
-            (cx, cy - r + 3),
-            (cx + r - 3, cy),
-            (cx, cy + r - 3),
-            (cx - r + 3, cy),
-        ]
+        # 2. 추진기 (타겟 반대 방향)
+        angle_rad = math.radians(self.angle_to_target - 90)
+        thrust_x = cx - math.cos(angle_rad) * 12
+        thrust_y = cy - math.sin(angle_rad) * 12
+        thrust_r = 4 + int(self.pulse * 3)
+        pygame.draw.circle(surface, (0, 200, 255), (int(thrust_x), int(thrust_y)), thrust_r)
+        pygame.draw.circle(surface, WHITE, (int(thrust_x), int(thrust_y)), thrust_r // 2)
 
-        pygame.draw.polygon(surface, (30, 80, 150), pts_outer)
-        pygame.draw.polygon(surface, CYAN, pts_inner)
-        pygame.draw.polygon(surface, WHITE, pts_outer, 1)
+        # 3. 사이드 패널 (날개) - 본체보다 바깥쪽에 위치
+        for side in [-1, 1]:
+            # 본체 각도 기준 좌우 45도 방향
+            wing_angle = math.radians(self.angle_to_target + side * 135)
+            wx = cx + math.sin(wing_angle) * 10
+            wy = cy - math.cos(wing_angle) * 10
+            
+            # 작은 직사각형 패널
+            panel_pts = []
+            for i in range(4):
+                pa = math.radians(self.angle_to_target + i * 90 + 45)
+                panel_pts.append((wx + math.sin(pa) * 4, wy - math.cos(pa) * 4))
+            pygame.draw.polygon(surface, (60, 60, 100), panel_pts)
+            pygame.draw.polygon(surface, WHITE, panel_pts, 1)
 
-        # 추진기 불꽃 (위쪽)
-        pygame.draw.circle(
-            surface, (0, 200, 255), (cx, cy - r - 2), 2 + int(math.sin(self.timer) * 2)
-        )
+        # 4. 본체 (육각형 고테크 디자인)
+        points = []
+        for i in range(6):
+            a = math.radians(self.angle_to_target + i * 60)
+            # 앞쪽은 더 뾰족하게, 옆쪽은 넓게
+            dist = 11 if i == 0 else (7 if i in [2, 4] else 9)
+            points.append((cx + math.sin(a) * dist, cy - math.cos(a) * dist))
+        
+        pygame.draw.polygon(surface, (30, 50, 120), points)
+        pygame.draw.polygon(surface, CYAN, points, 2)
+        
+        # 5. 회전하는 코어 링 (장식)
+        for i in range(3):
+            a = math.radians(self.rotation + i * 120)
+            rx = cx + math.cos(a) * 6
+            ry = cy + math.sin(a) * 6
+            pygame.draw.circle(surface, WHITE, (int(rx), int(ry)), 1)
 
-        # 중심 코어 (깜빡임, 발사 직전에 더 밝게)
+        # 6. 중앙 코어 (상태 알림)
         is_firing = self.fire_timer > self.fire_rate - 10
-        core_size = 4 if is_firing else 3
-
-        if is_firing or self.timer % 10 < 5:
-            pygame.draw.circle(surface, WHITE, (cx, cy), core_size + 1)
-            pygame.draw.circle(surface, YELLOW, (cx, cy), core_size)
-        else:
-            pygame.draw.circle(surface, ORANGE, (cx, cy), core_size)
+        core_color = WHITE if is_firing else (YELLOW if self.timer % 10 < 5 else ORANGE)
+        core_r = 4 if is_firing else 3
+        
+        # 코어 하이라이트
+        pygame.draw.circle(surface, core_color, (cx, cy), core_r)
+        if is_firing:
+            # 사격 직전 에너지 집중 효과
+            pygame.draw.circle(surface, CYAN, (cx, cy), core_r + 5, 1)
+            pygame.draw.line(surface, WHITE, (cx, cy), (int(cx + math.sin(angle_rad+math.pi/2)*15), int(cy - math.cos(angle_rad+math.pi/2)*15)), 1)
 
 
 class BossCarrier:

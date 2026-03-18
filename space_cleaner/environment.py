@@ -161,4 +161,4 @@ class EnvironmentManager:
                 surface.blit(txt, (WIDTH // 2 - txt.get_width() // 2, 100))
 
     def get_spawn_multiplier(self):
-        return 5.0 if self.active_belt else 1.0
+        return 3.0 if self.active_belt else 1.0
