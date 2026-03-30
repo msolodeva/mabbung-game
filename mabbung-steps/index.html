@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Infinite Stairs 2-Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Global UI -->
+      <div id="global-wallet" class="wallet-ui">
+        <h2>🟡 <span id="total-coins">0</span></h2>
+      </div>
+
+      <!-- Character Selection Overlay -->
+      <div id="character-select-overlay" class="overlay-glass">
+        <h1 class="title-glow">SELECT CHARACTER</h1>
+        <div class="selection-container">
+          <!-- Player 1 Selection -->
+          <div class="player-select p1-select">
+            <h2 class="p1-title">PLAYER 1</h2>
+            <div class="char-preview" id="p1-preview">
+              <canvas id="p1-preview-canvas" width="160" height="160"></canvas>
+              <div class="char-meta">
+                <span id="p1-char-name">BLOCK</span>
+                <span id="p1-char-price" class="price-tag hidden">🔒 50</span>
+              </div>
+            </div>
+            <div class="controls-hint bg-dark">W / S to Select <br/> D to Ready</div>
+            <div id="p1-ready-status" class="ready-badge hidden">READY</div>
+          </div>
+          
+          <!-- Player 2 Selection -->
+          <div class="player-select p2-select">
+            <h2 class="p2-title">PLAYER 2</h2>
+            <div class="char-preview" id="p2-preview">
+              <canvas id="p2-preview-canvas" width="160" height="160"></canvas>
+              <div class="char-meta">
+                <span id="p2-char-name">BLOCK</span>
+                <span id="p2-char-price" class="price-tag hidden">🔒 50</span>
+              </div>
+            </div>
+            <div class="controls-hint bg-dark">&uarr; / &darr; to Select <br/> &rarr; to Ready</div>
+            <div id="p2-ready-status" class="ready-badge hidden">READY</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Over Overlay -->
+      <div id="game-over-overlay" class="overlay-glass hidden">
+        <h1 id="winner-text">Player 1 Wins!</h1>
+        <button id="restart-btn" class="glass-btn">Play Again</button>
+      </div>
+      
+      <div class="split-screen">
+        <div class="player-container" id="p1-container">
+          <div class="hud p1-hud">
+            <div class="score-display">P1: <span id="p1-score">0</span> <span class="session-coins-label">💰 +<span id="p1-current-coins">0</span></span></div>
+            <div class="timer-bar-container">
+              <div class="timer-bar" id="p1-timer"></div>
+            </div>
+            <div class="controls-hint">W (오르기) / D (방향전환)</div>
+          </div>
+          <canvas id="p1-canvas"></canvas>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="player-container" id="p2-container">
+          <div class="hud p2-hud">
+            <div class="score-display">P2: <span id="p2-score">0</span> <span class="session-coins-label">💰 +<span id="p2-current-coins">0</span></span></div>
+            <div class="timer-bar-container">
+              <div class="timer-bar" id="p2-timer"></div>
+            </div>
+            <div class="controls-hint">&uarr; (오르기) / &rarr; (방향전환)</div>
+          </div>
+          <canvas id="p2-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
