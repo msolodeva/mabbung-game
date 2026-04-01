@@ -15,13 +15,9 @@ export class Stairs {
     const last = this.steps[this.steps.length - 1];
     // Random direction: 1 for right, -1 for left
     const dir = Math.random() < 0.5 ? -1 : 1;
-    // 15% chance to have a coin, but not on step 0
-    const hasCoin = this.steps.length > 0 && Math.random() < 0.15;
-    
     this.steps.push({
       x: last.x + dir,
-      y: last.y + 1,
-      hasCoin: hasCoin
+      y: last.y + 1
     });
   }
 

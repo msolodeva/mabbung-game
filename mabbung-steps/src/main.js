@@ -1,27 +1,22 @@
 import { Stairs } from './Stairs.js';
 import { Player } from './Player.js';
 import { Renderer } from './Renderer.js';
+import { SoundManager } from './SoundManager.js';
 import './style.css';
 
 const STATE_SELECT = 0;
 const STATE_PLAYING = 1;
 const STATE_GAMEOVER = 2;
 let gameState = STATE_SELECT;
+const soundManager = new SoundManager();
 
 const CHARACTERS = [
-  { id: 'BLOCK', price: 0 },
-  { id: 'SLIME', price: 50 },
-  { id: 'NINJA', price: 150 },
-  { id: 'ROBOT', price: 300 }
+  { id: 'BLOCK' },
+  { id: 'SLIME' },
+  { id: 'NINJA' },
+  { id: 'ROBOT' }
 ];
 
-let totalCoins = parseInt(localStorage.getItem('totalCoins') || '0', 10);
-let unlockedChars = JSON.parse(localStorage.getItem('unlockedChars') || '["BLOCK"]');
-
-function saveData() {
-  localStorage.setItem('totalCoins', totalCoins.toString());
-  localStorage.setItem('unlockedChars', JSON.stringify(unlockedChars));
-}
 
 let p1CharIdx = 0;
 let p2CharIdx = 0;
@@ -34,16 +29,13 @@ let r1, r2;
 let lastTime = 0;
 
 // UI Elements
-const totalCoinsEl = document.getElementById('total-coins');
 const selectOverlay = document.getElementById('character-select-overlay');
 
 const p1CharNameEl = document.getElementById('p1-char-name');
-const p1CharPriceEl = document.getElementById('p1-char-price');
 const p1ReadyBadge = document.getElementById('p1-ready-status');
 const p1PreviewCtx = document.getElementById('p1-preview-canvas').getContext('2d');
 
 const p2CharNameEl = document.getElementById('p2-char-name');
-const p2CharPriceEl = document.getElementById('p2-char-price');
 const p2ReadyBadge = document.getElementById('p2-ready-status');
 const p2PreviewCtx = document.getElementById('p2-preview-canvas').getContext('2d');
 
@@ -62,79 +54,97 @@ function drawCharacterPreview(ctx, type, color, time) {
 
   const size = 60;
   const dir = 1;
+  const isBlinking = (Math.floor(time / 2000) % 2 === 0) && (time % 2000 < 150);
 
   ctx.save();
-  const bounce = Math.sin(time / 300) * 5;
-  ctx.translate(width / 2, height / 2 + bounce);
+  const idle = Math.sin(time / 300) * 0.05;
+  ctx.translate(width / 2, height / 2 + (size/2));
+  ctx.scale(1 - idle, 1 + idle);
+  ctx.translate(0, -size/2);
 
   ctx.fillStyle = color;
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = color;
+
+  const eyeOffsetL = Math.sin(time / 200) * 4;
+  const eyeOffsetR = Math.cos(time / 250) * 4;
 
   if (type === 'BLOCK') {
     ctx.fillRect(-size/2, -size/2, size, size);
-    ctx.fillStyle = '#fff';
-    ctx.shadowColor = '#ffffff';
-    const faceOffset = dir * (size/4);
-    ctx.fillRect(faceOffset - size/4, -size/4, size/2, size/6);
+    if (!isBlinking) {
+      ctx.fillStyle = '#fff';
+      const faceX = dir * (size/4);
+      ctx.fillRect(faceX - size/4 + eyeOffsetL, -size/4, size/2, size/6);
+    }
 
   } else if (type === 'SLIME') {
     ctx.beginPath();
-    const stretchY = size + Math.sin(time / 200) * 5;
-    ctx.ellipse(0, Number(size/2 - stretchY/2), size/2, stretchY/2, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, size/2, size/2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.shadowColor = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(dir * size/4 - size/8, -size/8, size/10, 0, Math.PI * 2);
-    ctx.arc(dir * size/4 + size/8, -size/8, size/10, 0, Math.PI * 2);
-    ctx.fill();
+    if (!isBlinking) {
+      ctx.fillStyle = '#fff';
+      const faceX = dir * (size/4);
+      ctx.beginPath();
+      ctx.arc(faceX - size/8 + eyeOffsetL, -size/8, size/10, 0, Math.PI * 2);
+      ctx.arc(faceX + size/8 + eyeOffsetR, -size/8, size/10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(faceX, 0, 10, 0, Math.PI); ctx.stroke();
+    }
 
   } else if (type === 'NINJA') {
     ctx.fillRect(-size/2, -size/2, size, size);
-    ctx.fillStyle = '#000';
-    ctx.shadowBlur = 0;
-    ctx.fillRect(-size/2, -size/4, size, size/4);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect((dir * size/4) - size/5, -size/4 + size/16, size/3, size/12);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 4;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-size/2, -size/4, size, size/3);
+    if (!isBlinking) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(size/4 - size/5 + eyeOffsetL, -size/8, size/3, size/12);
+    }
+    // Propeller headbands
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(-dir * size/2, -size/6);
-    ctx.lineTo(-dir * size/1.2, -size/3);
-    ctx.moveTo(-dir * size/2, -size/6);
-    ctx.lineTo(-dir * size/1.4, Math.sin(time/100) * 5); 
+    const rotation = (time / 60);
+    const waveX = Math.cos(rotation) * 50;
+    const waveY = Math.sin(rotation) * 50;
+    ctx.moveTo(-size/2, -size/4);
+    ctx.quadraticCurveTo(-size, -size/2 + waveY, -size - waveX, waveY);
     ctx.stroke();
 
   } else if (type === 'ROBOT') {
-    ctx.strokeStyle = '#ccc';
-    ctx.lineWidth = 3;
+    const headPop = Math.sin(time/100) * 8;
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(0, -size/2);
-    ctx.lineTo(0, -size/1.2);
+    ctx.lineTo(0, -size/2 + headPop);
     ctx.stroke();
-    ctx.fillStyle = Math.sin(time/150) > 0 ? '#ff003c' : '#550011';
-    ctx.beginPath();
-    ctx.arc(0, -size/1.2, size/10, 0, Math.PI*2);
-    ctx.fill();
+
+    ctx.save();
+    ctx.translate(0, headPop);
     ctx.fillStyle = color;
     ctx.fillRect(-size/2, -size/2, size, size);
     ctx.fillStyle = '#111';
-    ctx.fillRect(dir * size/8 - size/3, -size/6, size/1.5, size/3);
-    ctx.fillStyle = '#00f0ff';
-    ctx.fillRect(dir * size/4 - size/8, -size/10, size/4, size/6);
+    ctx.fillRect(size/8 - size/3, -size/6, size/1.5, size/3.5);
+    if (!isBlinking) {
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(size/4 - 10, -5); ctx.lineTo(size/4, -20); ctx.lineTo(size/4 + 10, -5);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   ctx.restore();
 }
 
-function updateGlobalWallet() {
-  totalCoinsEl.innerText = totalCoins;
-}
 
 function showSelectScreen() {
   gameState = STATE_SELECT;
   p1Ready = false;
   p2Ready = false;
-  updateGlobalWallet();
   selectOverlay.classList.remove('hidden');
   overlay.classList.add('hidden');
   updateSelectText();
@@ -145,20 +155,7 @@ function updateSelectText() {
   const c2 = CHARACTERS[p2CharIdx];
 
   p1CharNameEl.innerText = c1.id;
-  if (!unlockedChars.includes(c1.id)) {
-    p1CharPriceEl.innerText = `🔒 ${c1.price}`;
-    p1CharPriceEl.classList.remove('hidden');
-  } else {
-    p1CharPriceEl.classList.add('hidden');
-  }
-
   p2CharNameEl.innerText = c2.id;
-  if (!unlockedChars.includes(c2.id)) {
-    p2CharPriceEl.innerText = `🔒 ${c2.price}`;
-    p2CharPriceEl.classList.remove('hidden');
-  } else {
-    p2CharPriceEl.classList.add('hidden');
-  }
   
   if (p1Ready) p1ReadyBadge.classList.remove('hidden');
   else p1ReadyBadge.classList.add('hidden');
@@ -172,33 +169,10 @@ function updateSelectText() {
 }
 
 function handleReadyAction(playerNum) {
-  const charIdx = playerNum === 1 ? p1CharIdx : p2CharIdx;
-  const charData = CHARACTERS[charIdx];
-
-  if (unlockedChars.includes(charData.id)) {
-    if (playerNum === 1) p1Ready = true;
-    else p2Ready = true;
-    updateSelectText();
-    return;
-  }
-
-  // Not unlocked. Try to buy.
-  if (totalCoins >= charData.price) {
-    totalCoins -= charData.price;
-    unlockedChars.push(charData.id);
-    saveData();
-    updateGlobalWallet();
-    updateSelectText();
-  } else {
-    // Insufficient coins. Visual blink
-    const priceEl = playerNum === 1 ? p1CharPriceEl : p2CharPriceEl;
-    priceEl.style.color = '#fff';
-    priceEl.style.background = '#ff003c';
-    setTimeout(() => {
-      priceEl.style.color = '#ff4444';
-      priceEl.style.background = 'rgba(0,0,0,0.8)';
-    }, 200);
-  }
+  if (playerNum === 1) p1Ready = true;
+  else p2Ready = true;
+  soundManager.playUISelect();
+  updateSelectText();
 }
 
 function initGame() {
@@ -207,8 +181,11 @@ function initGame() {
   overlay.classList.add('hidden');
   
   stairs = new Stairs();
-  p1 = new Player(1, 1, stairs, CHARACTERS[p1CharIdx].id);
-  p2 = new Player(2, 1, stairs, CHARACTERS[p2CharIdx].id);
+  const firstStep = stairs.getStepInfo(1);
+  const startDir = firstStep.x; // Since step 0 is at (0,0)
+
+  p1 = new Player(1, startDir, stairs, CHARACTERS[p1CharIdx].id, soundManager);
+  p2 = new Player(2, startDir, stairs, CHARACTERS[p2CharIdx].id, soundManager);
   
   if (!r1) r1 = new Renderer('p1-canvas', p1, stairs, true);
   if (!r2) r2 = new Renderer('p2-canvas', p2, stairs, false);
@@ -225,9 +202,6 @@ function initGame() {
 function updateHUD() {
   p1ScoreEl.innerText = p1.score;
   p2ScoreEl.innerText = p2.score;
-  
-  document.getElementById('p1-current-coins').innerText = p1.sessionCoins || 0;
-  document.getElementById('p2-current-coins').innerText = p2.sessionCoins || 0;
 
   p1TimerEl.style.width = `${p1.timer}%`;
   p2TimerEl.style.width = `${p2.timer}%`;
@@ -240,16 +214,9 @@ function updateHUD() {
 }
 
 function checkGameOver() {
-  if (p1.isDead || p2.isDead) {
+  if (p1.isDead && p2.isDead) {
     if (gameState === STATE_PLAYING) {
       gameState = STATE_GAMEOVER;
-      
-      // Collect coins
-      const earnedCoins = (p1.sessionCoins || 0) + (p2.sessionCoins || 0);
-      totalCoins += earnedCoins;
-      saveData();
-      updateGlobalWallet();
-
       setTimeout(showGameOver, 1500);
     }
   }
@@ -257,16 +224,12 @@ function checkGameOver() {
 
 function showGameOver() {
   overlay.classList.remove('hidden');
-  const earnedCoins = (p1.sessionCoins || 0) + (p2.sessionCoins || 0);
-
-  if (p1.isDead && p2.isDead) {
-    if (p1.score > p2.score) winnerText.innerHTML = `Player 1 Wins!<br><span style="font-size: 2rem; color: #ffd700;">+${earnedCoins} Coins</span>`;
-    else if (p2.score > p1.score) winnerText.innerHTML = `Player 2 Wins!<br><span style="font-size: 2rem; color: #ffd700;">+${earnedCoins} Coins</span>`;
-    else winnerText.innerHTML = `Draw!<br><span style="font-size: 2rem; color: #ffd700;">+${earnedCoins} Coins</span>`;
-  } else if (p2.isDead) {
-    winnerText.innerHTML = `Player 1 Wins!<br><span style="font-size: 2rem; color: #ffd700;">+${earnedCoins} Coins</span>`;
-  } else if (p1.isDead) {
-    winnerText.innerHTML = `Player 2 Wins!<br><span style="font-size: 2rem; color: #ffd700;">+${earnedCoins} Coins</span>`;
+  if (p1.score > p2.score) {
+    winnerText.innerHTML = `Player 1 Wins!<br><span style="font-size: 1.5rem; color: #00f0ff;">${p1.score} vs ${p2.score}</span>`;
+  } else if (p2.score > p1.score) {
+    winnerText.innerHTML = `Player 2 Wins!<br><span style="font-size: 1.5rem; color: #ff007b;">${p1.score} vs ${p2.score}</span>`;
+  } else {
+    winnerText.innerHTML = `Draw!<br><span style="font-size: 1.5rem; color: #ffffff;">${p1.score} vs ${p2.score}</span>`;
   }
 }
 
@@ -277,17 +240,7 @@ function loop(time) {
   if (gameState === STATE_SELECT) {
     // Draw animated previews using ID
     drawCharacterPreview(p1PreviewCtx, CHARACTERS[p1CharIdx].id, '#00f0ff', time);
-    // Darken preview if locked
-    if (!unlockedChars.includes(CHARACTERS[p1CharIdx].id)) {
-      p1PreviewCtx.fillStyle = 'rgba(0,0,0,0.6)';
-      p1PreviewCtx.fillRect(0,0,160,160);
-    }
-
     drawCharacterPreview(p2PreviewCtx, CHARACTERS[p2CharIdx].id, '#ff007b', time);
-    if (!unlockedChars.includes(CHARACTERS[p2CharIdx].id)) {
-      p2PreviewCtx.fillStyle = 'rgba(0,0,0,0.6)';
-      p2PreviewCtx.fillRect(0,0,160,160);
-    }
 
   } else if (dt < 0.1 && dt > 0) {
     if (gameState === STATE_PLAYING || gameState === STATE_GAMEOVER) {
@@ -309,13 +262,17 @@ function loop(time) {
 
 // Input Handling
 window.addEventListener('keydown', (e) => {
+  soundManager.init(); // Initialize on first keypress to satisfy browser policies
+  
   if (gameState === STATE_SELECT) {
     if (!p1Ready) {
       if (e.key === 'w' || e.key === 'W') {
         p1CharIdx = (p1CharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
+        soundManager.playUIHover();
         updateSelectText();
       } else if (e.key === 's' || e.key === 'S') {
         p1CharIdx = (p1CharIdx + 1) % CHARACTERS.length;
+        soundManager.playUIHover();
         updateSelectText();
       } else if (e.key === 'd' || e.key === 'D') {
         handleReadyAction(1);
@@ -325,9 +282,11 @@ window.addEventListener('keydown', (e) => {
     if (!p2Ready) {
       if (e.key === 'ArrowUp') {
         p2CharIdx = (p2CharIdx - 1 + CHARACTERS.length) % CHARACTERS.length;
+        soundManager.playUIHover();
         updateSelectText();
       } else if (e.key === 'ArrowDown') {
         p2CharIdx = (p2CharIdx + 1) % CHARACTERS.length;
+        soundManager.playUIHover();
         updateSelectText();
       } else if (e.key === 'ArrowRight') {
         handleReadyAction(2);
@@ -352,6 +311,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 restartBtn.addEventListener('click', () => {
+  soundManager.playUISelect();
   showSelectScreen();
 });
 

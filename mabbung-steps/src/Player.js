@@ -1,8 +1,9 @@
 export class Player {
-  constructor(id, startDirection, stairs, characterType) {
+  constructor(id, startDirection, stairs, characterType, soundManager) {
     this.id = id;
     this.stairs = stairs;
     this.characterType = characterType || 'BLOCK';
+    this.soundManager = soundManager;
     this.reset(startDirection);
   }
 
@@ -11,10 +12,15 @@ export class Player {
     this.x = 0; 
     this.direction = startDirection; 
     this.score = 0;
-    this.sessionCoins = 0;
     this.isDead = false;
+    this.didJustDie = false;
+    this.didJustLand = false;
     this.timer = 100;
     this.maxTimer = 100;
+    
+    // Visual state for animations
+    this.landTimer = 0;
+    this.blinkTimer = Math.random() * 3 + 2; // Random blink every 2-5s
     
     // For smooth visual rendering
     this.visualX = 0;
@@ -42,6 +48,15 @@ export class Player {
         this.failStep(); 
     }
 
+    if (this.landTimer > 0) {
+        this.landTimer -= dt;
+    }
+    
+    this.blinkTimer -= dt;
+    if (this.blinkTimer <= 0) {
+        this.blinkTimer = Math.random() * 3 + 2; 
+    }
+
     const targetCameraY = this.y;
     this.cameraY += (targetCameraY - this.cameraY) * 15 * dt;
     this.visualX += (this.x - this.visualX) * 25 * dt;
@@ -58,6 +73,7 @@ export class Player {
 
     if (action === 'climb') {
       if (this.direction === stairDirection) {
+        if (this.soundManager) this.soundManager.playStep();
         this.successStep(nextStep);
       } else {
         this.failStep();
@@ -65,6 +81,7 @@ export class Player {
     } else if (action === 'turn') {
       this.direction *= -1;
       if (this.direction === stairDirection) {
+        if (this.soundManager) this.soundManager.playTurn();
         this.successStep(nextStep);
       } else {
         this.failStep();
@@ -76,20 +93,17 @@ export class Player {
     this.y += 1;
     this.x += this.direction;
     this.score += 1;
-    
-    // Check if the step has a coin
-    if (stairParam && stairParam.hasCoin) {
-      stairParam.hasCoin = false; // consume it so other player cannot take it
-      this.sessionCoins += 1;
-      console.log(`Player ${this.id} collected a coin! Total session coins: ${this.sessionCoins}`);
-    }
+    this.landTimer = 0.15; // Trigger Squash & Stretch
+    this.didJustLand = true; 
     
     const refill = 15 - Math.min(10, this.score * 0.05); 
     this.timer = Math.min(this.maxTimer, this.timer + refill);
   }
 
   failStep() {
+    if (this.soundManager) this.soundManager.playDeath();
     this.isDead = true;
+    this.didJustDie = true;
     this.fallVelocity = 5; 
   }
 }
