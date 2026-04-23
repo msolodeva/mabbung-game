@@ -11,14 +11,14 @@
 .map-selector {
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 12px;
     margin-bottom: 10px;
     flex-wrap: wrap;
 }
 
 .map-option {
-    width: 140px;
-    height: 85px;
+    width: 148px;
+    height: 92px;
     border-radius: 12px;
     background: rgba(0, 0, 0, 0.4);
     border: 3px solid rgba(255, 255, 255, 0.2);
@@ -63,26 +63,39 @@
 
 /* Procedural previews */
 .map-preview.open {
-    background: linear-gradient(45deg, #4a7c23 25%, #3d6620 25%, #3d6620 50%, #4a7c23 50%, #4a7c23 75%, #3d6620 75%, #3d6620 100%);
-    background-size: 20px 20px;
+    background:
+        linear-gradient(0deg, transparent 0 42%, rgba(240, 195, 106, 0.55) 42% 58%, transparent 58% 100%),
+        linear-gradient(90deg, rgba(86, 114, 58, 0.85) 0 12%, transparent 12% 88%, rgba(86, 114, 58, 0.85) 88% 100%),
+        repeating-linear-gradient(135deg, #b68c55 0 10px, #9f7643 10px 20px);
 }
 
 .map-preview.maze {
-    background: repeating-linear-gradient(45deg, #5d4e37, #5d4e37 10px, #2c3e50 10px, #2c3e50 20px);
+    background:
+        repeating-linear-gradient(90deg, #38414b 0 7px, #5f5a4f 7px 16px),
+        repeating-linear-gradient(0deg, transparent 0 12px, rgba(215, 210, 194, 0.35) 12px 14px);
 }
 
 .map-preview.river {
-    background: linear-gradient(90deg, #4a7c23 30%, #3498db 30%, #3498db 70%, #4a7c23 70%);
+    background:
+        linear-gradient(0deg, transparent 0 22%, #2d82c4 22% 36%, transparent 36% 64%, #2d82c4 64% 78%, transparent 78% 100%),
+        linear-gradient(90deg, #6e8b45 0 100%);
 }
 
 .map-preview.bush {
-    background: radial-gradient(circle, #2d5016 10%, #1a320d 90%);
-    background-size: 15px 15px;
+    background:
+        radial-gradient(circle at 20% 30%, #244f1f 0 16%, transparent 16% 100%),
+        radial-gradient(circle at 75% 25%, #244f1f 0 18%, transparent 18% 100%),
+        radial-gradient(circle at 35% 75%, #244f1f 0 20%, transparent 20% 100%),
+        radial-gradient(circle at 80% 72%, #244f1f 0 14%, transparent 14% 100%),
+        linear-gradient(135deg, #6a7a38, #59672f);
 }
 
 .map-preview.fortress {
-    background: conic-gradient(from 45deg, #a68b6d 0deg 90deg, #4a7c23 90deg 360deg);
-    border: 10px solid #4a7c23;
+    background:
+        linear-gradient(90deg, transparent 0 30%, #4b4037 30% 34%, transparent 34% 66%, #4b4037 66% 70%, transparent 70% 100%),
+        linear-gradient(0deg, transparent 0 30%, #4b4037 30% 34%, transparent 34% 66%, #4b4037 66% 70%, transparent 70% 100%),
+        radial-gradient(circle at center, #ffd27a 0 12%, #82735d 12% 34%, #6c5f4d 34% 100%);
+    border: 6px solid rgba(255, 210, 122, 0.35);
 }
 
 .map-option-name {

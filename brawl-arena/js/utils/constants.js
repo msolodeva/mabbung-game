@@ -321,6 +321,10 @@ export const AI_DIFFICULTY = {
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
         evasionSkill: 0.1,             // 매우 낮은 회피율 (거의 피하지 않음)
+        combatAttackChance: 0.45,      // 공격 기회를 자주 놓침
+        combatAttackRangeMultiplier: 0.8, // 멀어지면 공격 시도 급감
+        combatStrafeChance: 0.2,       // 전투 중 옆무빙 빈도 낮음
+        combatBackoffChance: 0.15,     // 근거리 백스텝 실패가 잦음
 
         // 움직임
         pathUpdateFrequency: 1000,     // 경로 업데이트 느림
@@ -345,6 +349,10 @@ export const AI_DIFFICULTY = {
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
         evasionSkill: 0.2,             // 낮은 회피율
+        combatAttackChance: 0.72,
+        combatAttackRangeMultiplier: 0.95,
+        combatStrafeChance: 0.55,
+        combatBackoffChance: 0.75,
 
         pathUpdateFrequency: 500,
         stuckThreshold: 500,
@@ -368,6 +376,10 @@ export const AI_DIFFICULTY = {
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
         evasionSkill: 0.3,             // 소폭 낮은 회피율 (이전보다 피하기 쉬움)
+        combatAttackChance: 0.92,
+        combatAttackRangeMultiplier: 1.05,
+        combatStrafeChance: 0.8,
+        combatBackoffChance: 0.9,
 
         pathUpdateFrequency: 300,
         stuckThreshold: 300,

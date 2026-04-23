@@ -1152,6 +1152,10 @@ export class AIController {
                 return;
             }
 
+            if (!this.shouldAttemptCombatShot(distance)) {
+                return;
+            }
+
             // 기본 조준 오차 (난이도 기반)
             const baseInaccuracy = (Math.random() - 0.5) * difficulty.aimInaccuracy;
 
@@ -1181,23 +1185,52 @@ export class AIController {
         // Random angle variation (reduced for less sudden dodging)
         const strafeAngle = (Math.PI / 2) + (Math.random() - 0.5) * 0.1;
         const strafeDir = toTarget.rotate(strafeAngle * this.strafeSide).normalize();
-
-        // Keep optimal distance (evasion skill affects how often we strafe/back off)
-        const attemptEvasion = Math.random() < evasionSkill;
-        if (distance < this.brawler.attackRange * 0.5) {
-            // Too close, back up (sometimes fail to back off)
-            this.brawler.moveDirection = attemptEvasion
-                ? toTarget.normalize().multiply(-1)
-                : toTarget.normalize();
-        } else if (distance > this.brawler.attackRange * 0.9) {
-            // Too far, move closer
-            this.brawler.moveDirection = toTarget.normalize();
-        } else {
-            // Strafe (sometimes just move straight, making it easier to hit)
-            this.brawler.moveDirection = attemptEvasion ? strafeDir : toTarget.normalize();
-        }
+        this.brawler.moveDirection = this.chooseCombatMovement(
+            toTarget,
+            distance,
+            Math.random,
+            strafeDir,
+            evasionSkill
+        );
 
         this.avoidWallsEnhanced();
+    }
+
+    shouldAttemptCombatShot(distance, randomValue = Math.random()) {
+        const difficulty = this.game.aiDifficulty;
+        const rangeMultiplier = difficulty.combatAttackRangeMultiplier ?? 1;
+        const attackChance = difficulty.combatAttackChance ?? 1;
+        const maxComfortRange = this.brawler.attackRange * rangeMultiplier;
+
+        if (distance > maxComfortRange) {
+            return false;
+        }
+
+        return randomValue <= attackChance;
+    }
+
+    chooseCombatMovement(toTarget, distance, randomFn = Math.random, precomputedStrafeDir = null, evasionSkillOverride = null) {
+        const difficulty = this.game.aiDifficulty;
+        const normalizedTarget = toTarget.normalize();
+        const strafeDir = precomputedStrafeDir ||
+            toTarget.rotate(((Math.PI / 2) + (randomFn() - 0.5) * 0.1) * this.strafeSide).normalize();
+        const evasionSkill = typeof evasionSkillOverride === 'number'
+            ? evasionSkillOverride
+            : (typeof difficulty.evasionSkill === 'number' ? difficulty.evasionSkill : 1);
+        const strafeChance = difficulty.combatStrafeChance ?? evasionSkill;
+        const backoffChance = difficulty.combatBackoffChance ?? evasionSkill;
+
+        if (distance < this.brawler.attackRange * 0.5) {
+            return randomFn() < backoffChance
+                ? normalizedTarget.multiply(-1)
+                : normalizedTarget;
+        }
+
+        if (distance > this.brawler.attackRange * 0.9) {
+            return normalizedTarget;
+        }
+
+        return randomFn() < strafeChance ? strafeDir : normalizedTarget;
     }
 
     collectGem() {
