@@ -8,7 +8,7 @@ import { COLORS, TEAMS } from '../utils/constants.js';
 
 /**
  * 브롤러 기본 클래스 - 플레이어블 캐릭터
- * 모든 브롤러(Shelly, Colt, Nita 등)의 부모 클래스
+ * 모든 브롤러(Brock, Colt, Nita 등)의 부모 클래스
  */
 export class Brawler extends Entity {
     /**

@@ -18,13 +18,13 @@
 
 | 브롤러 | 역할 | 설명 | 강점 | 약점 |
 |--------|------|------|------|------|
-| 🔫 **Shelly** | Fighter | 근접 버스트 딜러 | Poco, Spike | Colt |
-| 🐻 **Nita** | Tank | 곰 소환 탱커 | Colt | Poco |
-| 🤠 **Colt** | Marksman | 장거리 저격수 | Shelly, Spike | Nita |
-| 🎸 **Poco** | Support | 치유의 음악가 | Nita | Shelly, Colt |
-| 🌵 **Spike** | Controller | 지역 장악 전문가 | 뭉친 적, 느린 브롤러 | Shelly, Colt |
+| 🎯 **Brock** | Rocketeer | 장거리 로켓 폭발 딜러 | Dynamike, Spike | Colt, Mortis |
+| 🐻 **Nita** | Tank | 곰 소환 탱커 | Colt | Dynamike |
+| 🤠 **Colt** | Marksman | 장거리 저격수 | Brock, Spike | Nita |
+| 💣 **Dynamike** | Artillery | 벽 너머 폭탄 투척수 | Nita, 뭉친 적 | Brock, Colt |
+| 🌵 **Spike** | Controller | 지역 장악 전문가 | 뭉친 적, 느린 브롤러 | Brock, Colt |
 
-**상성 체인**: Shelly → Poco → Nita → Colt → Shelly (Spike는 상황적)
+**상성 체인**: Brock → Dynamike → Nita → Mortis → Colt → Brock (Spike는 상황적)
 
 ### 게임 메커니즘
 - **보석 시스템**: 맵 중앙에서 5초마다 생성 (최대 15개)
@@ -94,10 +94,10 @@ brawl-arena/
     │   ├── index.js
     │   └── brawlers/       # 개별 브롤러 구현
     │       ├── index.js
-    │       ├── Shelly.js
+    │       ├── Brock.js
     │       ├── Colt.js
     │       ├── Nita.js
-    │       ├── Poco.js
+    │       ├── Dynamike.js
     │       └── Spike.js
     ├── game/               # 코어 게임 로직
     │   ├── Game.js         # 게임 컨트롤러

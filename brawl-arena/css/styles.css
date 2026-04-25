@@ -212,8 +212,8 @@ body {
 }
 
 /* Brawler Card Colors */
-.brawler-card.shelly {
-    background: var(--gradient-purple);
+.brawler-card.brock {
+    background: linear-gradient(180deg, #f5b041 0%, #d35400 100%);
 }
 
 .brawler-card.nita {
@@ -224,8 +224,8 @@ body {
     background: var(--gradient-blue);
 }
 
-.brawler-card.poco {
-    background: var(--gradient-green);
+.brawler-card.dynamike {
+    background: linear-gradient(180deg, #f8c471 0%, #e67e22 100%);
 }
 
 .brawler-card.spike {
@@ -238,10 +238,6 @@ body {
 
 .brawler-card.bull {
     background: linear-gradient(180deg, #566573 0%, #2c3e50 100%);
-}
-
-.brawler-card.brock {
-    background: linear-gradient(180deg, #ec7063 0%, #cb4335 100%);
 }
 
 .selected-brawler-info {

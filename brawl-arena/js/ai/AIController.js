@@ -613,7 +613,7 @@ export class AIController {
 
     /**
      * 전략적 타겟 찾기
-     * - 카운터 관계 고려 (예: Shelly가 Poco를 우선 공격)
+     * - 카운터 관계 고려 (예: Brock이 Dynamike를 우선 공격)
      * - 위험에 처한 아군 지원
      * - 저체력 적 우선순위
      * - 보석 보유 적 집중 공격
@@ -627,12 +627,12 @@ export class AIController {
 
         // Counter relationship map (who beats who)
         const counters = {
-            'shelly': ['poco', 'spike', 'nita'],
-            'colt': ['shelly', 'spike'],
+            'brock': ['dynamike', 'spike'],
+            'colt': ['brock', 'spike'],
             'nita': ['colt'],
-            'poco': ['nita'],
-            'spike': ['nita', 'poco'],
-            'bull': ['poco', 'spike', 'colt'],
+            'dynamike': ['nita'],
+            'spike': ['nita', 'dynamike'],
+            'bull': ['dynamike', 'spike', 'colt'],
             'elprimo': ['colt', 'spike']
         };
 
@@ -1273,7 +1273,7 @@ export class AIController {
 
         // Brawler specific Super logic
         switch (this.brawler.config.id) {
-            case 'shelly':
+            case 'brock':
             case 'colt':
                 // Damage Supers: Use when enemy is in attack range
                 if (nearestEnemy && distToEnemy <= this.brawler.attackRange * 1.3) {
@@ -1290,22 +1290,11 @@ export class AIController {
                 }
                 break;
 
-            case 'poco':
-                // Healing Super: Use when health is low or allies are low
-                if (healthPercent < 0.6) {
-                    this.brawler.useSuper(new Vector2(0, 0), this.game);
-                } else {
-                    // Check nearby allies
-                    for (const teammate of this.game.brawlers) {
-                        if (teammate.team === this.brawler.team && teammate !== this.brawler && teammate.isAlive) {
-                            const distToTeammate = this.brawler.position.distanceTo(teammate.position);
-                            const teammateHealthPercent = teammate.health / teammate.maxHealth;
-                            if (distToTeammate < 350 && teammateHealthPercent < 0.5) {
-                                this.brawler.useSuper(new Vector2(0, 0), this.game);
-                                break;
-                            }
-                        }
-                    }
+            case 'dynamike':
+                // Artillery Super: lob onto enemies before they reach melee range
+                if (nearestEnemy && distToEnemy <= this.brawler.attackRange * 1.15) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
                 }
                 break;
 

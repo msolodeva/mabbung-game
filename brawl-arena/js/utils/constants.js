@@ -78,55 +78,61 @@ export const COLORS = {
 // ========================================
 // BRAWLER BALANCE SYSTEM
 // ========================================
-// 5 Brawlers with Rock-Paper-Scissors style counters:
+// Brawlers with Rock-Paper-Scissors style counters:
 //
 //   Counter Chain:
-//   Shelly → Poco → Nita → Colt → Shelly
-//           ↘     ↙
-//            Spike (Area Control - situational)
+//   Brock → Dynamike → Nita → Mortis → Colt → Brock
+//            ↘       ↙
+//             Spike (Area Control - situational)
 //
 // Detailed Counter Relationships:
-// - Shelly beats Poco & Spike (burst damage > sustain/control)
-// - Colt beats Shelly & Spike (range advantage)
-// - Nita beats Colt (tanks damage, closes gap with bear)
-// - Poco beats Nita (outsustains with heals)
+// - Brock beats Dynamike & Spike (long-range rockets punish setup/control)
+// - Colt beats Brock & Spike (faster ranged pressure)
+// - Nita beats Colt (tanks damage, closes gap with missile pressure)
+// - Dynamike beats Nita (throws over cover and punishes slow targets)
+// - Mortis beats Colt and Dynamike by diving fragile ranged brawlers
 // - Spike is situational (good vs grouped, weak vs burst)
 // ========================================
 
 export const BRAWLERS = {
     // =====================================
-    // SHELLY - Close Range Fighter (Burst DPS)
+    // BROCK - Rocket Artillery (Long Range Burst)
     // =====================================
-    // ✅ STRONG vs: Poco (bursts before heal), Spike (closes gap fast)
-    // ❌ WEAK vs: Colt (can't reach him)
+    // ✅ STRONG vs: Dynamike (outranges setup), Spike (long-range burst)
+    // ❌ WEAK vs: Colt (faster ranged pressure), Mortis (dash dive)
     // =====================================
-    SHELLY: {
-        id: 'shelly',
-        name: 'Shelly',
-        role: 'FIGHTER',
-        emoji: '🔫',
-        color: '#9b59b6',
-        health: 3800,
-        speed: 280,
-        attackDamage: 300,
-        attackProjectiles: 5,
-        attackSpread: 0.5,
-        attackRange: 260,
-        attackSpeed: 600,
+    BROCK: {
+        id: 'brock',
+        name: 'Brock',
+        role: 'ROCKETEER',
+        emoji: '🎯',
+        color: '#d35400',
+        health: 2800,
+        speed: 265,
+        attackDamage: 1150,
+        attackProjectiles: 1,
+        attackSpread: 0,
+        attackRange: 560,
+        attackSpeed: 950,
+        rocketExplosionRadius: 85,
+        rocketKnockback: 120,
         ammoMax: 3,
-        ammoReloadTime: 1500,
-        superCharge: 6,        // 6 히트로 충전
-        superDamage: 320,
-        superKnockback: 400,
-        description: '근접 버스트 딜러 - 다가가면 끝장낸다',
-        superDescription: '💥 슈퍼 셸: 강력한 산탄으로 적을 밀어냄',
+        ammoReloadTime: 1900,
+        superCharge: 6,
+        superDamage: 850,
+        superRocketCount: 6,
+        superRange: 620,
+        superExplosionRadius: 95,
+        superKnockback: 220,
+        description: '장거리 로켓 딜러 - 느리지만 강한 폭발로 압박한다',
+        superDescription: '🚀 로켓 레인: 여러 발의 로켓을 연속 발사해 지역을 폭격',
     },
 
     // =====================================
     // NITA - Tank (High HP + Homing Missile)
     // =====================================
     // ✅ STRONG vs: Colt (absorbs damage, missile tracks)
-    // ❌ WEAK vs: Poco (can't kill through heals)
+    // ❌ WEAK vs: Dynamike (slow target punished by lobbed bombs)
     // =====================================
     NITA: {
         id: 'nita',
@@ -152,7 +158,7 @@ export const BRAWLERS = {
     // =====================================
     // COLT - Marksman (Long Range DPS)
     // =====================================
-    // ✅ STRONG vs: Shelly (kites easily), Spike (outranges)
+    // ✅ STRONG vs: Brock (faster ranged pressure), Spike (outranges)
     // ❌ WEAK vs: Nita (can't kill fast enough, gets overrun)
     // =====================================
     COLT: {
@@ -177,39 +183,42 @@ export const BRAWLERS = {
     },
 
     // =====================================
-    // POCO - Support (Healer)
+    // DYNAMIKE - Artillery (Lobbed AoE)
     // =====================================
-    // ✅ STRONG vs: Nita (outheals damage, bear included)
-    // ❌ WEAK vs: Shelly (burst > heal), Colt (DPS > heal rate)
+    // ✅ STRONG vs: Nita (punishes slow tanks over cover), grouped enemies
+    // ❌ WEAK vs: Brock (long-range burst), Colt (long-range pressure)
     // =====================================
-    POCO: {
-        id: 'poco',
-        name: 'Poco',
-        role: 'SUPPORT',
-        emoji: '🎸',
-        color: '#2ecc71',
-        health: 3600,
-        speed: 260,
-        attackDamage: 700,
+    DYNAMIKE: {
+        id: 'dynamike',
+        name: 'Dynamike',
+        role: 'ARTILLERY',
+        emoji: '💣',
+        color: '#f39c12',
+        health: 3000,
+        speed: 255,
+        attackDamage: 950,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 420,
-        attackSpeed: 1000,
-        attackWidth: 200,
+        attackRange: 430,
+        attackSpeed: 950,
+        explosionRadius: 95,
+        fuseTime: 650,
         ammoMax: 3,
-        ammoReloadTime: 1300,
-        superCharge: 5,        // 5 히트로 빠른 충전 (힐러)
-        superHeal: 2400,
-        superRadius: 400,
-        description: '치유의 음악가 - 팀을 살린다',
-        superDescription: '💚 치유의 멜로디: 주변 모든 아군을 대량 회복',
+        ammoReloadTime: 1700,
+        superCharge: 6,
+        superDamage: 1800,
+        superRadius: 150,
+        superKnockback: 520,
+        superFuseTime: 800,
+        description: '투척 폭파 전문가 - 벽 너머로 적을 몰아낸다',
+        superDescription: '💥 빅 배럴: 거대한 폭탄으로 넓은 피해와 넉백',
     },
 
     // =====================================
     // SPIKE - Controller (Area Denial)
     // =====================================
-    // ✅ STRONG vs: Grouped enemies, slow brawlers (Nita, Poco)
-    // ❌ WEAK vs: Shelly (burst), Colt (outranges and kites)
+    // ✅ STRONG vs: Grouped enemies, slow brawlers (Nita, Dynamike)
+    // ❌ WEAK vs: Brock (long-range burst), Colt (outranges and kites)
     // =====================================
     SPIKE: {
         id: 'spike',
@@ -239,8 +248,8 @@ export const BRAWLERS = {
     // =====================================
     // MORTIS - Assassin (Dash Melee)
     // =====================================
-    // ✅ STRONG vs: Poco (burst kills before heal), Colt (closes gap instantly)
-    // ❌ WEAK vs: Shelly (burst at close range), Nita (tanks too much)
+    // ✅ STRONG vs: Dynamike (dives artillery), Colt (closes gap instantly), Brock (dodges slow rockets)
+    // ❌ WEAK vs: Nita (tanks too much)
     // =====================================
     MORTIS: {
         id: 'mortis',

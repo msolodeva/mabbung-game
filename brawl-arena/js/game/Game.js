@@ -24,7 +24,7 @@ export class Game {
     /**
      * 게임 인스턴스 생성
      * @param {HTMLCanvasElement} canvas - 렌더링할 Canvas 엘리먼트
-     * @param {string} player1Brawler - 플레이어 1의 브롤러 ID (예: 'SHELLY')
+     * @param {string} player1Brawler - 플레이어 1의 브롤러 ID (예: 'BROCK')
      * @param {string} player2Brawler - 플레이어 2의 브롤러 ID (예: 'COLT')
      * @param {Object} mapData - 맵 데이터 (mapData.js에서 가져옴)
      */

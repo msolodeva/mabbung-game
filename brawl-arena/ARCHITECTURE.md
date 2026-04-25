@@ -196,14 +196,14 @@ States:
 ```
 
 **전략적 타겟팅**:
-- 카운터 관계 고려 (예: Shelly가 Poco를 우선 공격)
+- 카운터 관계 고려 (예: Brock이 Dynamike를 우선 공격)
 - 저체력 적 우선순위
 - 보석을 많이 보유한 적 집중 공격
 - 아군 지원 (위험한 상황의 팀원 도움)
 
 **슈퍼 스킬 사용 로직**:
 - 각 브롤러별 맞춤 로직
-- Poco: 체력 < 60% 또는 아군 체력 < 50% 시 힐링
+- Dynamike: 적이 사거리 안에 들어오면 벽 너머 투척 슈퍼 사용
 - Nita: 적이 거리 500 이내 시 곰 소환
 - 공격형: 적이 공격 범위 내 있을 때 사용
 
@@ -251,12 +251,11 @@ States:
 ```
 Entity (기본 엔티티)
 ├─ Brawler (브롤러 기본 클래스)
-│  ├─ Shelly
+│  ├─ Brock
 │  ├─ Colt
 │  ├─ Nita
-│  ├─ Poco
+│  ├─ Dynamike
 │  ├─ Spike
-│  ├─ Brock
 │  ├─ Bull
 │  └─ ElPrimo
 ├─ Projectile (발사체)
@@ -354,20 +353,11 @@ update(deltaTime, game) {
 
 각 브롤러는 `createAttackProjectiles()`와 `activateSuper()`를 오버라이드하여 고유한 능력 구현:
 
-**예시 - Shelly (산탄총)**:
+**예시 - Brock (로켓)**:
 ```javascript
 createAttackProjectiles(direction) {
-  // 5개의 탄환을 부채꼴로 발사
-  const projectiles = [];
-  const spreadAngle = 0.3;
-
-  for (let i = -2; i <= 2; i++) {
-    const angle = direction.angle() + (i * spreadAngle / 4);
-    const dir = Vector2.fromAngle(angle);
-    projectiles.push(new Projectile(this, dir, damage));
-  }
-
-  return projectiles;
+  // 장거리 로켓을 발사하고 충돌/사거리 끝에서 범위 폭발
+  return new RocketProjectile(this, direction, damage);
 }
 ```
 
@@ -533,7 +523,7 @@ Brawler.update() → 물리 이동
 ## 설계 패턴
 
 ### 1. **상속 (Inheritance)**
-- `Entity` → `Brawler` → `Shelly`, `Colt`, 등
+- `Entity` → `Brawler` → `Brock`, `Colt`, 등
 - 공통 기능을 기본 클래스에서 제공
 - 브롤러별 차별화는 메서드 오버라이드
 

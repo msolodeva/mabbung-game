@@ -98,7 +98,7 @@ export class Projectile extends Entity {
 
     checkHit(brawler) {
         if (this.projectileType === 'wave') {
-            // Wide wave attack (like Poco)
+            // Wide wave attack
             // 1. Distance check: Is the brawler within the wave's actual body?
             const toBrawler = brawler.position.subtract(this.position);
             const dist = toBrawler.magnitude();
@@ -109,7 +109,7 @@ export class Projectile extends Entity {
             // 2. Angle/Width check: Is the brawler within the angular spread of the wave?
             const dot = toBrawler.normalize().dot(this.direction);
             // Convert width (in pixels) to an approximate angular threshold
-            // Poco's wave is more of an arc.
+            // Wave projectiles use a broad forward arc.
             const angleThreshold = 0.5; // Roughly 60 degrees spread
 
             return dot > angleThreshold;
@@ -168,7 +168,7 @@ export class Projectile extends Entity {
         ctx.rotate(angle);
 
         if (this.projectileType === 'wave') {
-            // Enhanced Sound Wave (Poco/Nita Style)
+            // Enhanced sound wave
             const arcAngle = Math.PI / 3; // 60 degrees
 
             // Multiple arcs for "echo" effect

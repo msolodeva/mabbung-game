@@ -9,7 +9,7 @@ import { MAPS } from './map/mapData.js';
 class BrawlArena {
     constructor() {
         this.game = null;
-        this.player1Brawler = 'shelly';
+        this.player1Brawler = 'brock';
         this.player2Brawler = 'colt';
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
         this.selectedMapId = 'open'; // Default map
@@ -167,7 +167,7 @@ class BrawlArena {
         });
 
         // Select default brawlers
-        this.selectBrawler(1, 'shelly');
+        this.selectBrawler(1, 'brock');
         this.selectBrawler(2, 'colt');
     }
 
