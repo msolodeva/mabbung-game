@@ -67,8 +67,6 @@ export class Spike extends Brawler {
     }
 
     createSuperEffect(position, game) {
-        console.log(`Spike Super Effect at: ${position.x}, ${position.y}`);
-
         // Remove existing spike field
         if (this.spikeField) {
             this.spikeField.active = false;
@@ -89,23 +87,23 @@ export class Spike extends Brawler {
 
         game.spikeFields.push(this.spikeField);
 
-        // Powerful Radial Spikes
-        const spikeCount = 12; // More spikes (was 8)
+        // Radial spikes give the field teeth without turning Spike into a burst assassin.
+        const spikeCount = this.config.superBurstSpikes || 8;
         const angleStep = (Math.PI * 2) / spikeCount;
 
         for (let i = 0; i < spikeCount; i++) {
             const angle = angleStep * i;
             const dir = Vector2.fromAngle(angle);
             const spike = new Projectile(position.x, position.y, dir, {
-                speed: 550, // Faster spikes (was 400)
-                damage: (this.config.explodeSpikeDamage || 300) * 1.5, // More damage (1.5x)
-                size: 10, // Larger (was 8)
-                range: 450, // Further range (was 300)
+                speed: 500,
+                damage: (this.config.explodeSpikeDamage || 240) * (this.config.superBurstDamageMultiplier || 1),
+                size: 8,
+                range: this.config.superBurstRange || 280,
                 owner: this,
                 team: this.team,
-                color: '#1e8449', // Darker/Stronger green
-                piercing: true, // Powerful spikes pierce enemies
-                isSuper: true   // 궁극기 투사체
+                color: '#1e8449',
+                piercing: false,
+                isSuper: true,
             });
             game.projectiles.push(spike);
         }

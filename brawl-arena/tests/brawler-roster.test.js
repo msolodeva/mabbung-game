@@ -24,3 +24,34 @@ test('poco, shelly, and gene are replaced without changing mortis or dynamike', 
 test('brock has a distinct lobby and in-game icon from nita', () => {
     assert.notEqual(BRAWLERS.BROCK.emoji, BRAWLERS.NITA.emoji);
 });
+
+test('brawlers have non-overlapping strategic stat identities', () => {
+    const roster = BRAWLERS;
+    const roles = Object.values(roster).map(brawler => brawler.role);
+
+    assert.equal(new Set(roles).size, roles.length);
+
+    assert.equal(roster.BROCK.attackRange, Math.max(...Object.values(roster).map(brawler => brawler.attackRange)));
+    assert.ok(roster.BROCK.attackDamage > roster.DYNAMIKE.attackDamage);
+    assert.ok(roster.BROCK.ammoReloadTime > roster.COLT.ammoReloadTime);
+
+    assert.equal(roster.NITA.health, Math.max(...Object.values(roster).map(brawler => brawler.health)));
+    assert.ok(roster.NITA.attackRange < roster.SPIKE.attackRange);
+    assert.ok(roster.NITA.attackDamage < roster.BROCK.attackDamage);
+
+    assert.equal(roster.COLT.speed, Math.max(...Object.values(roster).map(brawler => brawler.speed)));
+    assert.ok(roster.COLT.attackProjectiles > roster.BROCK.attackProjectiles);
+    assert.ok(roster.COLT.attackDamage < roster.SPIKE.attackDamage);
+
+    assert.ok(roster.DYNAMIKE.explosionRadius > roster.BROCK.rocketExplosionRadius);
+    assert.ok(roster.DYNAMIKE.fuseTime > 650);
+    assert.ok(roster.DYNAMIKE.health < roster.NITA.health);
+
+    assert.ok(roster.SPIKE.superRadius > roster.DYNAMIKE.superRadius);
+    assert.ok(roster.SPIKE.superDamagePerSecond < roster.BROCK.attackDamage);
+    assert.ok(roster.SPIKE.superBurstSpikes <= 8);
+
+    assert.ok(roster.MORTIS.attackRange < roster.NITA.attackRange);
+    assert.ok(roster.MORTIS.dashSpeed > 1200);
+    assert.ok(roster.MORTIS.ammoReloadTime > roster.BROCK.ammoReloadTime);
+});

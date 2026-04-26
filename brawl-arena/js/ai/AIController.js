@@ -627,13 +627,12 @@ export class AIController {
 
         // Counter relationship map (who beats who)
         const counters = {
-            'brock': ['dynamike', 'spike'],
+            'brock': ['dynamike'],
             'colt': ['brock', 'spike'],
-            'nita': ['colt'],
-            'dynamike': ['nita'],
-            'spike': ['nita', 'dynamike'],
-            'bull': ['dynamike', 'spike', 'colt'],
-            'elprimo': ['colt', 'spike']
+            'nita': ['colt', 'mortis'],
+            'dynamike': ['nita', 'spike'],
+            'spike': ['nita', 'mortis'],
+            'mortis': ['brock', 'colt', 'dynamike']
         };
 
         const myId = this.brawler.config.id;
