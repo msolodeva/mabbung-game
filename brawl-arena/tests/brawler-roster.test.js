@@ -55,3 +55,11 @@ test('brawlers have non-overlapping strategic stat identities', () => {
     assert.ok(roster.MORTIS.dashSpeed > 1200);
     assert.ok(roster.MORTIS.ammoReloadTime > roster.BROCK.ammoReloadTime);
 });
+
+test('brock super burst is capped below three direct rocket hits', () => {
+    const brock = BRAWLERS.BROCK;
+    const maxSuperBurst = brock.attackDamage * 2.5;
+
+    assert.ok(brock.superRocketCount <= 6);
+    assert.ok(brock.superDamage * brock.superRocketCount <= maxSuperBurst);
+});

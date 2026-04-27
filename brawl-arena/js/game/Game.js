@@ -61,7 +61,7 @@ export class Game {
         this.gameMode = null;
 
         // AI Difficulty
-        this.aiDifficulty = AI_DIFFICULTY.NORMAL;
+        this.aiDifficulty = AI_DIFFICULTY.EASY;
 
         // Timing
         this.lastTime = 0;

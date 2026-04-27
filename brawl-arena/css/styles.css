@@ -32,6 +32,10 @@
     --gradient-red: linear-gradient(180deg, #ec7063 0%, #e74c3c 50%, #c0392b 100%);
     --gradient-green: linear-gradient(180deg, #58d68d 0%, #2ecc71 50%, #27ae60 100%);
     --gradient-purple: linear-gradient(180deg, #bb8fce 0%, #9b59b6 50%, #8e44ad 100%);
+    --panel-bg: rgba(8, 13, 28, 0.72);
+    --panel-border: rgba(255, 255, 255, 0.14);
+    --panel-highlight: rgba(255, 255, 255, 0.08);
+    --panel-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -44,7 +48,8 @@
 
 body {
     font-family: 'Nunito', sans-serif;
-    background: var(--bg-dark);
+    background:
+        linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 52%, #173f47 100%);
     overflow: hidden;
     touch-action: none;
 }
@@ -75,10 +80,13 @@ body {
    ======================================== */
 
 #lobby-screen {
-    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-light) 100%);
-    /* Allow scrolling for smaller screens */
+    background:
+        linear-gradient(120deg, rgba(74, 144, 217, 0.18) 0 28%, transparent 28% 100%),
+        linear-gradient(240deg, rgba(231, 76, 60, 0.16) 0 26%, transparent 26% 100%),
+        linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 54%, #173f47 100%);
     display: flex;
     overflow-y: auto;
+    align-items: flex-start;
 }
 
 #lobby-screen.hidden {
@@ -87,28 +95,29 @@ body {
 
 .lobby-content {
     text-align: center;
-    padding: 10px;
-    max-width: 1600px;
+    padding: 18px 22px 24px;
+    max-width: 1480px;
     width: 100%;
-    /* Flex column for safe centering */
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    gap: 12px;
     margin: 0 auto;
+    min-height: 100vh;
 }
 
 .game-title {
     font-family: 'Lilita One', cursive;
-    font-size: 4rem;
+    font-size: 3.6rem;
     background: var(--gradient-gold);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-shadow: none;
     filter: drop-shadow(3px 3px 0 var(--gold-dark)) drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
-    margin-bottom: 0px;
+    margin-bottom: -4px;
     animation: titlePulse 2s ease-in-out infinite;
+    line-height: 0.95;
 }
 
 @keyframes titleEase {
@@ -138,11 +147,24 @@ body {
 }
 
 .mode-title {
-    font-size: 1.6rem;
-    color: var(--purple);
-    margin-bottom: 5px;
+    font-size: 1.15rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 2px;
+    padding: 6px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.3);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.section-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.75);
 }
 
 .brawler-selection h3 {
@@ -155,39 +177,40 @@ body {
 .brawler-grid {
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .brawler-card {
-    width: 68px;
-    height: 95px;
-    border-radius: 12px;
+    width: 72px;
+    height: 96px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
-    border: 4px solid rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 255, 255, 0.16);
     background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px rgba(0, 0, 0, 0.22);
 }
 
 .brawler-card:hover {
-    transform: translateY(-8px) scale(1.05);
+    transform: translateY(-5px) scale(1.04);
     border-color: rgba(255, 255, 255, 0.5);
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
 }
 
 .brawler-card.selected {
     border-color: var(--gold);
-    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
-    transform: scale(1.15);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.22), 0 0 24px rgba(255, 215, 0, 0.55);
+    transform: translateY(-4px) scale(1.08);
     z-index: 2;
 }
 
 .brawler-card .brawler-icon {
     width: 100%;
-    height: 65px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -205,7 +228,7 @@ body {
     color: white;
     font-size: 0.85rem;
     font-family: 'Lilita One', cursive;
-    padding: 6px 2px;
+    padding: 7px 2px;
     text-align: center;
     border-top: 1px solid rgba(255, 255, 255, 0.25);
     letter-spacing: 0.5px;
@@ -306,8 +329,8 @@ body {
 .play-button {
     background: var(--gradient-green);
     border: none;
-    padding: 15px 50px;
-    border-radius: 50px;
+    padding: 15px 56px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 6px 0 #1e8449, 0 10px 30px rgba(46, 204, 113, 0.4);
@@ -325,7 +348,7 @@ body {
 
 .play-button span {
     font-family: 'Lilita One', cursive;
-    font-size: 1.8rem;
+    font-size: 1.7rem;
     color: white;
     text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
 }
@@ -373,8 +396,8 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 25px;
-    border-radius: 30px;
+    padding: 9px 22px;
+    border-radius: 8px;
     font-size: 2.0rem;
     font-weight: bold;
     color: white;
@@ -399,7 +422,7 @@ body {
     background: rgba(0, 0, 0, 0.85);
     color: white;
     padding: 12px 28px;
-    border-radius: 30px;
+    border-radius: 8px;
     font-size: 2.2rem;
     font-weight: bold;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
@@ -413,7 +436,7 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     padding: 10px 30px;
-    border-radius: 40px;
+    border-radius: 8px;
     border: 3px solid var(--gold);
     display: flex;
     align-items: center;
@@ -685,7 +708,7 @@ body {
 
 .result-team {
     padding: 25px 35px;
-    border-radius: 20px;
+    border-radius: 8px;
     background: rgba(0, 0, 0, 0.3);
     min-width: 220px;
     border: 3px solid transparent;
@@ -746,7 +769,7 @@ body {
     margin-bottom: 25px;
     background: rgba(0, 0, 0, 0.4);
     padding: 15px;
-    border-radius: 15px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -784,7 +807,7 @@ body {
     align-items: center;
     padding: 12px 20px;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 8px;
     font-size: 1.1rem;
     color: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -810,7 +833,7 @@ body {
     background: var(--gradient-blue);
     border: none;
     padding: 18px 50px;
-    border-radius: 50px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 6px 0 var(--blue-team-dark), 0 10px 30px rgba(74, 144, 217, 0.4);
@@ -890,30 +913,31 @@ body {
     display: flex;
     justify-content: center;
     align-items: stretch;
-    gap: 15px;
-    margin-bottom: 10px;
+    gap: 14px;
+    margin-bottom: 0;
     flex-wrap: nowrap;
-    width: 90%;
-    max-width: 1300px;
+    width: min(100%, 1320px);
 }
 
 .player-selection {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 20px;
-    padding: 10px 15px;
+    background: var(--panel-bg);
+    border-radius: 8px;
+    padding: 14px 16px;
     flex: 1;
     min-width: 0;
-    border: 3px solid transparent;
+    border: 1px solid var(--panel-border);
+    box-shadow: var(--panel-shadow), inset 0 1px 0 var(--panel-highlight);
+    backdrop-filter: blur(10px);
 }
 
 .player-selection.player1 {
-    border-color: var(--blue-team);
-    box-shadow: 0 0 15px rgba(74, 144, 217, 0.3);
+    border-top: 4px solid var(--blue-team);
+    box-shadow: var(--panel-shadow), 0 0 18px rgba(74, 144, 217, 0.22);
 }
 
 .player-selection.player2 {
-    border-color: var(--red-team);
-    box-shadow: 0 0 15px rgba(231, 76, 60, 0.3);
+    border-top: 4px solid var(--red-team);
+    box-shadow: var(--panel-shadow), 0 0 18px rgba(231, 76, 60, 0.2);
 }
 
 .player-title {
@@ -934,18 +958,18 @@ body {
 }
 
 .control-info {
-    font-size: 1.0rem;
-    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.86);
     margin-bottom: 10px;
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.36);
     border-radius: 8px;
-    line-height: 1.6;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    line-height: 1.45;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .player-stats {
-    min-height: 100px;
+    min-height: 286px;
     margin-top: 10px;
 }
 
@@ -955,10 +979,13 @@ body {
     margin-bottom: 12px;
     font-style: italic;
     line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stat-row-detailed {
-    margin-bottom: 8px;
+    margin-bottom: 7px;
 }
 
 .stat-label {
@@ -971,12 +998,12 @@ body {
 .stat-value-container {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .stat-bar {
     flex-grow: 1;
-    height: 12px;
+    height: 10px;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 6px;
     overflow: hidden;
@@ -1001,17 +1028,17 @@ body {
     align-items: center;
     gap: 15px;
     margin-bottom: 10px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.07);
     padding: 8px;
-    border-radius: 12px;
-    border-left: 5px solid var(--gold);
+    border-radius: 8px;
+    border-left: 4px solid var(--gold);
 }
 
 .selected-brawler-emoji {
     font-size: 2.5rem;
     background: rgba(0, 0, 0, 0.3);
-    width: 60px;
-    height: 60px;
+    width: 58px;
+    height: 58px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1037,6 +1064,7 @@ body {
 
 .selected-brawler-name-container {
     text-align: left;
+    min-width: 0;
 }
 
 .selected-brawler-name {
@@ -1048,16 +1076,17 @@ body {
 }
 
 .stats-container-detailed {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 8px;
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.28);
+    padding: 9px;
+    border-radius: 8px;
     margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .super-container-detailed {
-    background: linear-gradient(135deg, rgba(155, 89, 182, 0.2) 0%, rgba(155, 89, 182, 0) 100%);
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.24) 0%, rgba(15, 52, 96, 0.18) 100%);
     padding: 8px;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid rgba(155, 89, 182, 0.3);
     text-align: left;
 }
@@ -1084,7 +1113,10 @@ body {
     justify-content: center;
     gap: 8px;
     align-self: center;
-    padding: 15px 10px;
+    padding: 12px 8px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
 }
 
 .toggle-label {
@@ -1100,7 +1132,7 @@ body {
     font-family: 'Lilita One', cursive;
     font-size: 1.1rem;
     border: 3px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.75);
     cursor: pointer;
@@ -1127,7 +1159,8 @@ body {
 /* Same team mode - P2 panel changes to blue */
 .player-selection.player2.same-team {
     border-color: var(--blue-team);
-    box-shadow: 0 0 15px rgba(74, 144, 217, 0.3);
+    border-top-color: var(--blue-team);
+    box-shadow: var(--panel-shadow), 0 0 18px rgba(74, 144, 217, 0.22);
 }
 
 .player-selection.player2.same-team .player-title {
@@ -1141,7 +1174,7 @@ body {
     padding: 10px 12px;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
     border-left: 3px solid var(--gold);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.85rem;
     color: var(--gold);
     font-weight: bold;
@@ -1167,7 +1200,7 @@ body {
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
     padding: 10px 15px;
-    border-radius: 10px;
+    border-radius: 8px;
     color: white;
     font-size: 0.85rem;
     text-align: center;
@@ -1208,7 +1241,7 @@ body {
 }
 
 /* Responsive for 2 player lobby */
-@media (max-width: 700px) {
+@media (max-width: 1180px) {
     .player-selection-container {
         flex-direction: column;
         align-items: center;
@@ -1216,11 +1249,52 @@ body {
 
     .team-mode-toggle {
         flex-direction: row;
-        margin: 10px 0;
+        margin: 0;
+        width: min(100%, 640px);
     }
 
     .player-selection {
-        min-width: 250px;
+        width: min(100%, 720px);
+    }
+
+    .player-stats {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 700px) {
+    .lobby-content {
+        padding: 14px 12px 18px;
+    }
+
+    .player-selection {
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .team-mode-toggle,
+    .difficulty-selection-section {
+        width: 100%;
+    }
+
+    .toggle-btn,
+    .difficulty-btn {
+        min-width: 0;
+        flex: 1;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .control-info {
+        font-size: 0.84rem;
+    }
+
+    .selected-brawler-name {
+        font-size: 1.55rem;
+    }
+
+    .super-description {
+        font-size: 0.8rem;
     }
 }
 
@@ -1229,15 +1303,20 @@ body {
 .team-hud-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
 }
 
 .score-counter {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 20px;
-    border-radius: 25px;
+    padding: 9px 18px;
+    border-radius: 8px;
     font-size: 1.6rem;
     font-weight: bold;
     color: white;
@@ -1310,24 +1389,31 @@ body {
    DIFFICULTY SELECTION
    ======================================== */
 .difficulty-selection-section {
-    margin: 10px 0 15px 0;
+    margin: 0 0 2px 0;
     text-align: center;
+    width: min(100%, 640px);
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: var(--panel-shadow), inset 0 1px 0 var(--panel-highlight);
+    backdrop-filter: blur(10px);
 }
 
 .difficulty-selector {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     justify-content: center;
-    margin: 10px 0;
+    margin: 8px 0;
 }
 
 .difficulty-btn {
-    padding: 12px 28px;
+    padding: 11px 30px;
     font-size: 16px;
     font-family: 'Lilita One', cursive;
     border: 3px solid transparent;
-    border-radius: 10px;
-    background: var(--bg-light);
+    border-radius: 8px;
+    background: rgba(15, 52, 96, 0.85);
     color: white;
     cursor: pointer;
     transition: all 0.2s;
@@ -1349,8 +1435,8 @@ body {
 
 .difficulty-desc {
     color: rgba(255, 255, 255, 0.95);
-    font-size: 17px;
-    margin-top: 12px;
+    font-size: 15px;
+    margin-top: 8px;
     min-height: 24px;
     line-height: 1.5;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);

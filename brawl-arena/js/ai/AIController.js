@@ -967,12 +967,17 @@ export class AIController {
             return;
         }
 
-        // Use pathfinding to navigate to target
-        this.moveToTarget(this.currentTarget.position);
-
-        // Try to attack while chasing
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
+
+        if (distance <= this.brawler.attackRange * 0.95) {
+            this.brawler.moveDirection = this.chooseCombatMovement(toTarget, distance);
+            this.avoidWallsEnhanced();
+        } else {
+            this.moveToTarget(this.currentTarget.position);
+        }
+
+        // Try to attack while chasing
         if (distance <= this.brawler.attackRange && this.brawler.canAttack()) {
             this.brawler.attack(toTarget.normalize(), this.game);
         }

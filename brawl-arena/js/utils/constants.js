@@ -119,11 +119,11 @@ export const BRAWLERS = {
         ammoMax: 3,
         ammoReloadTime: 2100,
         superCharge: 6,
-        superDamage: 760,
-        superRocketCount: 7,
+        superDamage: 520,
+        superRocketCount: 6,
         superRange: 680,
-        superExplosionRadius: 85,
-        superKnockback: 180,
+        superExplosionRadius: 78,
+        superKnockback: 140,
         description: '초장거리 로켓 딜러 - 느린 재장전 대신 강한 한 방으로 압박한다',
         superDescription: '🚀 로켓 레인: 여러 발의 로켓을 연속 발사해 지역을 폭격',
     },
@@ -310,7 +310,7 @@ export const AI_CONFIG = {
 // ========================================
 // AI DIFFICULTY SYSTEM
 // ========================================
-// 3단계 난이도: 조준 실수, 반응 지연, 판단 실수
+// 2단계 난이도: 낮은 압박의 쉬움, 완벽하지 않은 도전의 어려움
 // ========================================
 export const AI_DIFFICULTY = {
     EASY: {
@@ -318,83 +318,56 @@ export const AI_DIFFICULTY = {
         name: '쉬움',
 
         // 조준 실수
-        aimInaccuracy: 1.5,           // ±1.5 라디안 (약 85도) - 대폭 증가
-        aimWobble: 0.6,                // 조준 떨림 진폭 - 대폭 증가
-        aimRotationSpeed: Math.PI * 0.5, // 90도/s - 매우 느린 조준 회전
+        aimInaccuracy: 1.75,          // 조준 오차 큼
+        aimWobble: 0.72,              // 조준 떨림 큼
+        aimRotationSpeed: Math.PI * 0.42,
 
         // 반응 속도
-        reactionDelay: 400,            // 적 발견 후 400ms 딜레이
-        decisionInterval: 800,         // 느린 의사결정 (800ms)
+        reactionDelay: 560,
+        decisionInterval: 980,
 
         // 판단 실수
-        poorDecisionChance: 0.4,       // 40% 확률로 잘못된 판단
+        poorDecisionChance: 0.5,
         retreatThreshold: 0.5,         // 체력 50% 이하면 후퇴 (겁많음)
-        wasteSuperChance: 0.3,         // 30% 확률로 슈퍼 낭비
+        wasteSuperChance: 0.38,
 
         // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.1,             // 매우 낮은 회피율 (거의 피하지 않음)
-        combatAttackChance: 0.45,      // 공격 기회를 자주 놓침
-        combatAttackRangeMultiplier: 0.8, // 멀어지면 공격 시도 급감
-        combatStrafeChance: 0.2,       // 전투 중 옆무빙 빈도 낮음
-        combatBackoffChance: 0.15,     // 근거리 백스텝 실패가 잦음
+        evasionSkill: 0.06,
+        combatAttackChance: 0.32,
+        combatAttackRangeMultiplier: 0.72,
+        combatStrafeChance: 0.1,
+        combatBackoffChance: 0.1,
 
         // 움직임
-        pathUpdateFrequency: 1000,     // 경로 업데이트 느림
-        stuckThreshold: 1000,          // 막혔을 때 반응 느림
-        smoothingFactor: 0.3,          // 방향 전환 스무딩 (높을수록 더 부드러움)
-    },
-
-    NORMAL: {
-        id: 'normal',
-        name: '보통',
-
-        aimInaccuracy: 1.0,            // ±1.0 라디안 (약 57도)
-        aimWobble: 0.4,
-        aimRotationSpeed: Math.PI * 0.8, // 144도/s - 느린 조준 회전
-
-        reactionDelay: 260,
-        decisionInterval: 620,
-
-        poorDecisionChance: 0.2,       // 20% 확률로 실수
-        retreatThreshold: 0.25,
-        wasteSuperChance: 0.1,
-
-        // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.2,             // 낮은 회피율
-        combatAttackChance: 0.72,
-        combatAttackRangeMultiplier: 0.95,
-        combatStrafeChance: 0.55,
-        combatBackoffChance: 0.75,
-
-        pathUpdateFrequency: 500,
-        stuckThreshold: 500,
-        smoothingFactor: 0.2,          // 방향 전환 스무딩 (중간)
+        pathUpdateFrequency: 1200,
+        stuckThreshold: 1200,
+        smoothingFactor: 0.36,
     },
 
     HARD: {
         id: 'hard',
         name: '어려움',
 
-        aimInaccuracy: 0.5,            // ±0.5 라디안 (약 28도)
-        aimWobble: 0.2,
-        aimRotationSpeed: Math.PI * 1.5, // 270도/s - 보통 조준 속도
+        aimInaccuracy: 0.95,
+        aimWobble: 0.34,
+        aimRotationSpeed: Math.PI * 0.9,
 
-        reactionDelay: 50,
-        decisionInterval: 200,
+        reactionDelay: 240,
+        decisionInterval: 520,
 
-        poorDecisionChance: 0.05,      // 5% 확률로 실수
-        retreatThreshold: 0.2,
-        wasteSuperChance: 0.02,
+        poorDecisionChance: 0.18,
+        retreatThreshold: 0.3,
+        wasteSuperChance: 0.08,
 
-        // 전투 회피/무빙 숙련도 (낮을수록 단순한 움직임)
-        evasionSkill: 0.3,             // 소폭 낮은 회피율 (이전보다 피하기 쉬움)
-        combatAttackChance: 0.92,
-        combatAttackRangeMultiplier: 1.05,
-        combatStrafeChance: 0.8,
-        combatBackoffChance: 0.9,
+        // 전투 회피/무빙 숙련도
+        evasionSkill: 0.28,
+        combatAttackChance: 0.64,
+        combatAttackRangeMultiplier: 0.9,
+        combatStrafeChance: 0.46,
+        combatBackoffChance: 0.58,
 
-        pathUpdateFrequency: 300,
-        stuckThreshold: 300,
-        smoothingFactor: 0.15,         // 방향 전환 스무딩 (낮음 - 더 기계적)
+        pathUpdateFrequency: 560,
+        stuckThreshold: 560,
+        smoothingFactor: 0.28,
     },
 };

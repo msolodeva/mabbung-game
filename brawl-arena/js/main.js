@@ -13,7 +13,7 @@ class BrawlArena {
         this.player2Brawler = 'colt';
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
         this.selectedMapId = 'open'; // Default map
-        this.selectedDifficulty = AI_DIFFICULTY.NORMAL; // Default difficulty
+        this.selectedDifficulty = AI_DIFFICULTY.EASY; // Default difficulty
         this.teamMode = 'vs'; // 'vs' or 'same'
 
         this.init();
@@ -69,14 +69,12 @@ class BrawlArena {
     setupDifficultySelection() {
         const difficultyButtons = {
             'diff-easy': AI_DIFFICULTY.EASY,
-            'diff-normal': AI_DIFFICULTY.NORMAL,
             'diff-hard': AI_DIFFICULTY.HARD,
         };
 
         const difficultyDescriptions = {
-            'diff-easy': '조준 불안정, 느린 반응 - 초보자에게 추천',
-            'diff-normal': '균형잡힌 AI - 적당한 도전',
-            'diff-hard': '정확한 조준, 빠른 판단 - 숙련자용',
+            'diff-easy': '느린 반응과 단순한 무빙 - 편하게 플레이',
+            'diff-hard': '전략적 압박과 거리 조절 - 도전적인 플레이',
         };
 
         Object.keys(difficultyButtons).forEach(btnId => {
