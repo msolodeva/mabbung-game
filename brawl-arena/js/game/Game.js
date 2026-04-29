@@ -28,7 +28,7 @@ export class Game {
      * @param {string} player2Brawler - 플레이어 2의 브롤러 ID (예: 'COLT')
      * @param {Object} mapData - 맵 데이터 (mapData.js에서 가져옴)
      */
-    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP, teamMode = 'vs') {
+    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP, teamMode = 'vs', aiDifficultiesByTeam = {}) {
         this.player1BrawlerId = player1Brawler;
         this.player2BrawlerId = player2Brawler;
         this.teamMode = teamMode;
@@ -61,6 +61,10 @@ export class Game {
         this.gameMode = null;
 
         // AI Difficulty
+        this.aiDifficultiesByTeam = {
+            [TEAMS.BLUE]: aiDifficultiesByTeam[TEAMS.BLUE] || AI_DIFFICULTY.EASY,
+            [TEAMS.RED]: aiDifficultiesByTeam[TEAMS.RED] || AI_DIFFICULTY.EASY,
+        };
         this.aiDifficulty = AI_DIFFICULTY.EASY;
 
         // Timing
@@ -74,6 +78,10 @@ export class Game {
      */
     get camera() {
         return this.renderSystem.camera;
+    }
+
+    getAiDifficultyForTeam(team) {
+        return this.aiDifficultiesByTeam[team] || this.aiDifficulty || AI_DIFFICULTY.EASY;
     }
 
     /**

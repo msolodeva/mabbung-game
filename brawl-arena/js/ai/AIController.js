@@ -3,7 +3,7 @@
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
-import { AI_CONFIG, TEAMS } from '../utils/constants.js';
+import { AI_CONFIG, AI_DIFFICULTY, TEAMS } from '../utils/constants.js';
 import { Pathfinder } from './Pathfinder.js';
 import { FlowField } from './FlowField.js';
 
@@ -39,7 +39,7 @@ export class AIController {
 
         // Direction smoothing (방향 스무딩)
         this.smoothedDirection = new Vector2(0, 0);
-        // smoothingFactor는 난이도 설정에서 가져옴 (applyDirectionSmoothing에서 사용)
+        // smoothingFactor는 AI 지능 설정에서 가져옴 (applyDirectionSmoothing에서 사용)
 
         // Reaction delay system (반응 지연)
         this.reactionQueue = [];
@@ -75,6 +75,14 @@ export class AIController {
 
         // Patrol wait timer (순찰 대기 타이머)
         this.patrolWaitTimer = 0;
+    }
+
+    getDifficulty() {
+        if (typeof this.game.getAiDifficultyForTeam === 'function') {
+            return this.game.getAiDifficultyForTeam(this.brawler.team);
+        }
+
+        return this.game.aiDifficulty || AI_DIFFICULTY.EASY;
     }
 
     /**
@@ -115,7 +123,7 @@ export class AIController {
         this.updateGlobalStats();
 
         const deltaMs = deltaTime * 1000;
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
 
         // Stuck detection
         this.detectStuck(deltaMs);
@@ -133,7 +141,7 @@ export class AIController {
             this.patrolWaitTimer -= deltaMs;
         }
 
-        // 난이도별 의사결정 간격 (무작위성 적용)
+            // 지능별 의사결정 간격 (무작위성 적용)
         if (this.decisionTimer >= this.nextDecisionInterval) {
             this.decisionTimer = 0;
             this.makeDecision();
@@ -160,7 +168,7 @@ export class AIController {
             return;
         }
 
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
 
         // 타겟 방향 계산
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
@@ -191,7 +199,7 @@ export class AIController {
     }
 
     detectStuck(deltaMs) {
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const currentPos = this.brawler.position.clone();
 
         if (this.lastPosition) {
@@ -201,7 +209,7 @@ export class AIController {
                 // We're trying to move but not moving much
                 this.stuckTimer += deltaMs;
 
-                // 난이도별 반응 시간
+                // 지능별 반응 시간
                 if (this.stuckTimer > difficulty.stuckThreshold) {
                     this.onStuck();
                     this.stuckTimer = 0;
@@ -402,14 +410,14 @@ export class AIController {
 
     /**
      * 상황에 따른 동적 후퇴 임계값 계산
-     * - 기본값: 난이도별 설정값 사용
+     * - 기본값: 지능별 설정값 사용
      * - 우리 팀 승리 카운트다운 중: 보수적 후퇴 (운반자는 90%, 호위병은 기본값 + 0.2)
      * - 상대 팀 승리 카운트다운 중: 공격적 플레이 (25%까지 버팀)
      *
      * @returns {number} 후퇴 임계값 (0~1 범위의 체력 비율)
      */
     calculateRetreatThreshold() {
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const baseThreshold = difficulty.retreatThreshold;
 
         // 우리 팀이 승리 카운트다운 중
@@ -492,7 +500,7 @@ export class AIController {
             }
         }
 
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const ammoPercent = this.brawler.ammo / this.brawler.ammoMax;
 
@@ -752,7 +760,7 @@ export class AIController {
      * 방향 전환을 부드럽게 하여 지그재그 움직임 방지
      */
     applyDirectionSmoothing() {
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const targetDir = this.brawler.moveDirection;
 
         if (targetDir.magnitude() < 0.1) {
@@ -1136,7 +1144,7 @@ export class AIController {
 
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const evasionSkill = typeof difficulty.evasionSkill === 'number' ? difficulty.evasionSkill : 1;
 
         // Aim and shoot
@@ -1160,7 +1168,7 @@ export class AIController {
                 return;
             }
 
-            // 기본 조준 오차 (난이도 기반)
+            // 기본 조준 오차 (AI 지능 기반)
             const baseInaccuracy = (Math.random() - 0.5) * difficulty.aimInaccuracy;
 
             // 조준 떨림 (시간 기반 사인파)
@@ -1201,7 +1209,7 @@ export class AIController {
     }
 
     shouldAttemptCombatShot(distance, randomValue = Math.random()) {
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const rangeMultiplier = difficulty.combatAttackRangeMultiplier ?? 1;
         const attackChance = difficulty.combatAttackChance ?? 1;
         const maxComfortRange = this.brawler.attackRange * rangeMultiplier;
@@ -1214,7 +1222,7 @@ export class AIController {
     }
 
     chooseCombatMovement(toTarget, distance, randomFn = Math.random, precomputedStrafeDir = null, evasionSkillOverride = null) {
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const normalizedTarget = toTarget.normalize();
         const strafeDir = precomputedStrafeDir ||
             toTarget.rotate(((Math.PI / 2) + (randomFn() - 0.5) * 0.1) * this.strafeSide).normalize();
@@ -1263,7 +1271,7 @@ export class AIController {
     tryUseSuper() {
         if (!this.brawler.superReady || !this.brawler.isAlive) return;
 
-        const difficulty = this.game.aiDifficulty;
+        const difficulty = this.getDifficulty();
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
         const nearestEnemy = this.findNearestEnemy();
         const distToEnemy = nearestEnemy ? this.brawler.position.distanceTo(nearestEnemy.position) : Infinity;

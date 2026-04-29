@@ -40,6 +40,13 @@ function createController(difficulty) {
     return new AIController(brawler, game);
 }
 
+function createTeamDifficultyController(team, difficultiesByTeam) {
+    const controller = createController(AI_DIFFICULTY.EASY);
+    controller.brawler.team = team;
+    controller.game.getAiDifficultyForTeam = targetTeam => difficultiesByTeam[targetTeam];
+    return controller;
+}
+
 test('AI difficulty exposes only easy and hard presets', () => {
     assert.deepEqual(Object.keys(AI_DIFFICULTY), ['EASY', 'HARD']);
     assert.equal(AI_DIFFICULTY.NORMAL, undefined);
@@ -55,6 +62,15 @@ test('difficulty presets keep both AI levels intentionally imperfect', () => {
     assert.equal(AI_DIFFICULTY.HARD.combatAttackChance <= 0.68, true);
     assert.equal(AI_DIFFICULTY.HARD.combatStrafeChance <= 0.5, true);
     assert.equal(AI_DIFFICULTY.HARD.combatBackoffChance <= 0.62, true);
+});
+
+test('AI controller reads difficulty from its own team', () => {
+    const controller = createTeamDifficultyController('red', {
+        blue: AI_DIFFICULTY.EASY,
+        red: AI_DIFFICULTY.HARD,
+    });
+
+    assert.equal(controller.getDifficulty(), AI_DIFFICULTY.HARD);
 });
 
 test('borderline attack windows are no longer automatic even on hard', () => {

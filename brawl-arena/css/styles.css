@@ -1277,6 +1277,11 @@ body {
         width: 100%;
     }
 
+    .difficulty-team-columns {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
     .toggle-btn,
     .difficulty-btn {
         min-width: 0;
@@ -1391,7 +1396,7 @@ body {
 .difficulty-selection-section {
     margin: 0 0 2px 0;
     text-align: center;
-    width: min(100%, 640px);
+    width: min(100%, 760px);
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
@@ -1407,8 +1412,38 @@ body {
     margin: 8px 0;
 }
 
+.difficulty-team-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.team-difficulty-panel {
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    padding: 12px;
+    background: rgba(15, 52, 96, 0.5);
+}
+
+.team-difficulty-panel.blue {
+    border-color: rgba(74, 144, 217, 0.55);
+}
+
+.team-difficulty-panel.red {
+    border-color: rgba(231, 76, 60, 0.55);
+}
+
+.team-difficulty-label {
+    font-family: 'Lilita One', cursive;
+    color: white;
+    font-size: 16px;
+    text-align: center;
+    text-shadow: var(--text-shadow);
+}
+
 .difficulty-btn {
-    padding: 11px 30px;
+    padding: 10px 20px;
     font-size: 16px;
     font-family: 'Lilita One', cursive;
     border: 3px solid transparent;
@@ -1436,8 +1471,9 @@ body {
 .difficulty-desc {
     color: rgba(255, 255, 255, 0.95);
     font-size: 15px;
-    margin-top: 8px;
+    margin-top: 0;
     min-height: 24px;
     line-height: 1.5;
+    text-align: center;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }

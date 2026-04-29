@@ -142,11 +142,11 @@ export const BRAWLERS = {
         color: '#e74c3c',
         health: 5600,
         speed: 245,
-        attackDamage: 820,
+        attackDamage: 900,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 330,
-        attackSpeed: 780,
+        attackRange: 360,
+        attackSpeed: 740,
         ammoMax: 3,
         ammoReloadTime: 1250,
         superCharge: 7,
@@ -310,7 +310,7 @@ export const AI_CONFIG = {
 // ========================================
 // AI DIFFICULTY SYSTEM
 // ========================================
-// 2단계 난이도: 낮은 압박의 쉬움, 완벽하지 않은 도전의 어려움
+// 2단계 AI 지능: 낮은 압박의 쉬움, 완벽하지 않은 도전의 어려움
 // ========================================
 export const AI_DIFFICULTY = {
     EASY: {

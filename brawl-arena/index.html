@@ -59,17 +59,36 @@
                 </div>
 
                 <div class="difficulty-selection-section">
-                    <h3 class="section-title">🎯 AI 난이도</h3>
-                    <div class="difficulty-selector">
-                        <button class="difficulty-btn active" id="diff-easy" data-difficulty="easy">
-                            🟢 쉬움
-                        </button>
-                        <button class="difficulty-btn" id="diff-hard" data-difficulty="hard">
-                            🔴 어려움
-                        </button>
-                    </div>
-                    <div class="difficulty-desc" id="difficulty-desc">
-                        느린 반응과 단순한 무빙 - 편하게 플레이
+                    <h3 class="section-title">🎯 팀별 AI 지능</h3>
+                    <div class="difficulty-team-columns">
+                        <div class="team-difficulty-panel blue left">
+                            <div class="team-difficulty-label">🔵 Blue Team</div>
+                            <div class="difficulty-selector">
+                                <button class="difficulty-btn active" id="blue-diff-easy" data-team="blue" data-difficulty="easy">
+                                    🟢 낮은 지능
+                                </button>
+                                <button class="difficulty-btn" id="blue-diff-hard" data-team="blue" data-difficulty="hard">
+                                    🔴 높은 지능
+                                </button>
+                            </div>
+                            <div class="difficulty-desc" id="blue-difficulty-desc">
+                                느린 반응과 단순한 무빙
+                            </div>
+                        </div>
+                        <div class="team-difficulty-panel red right">
+                            <div class="team-difficulty-label">🔴 Red Team</div>
+                            <div class="difficulty-selector">
+                                <button class="difficulty-btn" id="red-diff-easy" data-team="red" data-difficulty="easy">
+                                    🟢 낮은 지능
+                                </button>
+                                <button class="difficulty-btn active" id="red-diff-hard" data-team="red" data-difficulty="hard">
+                                    🔴 높은 지능
+                                </button>
+                            </div>
+                            <div class="difficulty-desc" id="red-difficulty-desc">
+                                전략적 압박과 거리 조절
+                            </div>
+                        </div>
                     </div>
                 </div>
 

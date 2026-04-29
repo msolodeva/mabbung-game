@@ -21,13 +21,13 @@ export class Nita extends Brawler {
             {
                 speed: 550,
                 damage: this.config.attackDamage,
-                size: 25,
+                size: 28,
                 range: this.config.attackRange,
                 owner: this,
                 team: this.team,
                 color: '#e74c3c',
                 projectileType: 'wave',
-                width: 80,
+                width: 100,
                 piercing: true,
             }
         );

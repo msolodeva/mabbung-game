@@ -98,21 +98,14 @@ export class Projectile extends Entity {
 
     checkHit(brawler) {
         if (this.projectileType === 'wave') {
-            // Wide wave attack
-            // 1. Distance check: Is the brawler within the wave's actual body?
             const toBrawler = brawler.position.subtract(this.position);
-            const dist = toBrawler.magnitude();
+            const forwardDistance = toBrawler.dot(this.direction);
+            const lateralDistance = Math.abs(toBrawler.cross(this.direction));
+            const targetRadius = brawler.radius || 0;
 
-            // The 'radius' of the wave acts as its length/thickness in the travel direction
-            if (dist > this.radius + brawler.radius) return false;
-
-            // 2. Angle/Width check: Is the brawler within the angular spread of the wave?
-            const dot = toBrawler.normalize().dot(this.direction);
-            // Convert width (in pixels) to an approximate angular threshold
-            // Wave projectiles use a broad forward arc.
-            const angleThreshold = 0.5; // Roughly 60 degrees spread
-
-            return dot > angleThreshold;
+            return forwardDistance >= -targetRadius
+                && forwardDistance <= this.radius + targetRadius
+                && lateralDistance <= (this.width / 2) + targetRadius;
         }
 
         return this.collidesWith(brawler);
