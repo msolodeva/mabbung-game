@@ -17,13 +17,12 @@
         <div id="lobby-screen" class="screen">
             <div class="lobby-content">
                 <h1 class="game-title">BRAWL ARENA</h1>
-                <h2 class="mode-title">⚔️ 2 PLAYER GEM GRAB ⚔️</h2>
 
                 <div class="player-selection-container">
                     <!-- Player 1 Selection -->
                     <div class="player-selection player1">
-                        <h3 class="player-title">🔵 PLAYER 1</h3>
-                        <div class="control-info"><b>WASD</b> 브롤러 선택/이동 | <b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                        <h3 class="player-title">🔵 플레이어 1</h3>
+                        <div class="control-info"><b>WASD</b> 선택/이동 | <b>F</b> 공격 | <b>G</b> 궁극기</div>
                         <div class="brawler-grid" id="player1-brawler-grid">
                             <!-- Brawlers will be added by JS -->
                         </div>
@@ -32,14 +31,14 @@
 
                     <div class="team-mode-toggle" id="team-mode-toggle">
                         <div class="toggle-label">팀 모드</div>
-                        <button class="toggle-btn active" id="mode-vs" data-mode="vs">⚔️ VS</button>
+                        <button class="toggle-btn active" id="mode-vs" data-mode="vs">⚔️ 대결</button>
                         <button class="toggle-btn" id="mode-same" data-mode="same">🤝 같은 팀</button>
                     </div>
 
                     <!-- Player 2 Selection -->
                     <div class="player-selection player2">
-                        <h3 class="player-title">🔴 PLAYER 2</h3>
-                        <div class="control-info"><b>방향키</b> 브롤러 선택/이동 | <b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                        <h3 class="player-title">🔴 플레이어 2</h3>
+                        <div class="control-info"><b>방향키</b> 선택/이동 | <b>R-Shift</b> 공격 | <b>Enter</b> 궁극기</div>
                         <div class="brawler-grid" id="player2-brawler-grid">
                             <!-- Brawlers will be added by JS -->
                         </div>
@@ -48,13 +47,13 @@
                 </div>
 
                 <div class="map-selection-section">
-                    <h3 class="section-title">🗺️ SELECT BATTLEGROUND</h3>
+                    <h3 class="section-title">🗺️ 전장 선택</h3>
                     <div class="map-selector" id="map-selector">
                         <!-- Maps will be added by JS -->
                     </div>
                     <div class="map-info" id="map-info">
-                        <div class="map-name" id="selected-map-name">Map Name</div>
-                        <div class="map-desc" id="selected-map-desc">Map Description</div>
+                        <div class="map-name" id="selected-map-name">전장 이름</div>
+                        <div class="map-desc" id="selected-map-desc">전장 설명</div>
                     </div>
                 </div>
 
@@ -62,38 +61,38 @@
                     <h3 class="section-title">🎯 팀별 AI 지능</h3>
                     <div class="difficulty-team-columns">
                         <div class="team-difficulty-panel blue left">
-                            <div class="team-difficulty-label">🔵 Blue Team</div>
+                            <div class="team-difficulty-label">🔵 BLUE 팀</div>
                             <div class="difficulty-selector">
-                                <button class="difficulty-btn active" id="blue-diff-easy" data-team="blue" data-difficulty="easy">
-                                    🟢 낮은 지능
+                                <button class="difficulty-btn" id="blue-diff-easy" data-team="blue" data-difficulty="easy">
+                                    낮음
+                                </button>
+                                <button class="difficulty-btn active" id="blue-diff-normal" data-team="blue" data-difficulty="normal">
+                                    보통
                                 </button>
                                 <button class="difficulty-btn" id="blue-diff-hard" data-team="blue" data-difficulty="hard">
-                                    🔴 높은 지능
+                                    높음
                                 </button>
-                            </div>
-                            <div class="difficulty-desc" id="blue-difficulty-desc">
-                                느린 반응과 단순한 무빙
                             </div>
                         </div>
                         <div class="team-difficulty-panel red right">
-                            <div class="team-difficulty-label">🔴 Red Team</div>
+                            <div class="team-difficulty-label">🔴 RED 팀</div>
                             <div class="difficulty-selector">
                                 <button class="difficulty-btn" id="red-diff-easy" data-team="red" data-difficulty="easy">
-                                    🟢 낮은 지능
+                                    낮음
+                                </button>
+                                <button class="difficulty-btn" id="red-diff-normal" data-team="red" data-difficulty="normal">
+                                    보통
                                 </button>
                                 <button class="difficulty-btn active" id="red-diff-hard" data-team="red" data-difficulty="hard">
-                                    🔴 높은 지능
+                                    높음
                                 </button>
-                            </div>
-                            <div class="difficulty-desc" id="red-difficulty-desc">
-                                전략적 압박과 거리 조절
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <button class="play-button" id="play-button">
-                    <span>START BATTLE!</span>
+                    <span>전투 시작</span>
                 </button>
             </div>
         </div>

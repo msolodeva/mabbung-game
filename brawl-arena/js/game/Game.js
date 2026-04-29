@@ -276,7 +276,10 @@ export class Game {
                 <div class="pause-content">
                     <h1>⏸️ 일시정지</h1>
                     <p>ESC 키를 눌러 게임을 재개하세요</p>
-                    <button id="resume-btn" class="pause-btn">▶️ 게임 재개</button>
+                    <div class="pause-actions">
+                        <button id="resume-btn" class="pause-btn">▶️ 게임 재개</button>
+                        <button id="restart-btn" class="pause-btn restart">↻ 처음부터 다시</button>
+                    </div>
                 </div>
             `;
             overlay.style.cssText = `
@@ -316,8 +319,16 @@ export class Game {
                 font-weight: bold;
                 text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
             `;
-            const btn = overlay.querySelector('#resume-btn');
-            btn.style.cssText = `
+            const actions = overlay.querySelector('.pause-actions');
+            actions.style.cssText = `
+                display: flex;
+                gap: 14px;
+                justify-content: center;
+                flex-wrap: wrap;
+            `;
+            const buttons = overlay.querySelectorAll('.pause-btn');
+            buttons.forEach(btn => {
+                btn.style.cssText = `
                 padding: 20px 50px;
                 font-size: 26px;
                 font-family: 'Lilita One', cursive;
@@ -329,15 +340,22 @@ export class Game {
                 font-weight: bold;
                 transition: transform 0.2s, box-shadow 0.2s;
             `;
-            btn.addEventListener('mouseenter', () => {
-                btn.style.transform = 'scale(1.05)';
-                btn.style.boxShadow = '0 5px 20px rgba(46, 204, 113, 0.5)';
+                btn.addEventListener('mouseenter', () => {
+                    btn.style.transform = 'scale(1.05)';
+                    btn.style.boxShadow = '0 5px 20px rgba(46, 204, 113, 0.5)';
+                });
+                btn.addEventListener('mouseleave', () => {
+                    btn.style.transform = 'scale(1)';
+                    btn.style.boxShadow = 'none';
+                });
             });
-            btn.addEventListener('mouseleave', () => {
-                btn.style.transform = 'scale(1)';
-                btn.style.boxShadow = 'none';
+            const resumeBtn = overlay.querySelector('#resume-btn');
+            const restartBtn = overlay.querySelector('#restart-btn');
+            restartBtn.style.background = 'linear-gradient(135deg, #d35400 0%, #f39c12 100%)';
+            resumeBtn.addEventListener('click', () => this.resume());
+            restartBtn.addEventListener('click', () => {
+                window.dispatchEvent(new CustomEvent('restart-current-game'));
             });
-            btn.addEventListener('click', () => this.resume());
             document.body.appendChild(overlay);
         } else {
             overlay.style.display = 'flex';

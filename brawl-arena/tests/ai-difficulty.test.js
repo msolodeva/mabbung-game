@@ -47,20 +47,31 @@ function createTeamDifficultyController(team, difficultiesByTeam) {
     return controller;
 }
 
-test('AI difficulty exposes only easy and hard presets', () => {
-    assert.deepEqual(Object.keys(AI_DIFFICULTY), ['EASY', 'HARD']);
-    assert.equal(AI_DIFFICULTY.NORMAL, undefined);
+test('AI intelligence exposes low, medium, and high presets', () => {
+    assert.deepEqual(Object.keys(AI_DIFFICULTY), ['EASY', 'NORMAL', 'HARD']);
 });
 
-test('difficulty presets keep both AI levels intentionally imperfect', () => {
+test('intelligence presets scale smoothly and stay intentionally imperfect', () => {
     assert.equal(AI_DIFFICULTY.EASY.reactionDelay >= 500, true);
     assert.equal(AI_DIFFICULTY.EASY.combatAttackChance <= 0.35, true);
     assert.equal(AI_DIFFICULTY.EASY.combatStrafeChance <= 0.12, true);
 
+    assert.equal(AI_DIFFICULTY.NORMAL.reactionDelay > AI_DIFFICULTY.HARD.reactionDelay, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.reactionDelay < AI_DIFFICULTY.EASY.reactionDelay, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.poorDecisionChance < AI_DIFFICULTY.EASY.poorDecisionChance, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.poorDecisionChance > AI_DIFFICULTY.HARD.poorDecisionChance, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.combatAttackChance > AI_DIFFICULTY.EASY.combatAttackChance, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.combatAttackChance < AI_DIFFICULTY.HARD.combatAttackChance, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.reactionDelay <= 340, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.poorDecisionChance <= 0.28, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.combatAttackChance >= 0.52, true);
+    assert.equal(AI_DIFFICULTY.NORMAL.combatStrafeChance >= 0.32, true);
+
     assert.equal(AI_DIFFICULTY.HARD.reactionDelay >= 220, true);
-    assert.equal(AI_DIFFICULTY.HARD.poorDecisionChance >= 0.16, true);
-    assert.equal(AI_DIFFICULTY.HARD.combatAttackChance <= 0.68, true);
-    assert.equal(AI_DIFFICULTY.HARD.combatStrafeChance <= 0.5, true);
+    assert.equal(AI_DIFFICULTY.HARD.reactionDelay <= 230, true);
+    assert.equal(AI_DIFFICULTY.HARD.poorDecisionChance >= 0.12, true);
+    assert.equal(AI_DIFFICULTY.HARD.combatAttackChance <= 0.72, true);
+    assert.equal(AI_DIFFICULTY.HARD.combatStrafeChance <= 0.56, true);
     assert.equal(AI_DIFFICULTY.HARD.combatBackoffChance <= 0.62, true);
 });
 
@@ -78,7 +89,7 @@ test('borderline attack windows are no longer automatic even on hard', () => {
     const hardController = createController(AI_DIFFICULTY.HARD);
 
     const distance = 260;
-    const randomValue = 0.7;
+    const randomValue = 0.71;
 
     assert.equal(
         easyController.shouldAttemptCombatShot(distance, randomValue),

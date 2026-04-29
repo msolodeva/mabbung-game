@@ -14,3 +14,25 @@ test('selected brawler description is constrained to one line', () => {
     assert.match(statDescriptionRule[0], /overflow:\s*hidden\s*;/);
     assert.match(statDescriptionRule[0], /text-overflow:\s*ellipsis\s*;/);
 });
+
+test('lobby copy uses clear Korean action labels', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+    assert.equal(html.includes('플레이어 1'), true);
+    assert.equal(html.includes('플레이어 2'), true);
+    assert.equal(html.includes('전장 선택'), true);
+    assert.equal(html.includes('전투 시작'), true);
+    assert.equal(html.includes('SELECT BATTLEGROUND'), false);
+    assert.equal(html.includes('START BATTLE!'), false);
+});
+
+test('lobby keeps brawler stats useful while simplifying AI selection', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+
+    assert.equal(html.includes('mode-title'), false);
+    assert.equal(main.includes('stats-container-detailed'), true);
+    assert.equal(main.includes('super-container-detailed'), false);
+    assert.equal(html.includes('blue-difficulty-desc'), false);
+    assert.equal(html.includes('red-difficulty-desc'), false);
+});

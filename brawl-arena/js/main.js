@@ -14,7 +14,7 @@ class BrawlArena {
         this.brawlerIds = Object.values(BRAWLERS).map(b => b.id);
         this.selectedMapId = 'open'; // Default map
         this.selectedTeamDifficulties = {
-            blue: AI_DIFFICULTY.EASY,
+            blue: AI_DIFFICULTY.NORMAL,
             red: AI_DIFFICULTY.HARD,
         };
         this.teamMode = 'vs'; // 'vs' or 'same'
@@ -72,12 +72,8 @@ class BrawlArena {
     setupDifficultySelection() {
         const difficulties = {
             easy: AI_DIFFICULTY.EASY,
+            normal: AI_DIFFICULTY.NORMAL,
             hard: AI_DIFFICULTY.HARD,
-        };
-
-        const difficultyDescriptions = {
-            easy: '느린 반응과 단순한 무빙',
-            hard: '전략적 압박과 거리 조절',
         };
 
         document.querySelectorAll('.difficulty-btn[data-team][data-difficulty]').forEach(btn => {
@@ -91,9 +87,6 @@ class BrawlArena {
                 });
 
                 btn.classList.add('active');
-
-                const desc = document.getElementById(`${team}-difficulty-desc`);
-                if (desc) desc.textContent = difficultyDescriptions[difficultyId];
 
                 this.selectedTeamDifficulties[team] = difficulties[difficultyId];
             });
@@ -203,13 +196,13 @@ class BrawlArena {
         // Update stats display
         const stats = document.getElementById(statsId);
         if (stats) {
-            const healthPercent = (brawler.health / 5000) * 100;
-            const damagePercent = (brawler.attackDamage / 1000) * 100;
-            const rangePercent = (brawler.attackRange / 600) * 100;
+            const healthPercent = (brawler.health / 6000) * 100;
+            const damagePercent = (brawler.attackDamage / 1300) * 100;
+            const rangePercent = (brawler.attackRange / 650) * 100;
 
             stats.innerHTML = `
                 <div class="selected-brawler-header">
-                    <div class="selected-brawler-emoji pulse-animation">${brawler.emoji}</div>
+                    <div class="selected-brawler-emoji">${brawler.emoji}</div>
                     <div class="selected-brawler-name-container">
                         <div class="selected-brawler-name">${brawler.name}</div>
                         <div class="stat-description">${brawler.description}</div>
@@ -217,37 +210,26 @@ class BrawlArena {
                 </div>
                 <div class="stats-container-detailed">
                     <div class="stat-row-detailed">
-                        <div class="stat-label">❤️ 체력 (Health)</div>
+                        <div class="stat-label">체력</div>
                         <div class="stat-value-container">
-                            <div class="stat-bar"><div class="stat-fill health" style="width: ${healthPercent}%"></div></div>
+                            <div class="stat-bar"><div class="stat-fill health" style="width: ${Math.min(healthPercent, 100)}%"></div></div>
                             <span class="stat-number">${brawler.health}</span>
                         </div>
                     </div>
                     <div class="stat-row-detailed">
-                        <div class="stat-label">⚔️ 공격력 (Damage)</div>
+                        <div class="stat-label">공격</div>
                         <div class="stat-value-container">
-                            <div class="stat-bar"><div class="stat-fill damage" style="width: ${damagePercent}%"></div></div>
+                            <div class="stat-bar"><div class="stat-fill damage" style="width: ${Math.min(damagePercent, 100)}%"></div></div>
                             <span class="stat-number">${brawler.attackDamage}</span>
                         </div>
                     </div>
                     <div class="stat-row-detailed">
-                        <div class="stat-label">🎯 사거리 (Range)</div>
+                        <div class="stat-label">사거리</div>
                         <div class="stat-value-container">
-                            <div class="stat-bar"><div class="stat-fill range" style="width: ${rangePercent}%"></div></div>
+                            <div class="stat-bar"><div class="stat-fill range" style="width: ${Math.min(rangePercent, 100)}%"></div></div>
                             <span class="stat-number">${brawler.attackRange}</span>
                         </div>
                     </div>
-                    <div class="stat-row-detailed">
-                        <div class="stat-label">🏃 이동 속도 (Speed)</div>
-                        <div class="stat-value-container">
-                            <div class="stat-bar"><div class="stat-fill speed" style="width: ${(brawler.speed / 320) * 100}%"></div></div>
-                            <span class="stat-number">${brawler.speed}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="super-container-detailed">
-                    <div class="super-label">ULTIMATE (궁극기)</div>
-                    <div class="super-description">${brawler.superDescription || ''}</div>
                 </div>
             `;
         }
@@ -268,8 +250,32 @@ class BrawlArena {
             });
         }
 
+        window.addEventListener('restart-current-game', () => this.restartGame());
+
         // Add keyboard navigation for brawler selection
         window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    }
+
+    restartGame() {
+        if (this.game) {
+            this.game.cleanup();
+            this.game = null;
+        }
+
+        const pauseOverlay = document.getElementById('pause-overlay');
+        if (pauseOverlay) {
+            pauseOverlay.remove();
+        }
+
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('lobby-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+
+        const canvas = document.getElementById('game-canvas');
+        const mapData = MAPS[this.selectedMapId];
+        this.game = new Game(canvas, this.player1Brawler, this.player2Brawler, mapData, this.teamMode, this.selectedTeamDifficulties);
+        this.game.init();
+        this.game.start();
     }
 
     handleKeyDown(e) {

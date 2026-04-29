@@ -310,12 +310,12 @@ export const AI_CONFIG = {
 // ========================================
 // AI DIFFICULTY SYSTEM
 // ========================================
-// 2단계 AI 지능: 낮은 압박의 쉬움, 완벽하지 않은 도전의 어려움
+// 3단계 AI 지능: 연습용 낮음, 균형 잡힌 보통, 완벽하지 않은 높음
 // ========================================
 export const AI_DIFFICULTY = {
     EASY: {
         id: 'easy',
-        name: '쉬움',
+        name: '낮은 지능',
 
         // 조준 실수
         aimInaccuracy: 1.75,          // 조준 오차 큼
@@ -344,30 +344,56 @@ export const AI_DIFFICULTY = {
         smoothingFactor: 0.36,
     },
 
+    NORMAL: {
+        id: 'normal',
+        name: '보통 지능',
+
+        aimInaccuracy: 1.16,
+        aimWobble: 0.42,
+        aimRotationSpeed: Math.PI * 0.72,
+
+        reactionDelay: 330,
+        decisionInterval: 660,
+
+        poorDecisionChance: 0.27,
+        retreatThreshold: 0.37,
+        wasteSuperChance: 0.16,
+
+        evasionSkill: 0.2,
+        combatAttackChance: 0.54,
+        combatAttackRangeMultiplier: 0.85,
+        combatStrafeChance: 0.32,
+        combatBackoffChance: 0.42,
+
+        pathUpdateFrequency: 740,
+        stuckThreshold: 740,
+        smoothingFactor: 0.3,
+    },
+
     HARD: {
         id: 'hard',
-        name: '어려움',
+        name: '높은 지능',
 
-        aimInaccuracy: 0.95,
-        aimWobble: 0.34,
-        aimRotationSpeed: Math.PI * 0.9,
+        aimInaccuracy: 0.82,
+        aimWobble: 0.28,
+        aimRotationSpeed: Math.PI * 1.0,
 
-        reactionDelay: 240,
-        decisionInterval: 520,
+        reactionDelay: 225,
+        decisionInterval: 470,
 
-        poorDecisionChance: 0.18,
-        retreatThreshold: 0.3,
-        wasteSuperChance: 0.08,
+        poorDecisionChance: 0.13,
+        retreatThreshold: 0.28,
+        wasteSuperChance: 0.05,
 
         // 전투 회피/무빙 숙련도
-        evasionSkill: 0.28,
-        combatAttackChance: 0.64,
-        combatAttackRangeMultiplier: 0.9,
-        combatStrafeChance: 0.46,
-        combatBackoffChance: 0.58,
+        evasionSkill: 0.34,
+        combatAttackChance: 0.7,
+        combatAttackRangeMultiplier: 0.94,
+        combatStrafeChance: 0.54,
+        combatBackoffChance: 0.62,
 
-        pathUpdateFrequency: 560,
-        stuckThreshold: 560,
-        smoothingFactor: 0.28,
+        pathUpdateFrequency: 500,
+        stuckThreshold: 500,
+        smoothingFactor: 0.26,
     },
 };

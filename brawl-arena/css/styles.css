@@ -95,68 +95,28 @@ body {
 
 .lobby-content {
     text-align: center;
-    padding: 18px 22px 24px;
+    padding: 14px 20px 20px;
     max-width: 1480px;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin: 0 auto;
     min-height: 100vh;
 }
 
 .game-title {
     font-family: 'Lilita One', cursive;
-    font-size: 3.6rem;
+    font-size: 3.1rem;
     background: var(--gradient-gold);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-shadow: none;
     filter: drop-shadow(3px 3px 0 var(--gold-dark)) drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
-    margin-bottom: -4px;
-    animation: titlePulse 2s ease-in-out infinite;
+    margin-bottom: 0;
     line-height: 0.95;
-}
-
-@keyframes titleEase {
-    0% {
-        transform: scale(0.9) translateY(20px);
-        opacity: 0;
-    }
-
-    100% {
-        transform: scale(1) translateY(0);
-        opacity: 1;
-    }
-}
-
-@keyframes titlePulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.4));
-    }
-
-    50% {
-        transform: scale(1.05);
-        filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.7));
-    }
-}
-
-.mode-title {
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 2px;
-    padding: 6px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.3);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-    font-weight: bold;
-    letter-spacing: 1px;
 }
 
 .section-title {
@@ -282,48 +242,6 @@ body {
     justify-content: center;
     font-size: 3rem;
     border: 3px solid var(--gold);
-}
-
-.brawler-stats {
-    text-align: left;
-    color: var(--text-white);
-}
-
-.brawler-stats .stat {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 5px 0;
-    font-size: 1rem;
-}
-
-.stat-bar {
-    width: 100px;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
-    overflow: hidden;
-}
-
-.stat-fill {
-    height: 100%;
-    border-radius: 4px;
-}
-
-.stat-fill.health {
-    background: var(--green);
-}
-
-.stat-fill.damage {
-    background: var(--red-team);
-}
-
-.stat-fill.range {
-    background: var(--blue-team);
-}
-
-.stat-fill.speed {
-    background: var(--orange);
 }
 
 .play-button {
@@ -865,10 +783,6 @@ body {
         font-size: 2.5rem;
     }
 
-    .mode-title {
-        font-size: 1.2rem;
-    }
-
     .brawler-card {
         width: 60px;
         height: 80px;
@@ -922,7 +836,7 @@ body {
 .player-selection {
     background: var(--panel-bg);
     border-radius: 8px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     flex: 1;
     min-width: 0;
     border: 1px solid var(--panel-border);
@@ -941,10 +855,10 @@ body {
 }
 
 .player-title {
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     font-family: 'Lilita One', cursive;
     color: var(--text-white);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     letter-spacing: 1px;
 }
@@ -958,19 +872,19 @@ body {
 }
 
 .control-info {
-    font-size: 0.92rem;
+    font-size: 0.82rem;
     color: rgba(255, 255, 255, 0.86);
-    margin-bottom: 10px;
-    padding: 8px 10px;
-    background: rgba(0, 0, 0, 0.36);
-    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
     line-height: 1.45;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 0;
 }
 
 .player-stats {
-    min-height: 286px;
-    margin-top: 10px;
+    min-height: 190px;
+    margin-top: 8px;
 }
 
 .stat-description {
@@ -1010,6 +924,23 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.stat-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.stat-fill.health {
+    background: var(--green);
+}
+
+.stat-fill.damage {
+    background: var(--red-team);
+}
+
+.stat-fill.range {
+    background: var(--blue-team);
+}
+
 .stat-number {
     font-size: 1.1rem;
     font-family: 'Lilita One', cursive;
@@ -1026,28 +957,24 @@ body {
 .selected-brawler-header {
     display: flex;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 10px;
-    background: rgba(255, 255, 255, 0.07);
-    padding: 8px;
+    gap: 10px;
+    margin-bottom: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 7px;
     border-radius: 8px;
     border-left: 4px solid var(--gold);
 }
 
 .selected-brawler-emoji {
-    font-size: 2.5rem;
+    font-size: 2.1rem;
     background: rgba(0, 0, 0, 0.3);
-    width: 58px;
-    height: 58px;
+    width: 50px;
+    height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-}
-
-.pulse-animation {
-    animation: emojiPulse 2s ease-in-out infinite;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes emojiPulse {
@@ -1069,7 +996,7 @@ body {
 
 .selected-brawler-name {
     font-family: 'Lilita One', cursive;
-    font-size: 1.8rem;
+    font-size: 1.35rem;
     color: var(--gold);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     letter-spacing: 1px;
@@ -1079,31 +1006,8 @@ body {
     background: rgba(0, 0, 0, 0.28);
     padding: 9px;
     border-radius: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.super-container-detailed {
-    background: linear-gradient(135deg, rgba(155, 89, 182, 0.24) 0%, rgba(15, 52, 96, 0.18) 100%);
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid rgba(155, 89, 182, 0.3);
-    text-align: left;
-}
-
-.super-label {
-    font-family: 'Lilita One', cursive;
-    font-size: 1.1rem;
-    color: var(--gold);
-    margin-bottom: 6px;
-    letter-spacing: 1.5px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.super-description {
-    font-size: 1.0rem;
-    color: rgba(255, 255, 255, 0.95);
-    line-height: 1.5;
 }
 
 .team-mode-toggle {
@@ -1168,18 +1072,6 @@ body {
 }
 
 
-
-.super-description {
-    margin-top: 12px;
-    padding: 10px 12px;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
-    border-left: 3px solid var(--gold);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: var(--gold);
-    font-weight: bold;
-    line-height: 1.4;
-}
 
 /* ========================================
    2 PLAYER CONTROL HINTS
@@ -1298,9 +1190,6 @@ body {
         font-size: 1.55rem;
     }
 
-    .super-description {
-        font-size: 0.8rem;
-    }
 }
 
 /* Score UI */
@@ -1407,7 +1296,7 @@ body {
 
 .difficulty-selector {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
     margin: 8px 0;
 }
@@ -1443,8 +1332,8 @@ body {
 }
 
 .difficulty-btn {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 9px 12px;
+    font-size: 15px;
     font-family: 'Lilita One', cursive;
     border: 3px solid transparent;
     border-radius: 8px;
@@ -1466,14 +1355,4 @@ body {
     background: var(--bg-medium);
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
     transform: scale(1.08);
-}
-
-.difficulty-desc {
-    color: rgba(255, 255, 255, 0.95);
-    font-size: 15px;
-    margin-top: 0;
-    min-height: 24px;
-    line-height: 1.5;
-    text-align: center;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
