@@ -6,6 +6,7 @@ export class SoundManager {
         this.masterGain.gain.value = 0.3; // Master volume
         this.masterGain.connect(this.ctx.destination);
         this.enabled = true;
+        this.noiseBuffer = null;
     }
 
     play(name) {
@@ -48,16 +49,8 @@ export class SoundManager {
     }
 
     playExplode() {
-        const bufferSize = this.ctx.sampleRate * 0.5; // 0.5 seconds
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1; // White noise
-        }
-
         const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = this.getNoiseBuffer();
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
@@ -73,6 +66,24 @@ export class SoundManager {
         gain.connect(this.masterGain);
 
         noise.start();
+        if (typeof noise.stop === 'function') {
+            noise.stop(this.ctx.currentTime + 0.5);
+        }
+    }
+
+    getNoiseBuffer() {
+        if (this.noiseBuffer) return this.noiseBuffer;
+
+        const bufferSize = this.ctx.sampleRate * 0.5; // 0.5 seconds
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1; // White noise
+        }
+
+        this.noiseBuffer = buffer;
+        return this.noiseBuffer;
     }
 
     playItemGet() {

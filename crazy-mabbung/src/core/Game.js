@@ -6,6 +6,7 @@ import { AssetManager } from '../managers/AssetManager.js';
 import { AIController } from '../managers/AIController.js';
 import { DangerMap } from '../managers/DangerMap.js';
 import { SoundManager } from '../managers/SoundManager.js';
+import { EffectsManager } from '../managers/EffectsManager.js';
 
 export class Game {
     constructor(ctx, p1Config = null, p2Config = null, mapTheme = null) {
@@ -17,6 +18,7 @@ export class Game {
         this.debug = true;
         this.assets = new AssetManager();
         this.sounds = new SoundManager();
+        this.effects = new EffectsManager();
         this.tileSize = 64;
 
         // Load Assets
@@ -135,6 +137,7 @@ export class Game {
         this.bombs = [];
         this.explosions = [];
         this.items = [];
+        this.effects.clear();
 
         this.gameOver = false;
         this.winner = null;
@@ -166,6 +169,8 @@ export class Game {
     }
 
     update(deltaTime) {
+        this.effects.update(deltaTime);
+
         if (this.gameOver) return;
 
         // DangerMap 업데이트
@@ -254,6 +259,10 @@ export class Game {
     draw() {
         // Clear screen
         this.ctx.clearRect(0, 0, this.width, this.height);
+
+        const shake = this.effects.getShakeOffset();
+        this.ctx.save();
+        this.ctx.translate(shake.x, shake.y);
 
         // Draw Map
         this.map.draw(this.ctx, this.assets);
@@ -384,6 +393,9 @@ export class Game {
                 this.ctx.fillText('AI', player.x, player.y - 45);
             }
         });
+
+        this.effects.draw(this.ctx);
+        this.ctx.restore();
     }
 
     checkItemCollection(player) {
@@ -407,6 +419,20 @@ export class Game {
         } else if (type === 'count') {
             player.maxBombs++;
         }
+        const label = {
+            speed: '+SPEED',
+            range: '+RANGE',
+            count: '+BOMB'
+        }[type] || '+ITEM';
+        this.effects.spawnText(label, player.x, player.y - 36, '#f9e79f');
+        this.effects.spawnBurst(player.x, player.y, {
+            color: '#f1c40f',
+            count: 10,
+            minSpeed: 45,
+            maxSpeed: 130,
+            minSize: 3,
+            maxSize: 6
+        });
         this.sounds.play('item_get');
     }
 
@@ -423,20 +449,26 @@ export class Game {
         if (p1.state === 'TRAPPED' && p2.state === 'NORMAL') {
             if (p1.team === p2.team) {
                 p1.state = 'NORMAL';
+                this.effects.spawnText('RESCUE!', p1.x, p1.y - 38, '#2ecc71');
                 console.log("Player Rescued!");
                 this.sounds.play('item_get'); // Reuse positive sound
             } else {
                 p1.state = 'DEAD';
+                this.effects.spawnText('KO!', p1.x, p1.y - 38, '#ff5e57');
+                this.effects.triggerShake(160, 5);
                 console.log("Player Killed!");
                 this.sounds.play('die');
             }
         } else if (p2.state === 'TRAPPED' && p1.state === 'NORMAL') {
             if (p1.team === p2.team) {
                 p2.state = 'NORMAL';
+                this.effects.spawnText('RESCUE!', p2.x, p2.y - 38, '#2ecc71');
                 console.log("Player Rescued!");
                 this.sounds.play('item_get');
             } else {
                 p2.state = 'DEAD';
+                this.effects.spawnText('KO!', p2.x, p2.y - 38, '#ff5e57');
+                this.effects.triggerShake(160, 5);
                 console.log("Player Killed!");
                 this.sounds.play('die');
             }
@@ -465,6 +497,8 @@ export class Game {
 
     triggerExplosion(col, row, range, owner) {
         this.addExplosion(col, row, 'CENTER');
+        this.effects.triggerShake(180 + range * 25, Math.min(10, 4 + range));
+        this.effects.spawnText('SPLASH!', col * this.tileSize + this.tileSize / 2, row * this.tileSize + 18, '#dff9fb');
         this.sounds.play('explode');
 
         const directions = [
@@ -529,11 +563,16 @@ export class Game {
             timer: 600, // Slightly longer for better visibility
             maxTimer: 600
         });
+        this.effects.spawnSplash(col, row, this.tileSize, {
+            count: type === 'CENTER' ? 14 : 7,
+            color: type === 'CENTER' ? '#48dbfb' : '#7ed6df'
+        });
 
         this.players.forEach(player => {
             if (this.checkEntityOnTile(player, col, row)) {
                 if (player.state === 'NORMAL') {
                     player.trap();
+                    this.effects.spawnText('TRAP!', player.x, player.y - 38, '#7ed6df');
                     this.sounds.play('trap');
                 }
             }

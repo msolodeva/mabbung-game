@@ -77,6 +77,8 @@ window.addEventListener('load', () => {
         Object.values(MAP_THEMES).forEach(theme => {
             const el = document.createElement('div');
             el.className = 'map-option';
+            el.title = theme.name;
+            el.setAttribute('aria-label', theme.name);
             if (theme.id === selectedMapTheme.id) el.classList.add('selected');
             el.onclick = () => selectMap(theme);
 
@@ -102,6 +104,10 @@ window.addEventListener('load', () => {
             miniMap.draw(ctx, selectionAssets);
 
             el.appendChild(cvs);
+            const title = document.createElement('span');
+            title.className = 'map-title';
+            title.textContent = theme.name;
+            el.appendChild(title);
             mapGrid.appendChild(el);
         });
     }
@@ -246,9 +252,6 @@ window.addEventListener('load', () => {
             window.currentGame = new Game(ctx, p1Config, p2Config, selectedMapTheme);
             // Assign to window.game for debug consistency
             window.game = window.currentGame;
-
-            // Initial UI Setup if needed (handled in Game loop)
-            requestAnimationFrame(gameLoop);
         } else {
             window.currentGame.restart(p1Config, p2Config, selectedMapTheme);
         }
