@@ -495,11 +495,13 @@ export class Game {
         this.sounds.play('place_bomb');
     }
 
-    triggerExplosion(col, row, range, owner) {
+    triggerExplosion(col, row, range, owner, options = {}) {
         this.addExplosion(col, row, 'CENTER');
-        this.effects.triggerShake(180 + range * 25, Math.min(10, 4 + range));
-        this.effects.spawnText('SPLASH!', col * this.tileSize + this.tileSize / 2, row * this.tileSize + 18, '#dff9fb');
-        this.sounds.play('explode');
+        if (!options.chainReaction) {
+            this.effects.triggerShake(180 + range * 25, Math.min(10, 4 + range));
+            this.effects.spawnText('SPLASH!', col * this.tileSize + this.tileSize / 2, row * this.tileSize + 18, '#dff9fb');
+            this.sounds.play('explode');
+        }
 
         const directions = [
             { dx: 0, dy: -1, type: 'VERTICAL', end: 'END_UP' },
@@ -530,7 +532,7 @@ export class Game {
 
                 const chainBomb = this.bombs.find(b => b.col === c && b.row === r);
                 if (chainBomb && !chainBomb.isDead) {
-                    chainBomb.explode(this);
+                    chainBomb.explode(this, { chainReaction: true });
                     break;
                 }
 

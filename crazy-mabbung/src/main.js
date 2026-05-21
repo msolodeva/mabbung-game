@@ -293,13 +293,17 @@ window.addEventListener('load', () => {
         lastTime = timestamp;
         if (deltaTime > 100) deltaTime = 16;
 
-        if (window.currentGame) {
-            window.currentGame.update(deltaTime);
-            window.currentGame.draw();
-            updateGameUI(window.currentGame, deltaTime);
+        try {
+            if (window.currentGame) {
+                window.currentGame.update(deltaTime);
+                window.currentGame.draw();
+                updateGameUI(window.currentGame, deltaTime);
+            }
+        } catch (error) {
+            console.error('Game loop error:', error);
+        } finally {
+            requestAnimationFrame(gameLoop);
         }
-
-        requestAnimationFrame(gameLoop);
     }
 
     function updateGameUI(game, deltaTime) {

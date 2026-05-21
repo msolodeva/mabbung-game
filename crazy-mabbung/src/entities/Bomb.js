@@ -22,11 +22,11 @@ export class Bomb {
         }
     }
 
-    explode(game) {
+    explode(game, options = {}) {
         if (this.isDead) return;
         this.isDead = true;
         // Return validity of explosion (to prevent infinite loops if we chain them)
-        game.triggerExplosion(this.col, this.row, this.range, this.owner);
+        game.triggerExplosion(this.col, this.row, this.range, this.owner, options);
     }
 
     draw(ctx, assets) {
