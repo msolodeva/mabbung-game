@@ -150,11 +150,11 @@ SHIP_TYPES = {
     },
     "phantom": {
         "name": "Phantom",
-        "health": 90,
-        "speed": 7.5,
+        "health": 105,
+        "speed": 6.3,
         "bombs": 2,
         "color_accent": (200, 100, 255),
-        "description": "Fast but fragile",
+        "description": "Fast skirmisher",
         "weapon_style": "rapid",
     },
     "viper": {

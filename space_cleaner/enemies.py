@@ -446,21 +446,32 @@ class GhostEnemy:
 
         self.timer = 0
         self.is_ghost = False
+        self.strike_timer = 0
         self.color = (200, 200, 255)
 
     def update(self, enemy_bullets):
-        self.rect.y = int(self.rect.y + self.speed_y)
+        was_ghost = self.is_ghost
         self.timer += 1
+
+        # 상태 변화
+        self.is_ghost = self.timer % (GHOST_PHASE_DURATION * 2) < GHOST_PHASE_DURATION
+        if was_ghost and not self.is_ghost:
+            self.strike_timer = 12
+            for x_offset, vx in [(-8, -2), (8, 2)]:
+                bullet = EnemyBullet(
+                    self.rect.centerx + x_offset, self.rect.bottom, vx, 8
+                )
+                bullet.color = PURPLE
+                enemy_bullets.append(bullet)
+
+        surge = 3 if self.strike_timer > 0 else 0
+        self.rect.y = int(self.rect.y + self.speed_y + surge)
+        if self.strike_timer > 0:
+            self.strike_timer -= 1
 
         # 좌우로 흔들리는 움직임 (Sine파 이용)
         sway = math.sin((self.timer + self.float_offset) * 0.05) * 4
         self.rect.x = int(self.rect.x + sway)
-
-        # 상태 변화
-        if self.timer % (GHOST_PHASE_DURATION * 2) < GHOST_PHASE_DURATION:
-            self.is_ghost = True
-        else:
-            self.is_ghost = False
 
     def draw(self, surface):
         alpha = 80 if self.is_ghost else 220  # 무적일 때 더 투명하게
@@ -477,6 +488,14 @@ class GhostEnemy:
             (self.width // 2 + 5, self.height // 2 + 5),
             self.width // 2 + 3,
         )
+        if self.strike_timer > 0:
+            pygame.draw.circle(
+                s,
+                (255, 80, 255, 120),
+                (self.width // 2 + 5, self.height // 2 + 5),
+                self.width // 2 + 7,
+                3,
+            )
         # 구름/유령 형태 본체
         pygame.draw.circle(
             s,
