@@ -23,6 +23,11 @@ const PLAYER2_KEYS = {
     super: ['Enter'],
 };
 
+const PREVENTED_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    'Space', 'ShiftRight', 'Enter',
+]);
+
 class PlayerInput {
     constructor(keyConfig) {
         this.keyConfig = keyConfig;
@@ -124,6 +129,10 @@ export class InputManager {
         this.player1Input = new PlayerInput(PLAYER1_KEYS);
         this.player2Input = new PlayerInput(PLAYER2_KEYS);
 
+        this.handleKeyDown = this.onKeyDown.bind(this);
+        this.handleKeyUp = this.onKeyUp.bind(this);
+        this.preventGameKeyDefaults = this.preventGameKeyDefaults.bind(this);
+
         this.init();
     }
 
@@ -138,15 +147,9 @@ export class InputManager {
         if (superBtn) superBtn.style.display = 'none';
 
         // Keyboard events
-        document.addEventListener('keydown', this.onKeyDown.bind(this));
-        document.addEventListener('keyup', this.onKeyUp.bind(this));
-
-        // Prevent default for game keys
-        document.addEventListener('keydown', (e) => {
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftRight', 'Enter'].includes(e.code)) {
-                e.preventDefault();
-            }
-        });
+        document.addEventListener('keydown', this.handleKeyDown);
+        document.addEventListener('keyup', this.handleKeyUp);
+        document.addEventListener('keydown', this.preventGameKeyDefaults);
 
         // Show control hints
         this.showControlHints();
@@ -156,19 +159,19 @@ export class InputManager {
         const controlsContainer = document.getElementById('controls');
         if (controlsContainer) {
             controlsContainer.innerHTML = `
-                <div class="control-hints" style="padding: 0 30px; bottom: 20px;">
-                    <div class="player-controls p1" style="padding: 15px 20px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border-width: 3px;">
-                        <div class="player-label" style="font-size: 1.1rem; margin-bottom: 8px;">🔵 P1 (Blue Team)</div>
-                        <div class="keys" style="font-size: 1.0rem;"><b>WASD</b> 이동/조준</div>
-                        <div class="keys" style="font-size: 1.0rem;"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                <div class="control-hints">
+                    <div class="player-controls p1">
+                        <div class="player-label">🔵 P1 (Blue Team)</div>
+                        <div class="keys"><b>WASD</b> 이동/조준</div>
+                        <div class="keys"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
                     </div>
-                    <div class="pause-hint" style="padding: 10px 20px; background: rgba(0, 0, 0, 0.8); border-radius: 10px;">
-                        <div class="keys" style="font-size: 0.95rem;"><b>ESC</b> 일시정지</div>
+                    <div class="pause-hint">
+                        <div class="keys"><b>ESC</b> 일시정지</div>
                     </div>
-                    <div class="player-controls p2" style="padding: 15px 20px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border-width: 3px;">
-                        <div class="player-label" style="font-size: 1.1rem; margin-bottom: 8px;">🔴 P2 (Red Team)</div>
-                        <div class="keys" style="font-size: 1.0rem;"><b>방향키</b> 이동/조준</div>
-                        <div class="keys" style="font-size: 1.0rem;"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                    <div class="player-controls p2 ${this.game.teamMode === 'same' ? 'same-team' : ''}">
+                        <div class="player-label">${this.game.teamMode === 'same' ? '🔵' : '🔴'} P2 (${this.game.teamMode === 'same' ? 'Blue' : 'Red'} Team)</div>
+                        <div class="keys"><b>방향키</b> 이동/조준</div>
+                        <div class="keys"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
                     </div>
                 </div>
             `;
@@ -193,24 +196,45 @@ export class InputManager {
         this.player2Input.handleKeyUp(e.code);
     }
 
+    preventGameKeyDefaults(event) {
+        if (PREVENTED_KEYS.has(event.code)) event.preventDefault();
+    }
+
     update() {
         this.player1Input.update();
         this.player2Input.update();
     }
 
-    // Player 1
-    getMoveDirection() { return this.player1Input.getMoveDirection(); }
-    getAttackDirection() { return this.player1Input.getAimDirection(); }
-    getIsAttacking() { return this.player1Input.isShootPressed(); }
-    isSuperPressed() { return this.player1Input.isSuperPressed(); }
-    consumeSuper() { this.player1Input.consumeSuper(); }
+    getPlayerInput(playerNumber) {
+        if (playerNumber === 1) return this.player1Input;
+        if (playerNumber === 2) return this.player2Input;
+        throw new RangeError(`Unsupported player number: ${playerNumber}`);
+    }
 
-    // Player 2
-    getPlayer2MoveDirection() { return this.player2Input.getMoveDirection(); }
-    getPlayer2AttackDirection() { return this.player2Input.getAimDirection(); }
-    getPlayer2IsAttacking() { return this.player2Input.isShootPressed(); }
-    isPlayer2SuperPressed() { return this.player2Input.isSuperPressed(); }
-    consumePlayer2Super() { this.player2Input.consumeSuper(); }
+    getMoveDirection(playerNumber) {
+        return this.getPlayerInput(playerNumber).getMoveDirection();
+    }
 
-    updateSuperButton(isReady) { }
+    getAttackDirection(playerNumber) {
+        return this.getPlayerInput(playerNumber).getAimDirection();
+    }
+
+    getIsAttacking(playerNumber) {
+        return this.getPlayerInput(playerNumber).isShootPressed();
+    }
+
+    isSuperPressed(playerNumber) {
+        return this.getPlayerInput(playerNumber).isSuperPressed();
+    }
+
+    consumeSuper(playerNumber) {
+        this.getPlayerInput(playerNumber).consumeSuper();
+    }
+
+    cleanup() {
+        document.removeEventListener('keydown', this.handleKeyDown);
+        document.removeEventListener('keyup', this.handleKeyUp);
+        document.removeEventListener('keydown', this.preventGameKeyDefaults);
+        document.getElementById('controls')?.replaceChildren();
+    }
 }

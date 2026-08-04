@@ -188,4 +188,13 @@ export class AudioManager {
             this.audioContext.resume();
         }
     }
+
+    cleanup() {
+        this.enabled = false;
+        this.sounds = {};
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close().catch(() => {});
+        }
+        this.audioContext = null;
+    }
 }

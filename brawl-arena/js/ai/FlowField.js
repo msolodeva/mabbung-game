@@ -292,6 +292,5 @@ export class FlowField {
             }
         }
 
-        console.log('[FlowField] Pre-generated flow fields for center and spawns');
     }
 }

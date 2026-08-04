@@ -25,6 +25,7 @@ export const GAME_STATES = {
     COUNTDOWN: 'countdown',
     VICTORY: 'victory',
     DEFEAT: 'defeat',
+    DRAW: 'draw',
 };
 
 export const TILE_TYPES = {

@@ -3,7 +3,7 @@
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
-import { GAME_CONFIG, TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY } from '../utils/constants.js';
+import { TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY } from '../utils/constants.js';
 import { GameMap } from '../map/Map.js';
 import { GEM_GRAB_MAP } from '../map/mapData.js';
 import { InputManager } from '../input/InputManager.js';
@@ -13,8 +13,16 @@ import { GemGrabMode } from '../modes/GemGrab.js';
 import { AudioManager } from '../audio/AudioManager.js';
 import { EffectsManager } from '../effects/Effects.js';
 import { RenderSystem } from './RenderSystem.js';
+import { GameUI } from './GameUI.js';
 
 import { BRAWLER_CLASSES } from '../entities/brawlers/index.js';
+
+const BRAWLER_CANDIDATES = Object.entries(BRAWLER_CLASSES)
+    .map(([id, BrawlerClass]) => ({
+        BrawlerClass,
+        config: BRAWLERS[id.toUpperCase()],
+    }))
+    .filter(({ config }) => Boolean(config));
 
 /**
  * 게임의 중앙 컨트롤러 클래스
@@ -22,15 +30,22 @@ import { BRAWLER_CLASSES } from '../entities/brawlers/index.js';
  */
 export class Game {
     /**
-     * 게임 인스턴스 생성
-     * @param {HTMLCanvasElement} canvas - 렌더링할 Canvas 엘리먼트
-     * @param {string} player1Brawler - 플레이어 1의 브롤러 ID (예: 'BROCK')
-     * @param {string} player2Brawler - 플레이어 2의 브롤러 ID (예: 'COLT')
-     * @param {Object} mapData - 맵 데이터 (mapData.js에서 가져옴)
+     * @param {object} options
+     * @param {HTMLCanvasElement} options.canvas
+     * @param {[string, string]} [options.playerBrawlerIds]
+     * @param {object} [options.mapData]
+     * @param {'vs'|'same'} [options.teamMode]
+     * @param {object} [options.aiDifficultiesByTeam]
      */
-    constructor(canvas, player1Brawler, player2Brawler, mapData = GEM_GRAB_MAP, teamMode = 'vs', aiDifficultiesByTeam = {}) {
-        this.player1BrawlerId = player1Brawler;
-        this.player2BrawlerId = player2Brawler;
+    constructor({
+        canvas,
+        playerBrawlerIds = ['brock', 'colt'],
+        mapData = GEM_GRAB_MAP,
+        teamMode = 'vs',
+        aiDifficultiesByTeam = {},
+    }) {
+        this.player1BrawlerId = playerBrawlerIds[0];
+        this.player2BrawlerId = playerBrawlerIds[1];
         this.teamMode = teamMode;
 
         // Initialize systems
@@ -39,6 +54,7 @@ export class Game {
         this.inputManager = new InputManager(this);
         this.audioManager = new AudioManager();
         this.effectsManager = new EffectsManager();
+        this.ui = new GameUI();
 
         // Game entities
         this.brawlers = [];
@@ -54,7 +70,6 @@ export class Game {
         // Players (2 player mode)
         this.player1 = null;
         this.player2 = null;
-        this.player = null; // For compatibility
 
         // Game state
         this.state = GAME_STATES.PLAYING;
@@ -70,6 +85,7 @@ export class Game {
         // Timing
         this.lastTime = 0;
         this.running = false;
+        this.animationFrameId = null;
     }
 
     /**
@@ -94,25 +110,14 @@ export class Game {
         // Pre-generate flow fields for common destinations
         this.flowField.pregenerate();
 
-        // Create Player 1 (Blue team)
-        const Player1Class = BRAWLER_CLASSES[this.player1BrawlerId];
-        const player1Spawn = this.map.getSpawnPosition(TEAMS.BLUE);
-        this.player1 = new Player1Class(TEAMS.BLUE, player1Spawn.x, player1Spawn.y);
-        this.player1.isPlayer = true;
-        this.player1.playerNumber = 1;
+        this.player1 = this.createPlayer(this.player1BrawlerId, TEAMS.BLUE, 1);
         this.brawlers.push(this.player1);
 
-        // For compatibility with existing code
-        this.player = this.player1;
         this.playerTeam = TEAMS.BLUE;
 
         // Create Player 2
         const player2Team = this.teamMode === 'same' ? TEAMS.BLUE : TEAMS.RED;
-        const Player2Class = BRAWLER_CLASSES[this.player2BrawlerId];
-        const player2Spawn = this.map.getSpawnPosition(player2Team);
-        this.player2 = new Player2Class(player2Team, player2Spawn.x, player2Spawn.y);
-        this.player2.isPlayer = true;
-        this.player2.playerNumber = 2;
+        this.player2 = this.createPlayer(this.player2BrawlerId, player2Team, 2);
         this.brawlers.push(this.player2);
 
         if (this.teamMode === 'same') {
@@ -128,10 +133,17 @@ export class Game {
             this.createTeamBot(TEAMS.RED);
             this.createTeamBot(TEAMS.RED);
         }
+    }
 
-        // Resume audio context on first interaction
-        document.addEventListener('click', () => this.audioManager.resume(), { once: true });
-        document.addEventListener('keydown', () => this.audioManager.resume(), { once: true });
+    createPlayer(brawlerId, team, playerNumber) {
+        const BrawlerClass = BRAWLER_CLASSES[brawlerId];
+        if (!BrawlerClass) throw new Error(`Unknown brawler: ${brawlerId}`);
+
+        const spawn = this.map.getSpawnPosition(team);
+        const player = new BrawlerClass(team, spawn.x, spawn.y);
+        player.isPlayer = true;
+        player.playerNumber = playerNumber;
+        return player;
     }
 
     /**
@@ -155,13 +167,7 @@ export class Game {
         });
 
         // Calculate scores for each available brawler
-        const candidates = Object.values(BRAWLER_CLASSES).map(BrawlerClass => {
-            // Find the config for this class
-            const brawlerId = Object.keys(BRAWLER_CLASSES).find(key => BRAWLER_CLASSES[key] === BrawlerClass);
-            const config = BRAWLERS[brawlerId.toUpperCase()]; // Config keys are BRAWLER_ID (uppercase)
-
-            if (!config) return { id: 'unknown', score: -999, Class: BrawlerClass };
-
+        const candidates = BRAWLER_CANDIDATES.map(({ BrawlerClass, config }) => {
             let score = 0;
 
             // 1. Avoid Duplicates (Strong negative)
@@ -194,7 +200,7 @@ export class Game {
             // 5. Randomness
             score += Math.random() * 10;
 
-            return { id: config.id, score, Class: BrawlerClass };
+            return { score, BrawlerClass };
         });
 
         // Sort by score descending
@@ -202,8 +208,7 @@ export class Game {
 
         // Pick the best one (or top 3 random for variety if scores are close)
         // Let's just pick the absolute best for now to ensure balance.
-        const bestCandidate = candidates[0];
-        const BrawlerClass = bestCandidate.Class;
+        const BrawlerClass = candidates[0].BrawlerClass;
 
         const spawnPos = this.map.getSpawnPosition(team);
 
@@ -220,9 +225,11 @@ export class Game {
      * 게임 루프 시작
      */
     start() {
+        if (this.running) return;
         this.running = true;
+        this.audioManager.resume();
         this.lastTime = performance.now();
-        this.gameLoop();
+        this.animationFrameId = requestAnimationFrame(timestamp => this.gameLoop(timestamp));
     }
 
     /**
@@ -230,6 +237,10 @@ export class Game {
      */
     stop() {
         this.running = false;
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
 
     /**
@@ -238,7 +249,7 @@ export class Game {
     pause() {
         if (this.state === GAME_STATES.PLAYING) {
             this.state = GAME_STATES.PAUSED;
-            this.showPauseOverlay();
+            this.ui.showPause(() => this.resume());
         }
     }
 
@@ -248,7 +259,7 @@ export class Game {
     resume() {
         if (this.state === GAME_STATES.PAUSED) {
             this.state = GAME_STATES.PLAYING;
-            this.hidePauseOverlay();
+            this.ui.hidePause();
             this.lastTime = performance.now(); // Reset time to avoid big delta
         }
     }
@@ -265,128 +276,21 @@ export class Game {
     }
 
     /**
-     * 일시정지 오버레이 표시
-     */
-    showPauseOverlay() {
-        let overlay = document.getElementById('pause-overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'pause-overlay';
-            overlay.innerHTML = `
-                <div class="pause-content">
-                    <h1>⏸️ 일시정지</h1>
-                    <p>ESC 키를 눌러 게임을 재개하세요</p>
-                    <div class="pause-actions">
-                        <button id="resume-btn" class="pause-btn">▶️ 게임 재개</button>
-                        <button id="restart-btn" class="pause-btn restart">↻ 처음부터 다시</button>
-                    </div>
-                </div>
-            `;
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.7);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 1000;
-            `;
-            const content = overlay.querySelector('.pause-content');
-            content.style.cssText = `
-                background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
-                padding: 50px 80px;
-                border-radius: 24px;
-                text-align: center;
-                color: white;
-                box-shadow: 0 15px 50px rgba(0,0,0,0.7);
-                border: 4px solid #3498db;
-            `;
-            const h1 = overlay.querySelector('h1');
-            h1.style.cssText = `
-                font-size: 64px;
-                margin-bottom: 30px;
-                text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
-                font-family: 'Lilita One', cursive;
-            `;
-            const p = overlay.querySelector('p');
-            p.style.cssText = `
-                font-size: 24px;
-                margin-bottom: 40px;
-                color: #ecf0f1;
-                font-weight: bold;
-                text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-            `;
-            const actions = overlay.querySelector('.pause-actions');
-            actions.style.cssText = `
-                display: flex;
-                gap: 14px;
-                justify-content: center;
-                flex-wrap: wrap;
-            `;
-            const buttons = overlay.querySelectorAll('.pause-btn');
-            buttons.forEach(btn => {
-                btn.style.cssText = `
-                padding: 20px 50px;
-                font-size: 26px;
-                font-family: 'Lilita One', cursive;
-                background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-                border: none;
-                border-radius: 10px;
-                color: white;
-                cursor: pointer;
-                font-weight: bold;
-                transition: transform 0.2s, box-shadow 0.2s;
-            `;
-                btn.addEventListener('mouseenter', () => {
-                    btn.style.transform = 'scale(1.05)';
-                    btn.style.boxShadow = '0 5px 20px rgba(46, 204, 113, 0.5)';
-                });
-                btn.addEventListener('mouseleave', () => {
-                    btn.style.transform = 'scale(1)';
-                    btn.style.boxShadow = 'none';
-                });
-            });
-            const resumeBtn = overlay.querySelector('#resume-btn');
-            const restartBtn = overlay.querySelector('#restart-btn');
-            restartBtn.style.background = 'linear-gradient(135deg, #d35400 0%, #f39c12 100%)';
-            resumeBtn.addEventListener('click', () => this.resume());
-            restartBtn.addEventListener('click', () => {
-                window.dispatchEvent(new CustomEvent('restart-current-game'));
-            });
-            document.body.appendChild(overlay);
-        } else {
-            overlay.style.display = 'flex';
-        }
-    }
-
-    /**
-     * 일시정지 오버레이 숨기기
-     */
-    hidePauseOverlay() {
-        const overlay = document.getElementById('pause-overlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    }
-
-    /**
      * 메인 게임 루프 - RequestAnimationFrame 기반
      * 60 FPS 목표로 update와 render를 반복 호출
      */
-    gameLoop() {
+    gameLoop(currentTime) {
         if (!this.running) return;
 
-        const currentTime = performance.now();
         const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
         this.lastTime = currentTime;
 
         this.update(deltaTime);
         this.renderSystem.render(this); // Pass game state (this) to render system
 
-        requestAnimationFrame(() => this.gameLoop());
+        if (this.running) {
+            this.animationFrameId = requestAnimationFrame(timestamp => this.gameLoop(timestamp));
+        }
     }
 
     /**
@@ -399,47 +303,8 @@ export class Game {
         // Update input manager
         this.inputManager.update();
 
-        // Update Player 1 input
-        if (this.player1 && this.player1.isAlive) {
-            this.player1.moveDirection = this.inputManager.getMoveDirection();
-
-            // Attack when shoot key is pressed
-            if (this.inputManager.getIsAttacking() && this.player1.canAttack()) {
-                const attackDir = this.inputManager.getAttackDirection();
-                if (attackDir.magnitude() > 0) {
-                    this.player1.attack(attackDir, this);
-                }
-            }
-
-            // Super when super key is pressed
-            if (this.inputManager.isSuperPressed() && this.player1.superReady) {
-                const attackDir = this.inputManager.getAttackDirection();
-                const dir = attackDir.magnitude() > 0 ? attackDir : new Vector2(1, 0);
-                this.player1.useSuper(dir, this);
-                this.inputManager.consumeSuper();
-            }
-        }
-
-        // Update Player 2 input
-        if (this.player2 && this.player2.isAlive) {
-            this.player2.moveDirection = this.inputManager.getPlayer2MoveDirection();
-
-            // Attack when shoot key is pressed
-            if (this.inputManager.getPlayer2IsAttacking() && this.player2.canAttack()) {
-                const attackDir = this.inputManager.getPlayer2AttackDirection();
-                if (attackDir.magnitude() > 0) {
-                    this.player2.attack(attackDir, this);
-                }
-            }
-
-            // Super when super key is pressed
-            if (this.inputManager.isPlayer2SuperPressed() && this.player2.superReady) {
-                const attackDir = this.inputManager.getPlayer2AttackDirection();
-                const dir = attackDir.magnitude() > 0 ? attackDir : new Vector2(1, 0);
-                this.player2.useSuper(dir, this);
-                this.inputManager.consumePlayer2Super();
-            }
-        }
+        this.updateHumanPlayer(this.player1, 1);
+        this.updateHumanPlayer(this.player2, 2);
 
         // Update AI controllers
         for (const ai of this.aiControllers) {
@@ -469,7 +334,7 @@ export class Game {
         // Check brawler deaths
         for (const brawler of this.brawlers) {
             if (brawler.justDied) {
-                this.gameMode.onBrawlerDeath(brawler, this);
+                this.gameMode.onBrawlerDeath(brawler);
                 brawler.justDied = false;
             }
         }
@@ -481,12 +346,21 @@ export class Game {
         this.effectsManager.update(deltaTime);
     }
 
-    onAttackRelease(direction) {
-        // Legacy method - no longer used in 2 player mode
-    }
+    updateHumanPlayer(player, playerNumber) {
+        if (!player?.isAlive) return;
 
-    onSuperButtonPressed() {
-        // Legacy method - no longer used in 2 player mode
+        player.moveDirection = this.inputManager.getMoveDirection(playerNumber);
+        const attackDirection = this.inputManager.getAttackDirection(playerNumber);
+
+        if (this.inputManager.getIsAttacking(playerNumber) && player.canAttack() && attackDirection.magnitude() > 0) {
+            player.attack(attackDirection, this);
+        }
+
+        if (this.inputManager.isSuperPressed(playerNumber) && player.superReady) {
+            const direction = attackDirection.magnitude() > 0 ? attackDirection : new Vector2(1, 0);
+            player.useSuper(direction, this);
+            this.inputManager.consumeSuper(playerNumber);
+        }
     }
 
     onGemCollected(brawler) {
@@ -498,80 +372,14 @@ export class Game {
         this.effectsManager.add(type, x, y, options);
     }
 
-    endGame(isVictory) {
-        // In 2 player mode, victory is for the winning team
-        this.state = isVictory ? GAME_STATES.VICTORY : GAME_STATES.DEFEAT;
+    endGame(outcome) {
+        this.state = outcome === 'draw'
+            ? GAME_STATES.DRAW
+            : outcome ? GAME_STATES.VICTORY : GAME_STATES.DEFEAT;
         this.stop();
 
-        // Show result screen
         const stats = this.gameMode.getMatchStats();
-        this.showResultScreen(isVictory, stats);
-    }
-
-    showResultScreen(isVictory, stats) {
-        const gameScreen = document.getElementById('game-screen');
-        const resultScreen = document.getElementById('result-screen');
-        const resultTitle = document.getElementById('result-title');
-        const starsContainer = document.getElementById('stars-container');
-        const resultStats = document.getElementById('result-stats');
-
-        gameScreen.classList.add('hidden');
-        resultScreen.classList.remove('hidden');
-
-        // Determine winner
-        if (isVictory === 'draw') {
-            resultTitle.textContent = '🤝 DRAW!';
-            resultTitle.className = 'result-title draw';
-        } else if (isVictory) {
-            resultTitle.textContent = '🔵 BLUE TEAM WINS!';
-            resultTitle.className = 'result-title victory';
-        } else {
-            resultTitle.textContent = '🔴 RED TEAM WINS!';
-            resultTitle.className = 'result-title defeat';
-        }
-
-        // Stars based on margin
-        const margin = Math.abs(stats.blueGems - stats.redGems);
-        let starCount = margin >= 5 ? 3 : margin >= 3 ? 2 : 1;
-
-        const stars = starsContainer.querySelectorAll('.star');
-        stars.forEach((star, index) => {
-            star.classList.toggle('empty', index >= starCount);
-        });
-
-        // Show stats for both players
-        // Show stats for both players with team coloring
-        resultStats.innerHTML = `
-            <div class="result-teams-container">
-                <div class="result-team blue">
-                    <h3 class="team-title">BLUE TEAM</h3>
-                    <div class="team-score-display">
-                        <div class="gem-icon">💎</div>
-                        <div class="gem-count">${stats.blueGems}</div>
-                    </div>
-                </div>
-                
-                <div class="matches-divider">VS</div>
-
-                <div class="result-team red">
-                    <h3 class="team-title">RED TEAM</h3>
-                    <div class="team-score-display">
-                        <div class="gem-icon">💎</div>
-                        <div class="gem-count">${stats.redGems}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="score-summary">
-                <div class="score-item blue">
-                    <span class="score-label">KILLS:</span>
-                    <span class="score-value">${stats.blueScore}</span>
-                </div>
-                <div class="score-item red">
-                    <span class="score-label">KILLS:</span>
-                    <span class="score-value">${stats.redScore}</span>
-                </div>
-            </div>
-        `;
+        this.ui.showResult(outcome, stats);
     }
 
     cleanup() {
@@ -582,7 +390,10 @@ export class Game {
         this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];
+        this.inputManager.cleanup();
+        this.audioManager.cleanup();
         this.effectsManager.clear();
         this.renderSystem.cleanup();
+        this.ui.cleanup();
     }
 }

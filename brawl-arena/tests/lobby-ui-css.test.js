@@ -28,11 +28,11 @@ test('lobby copy uses clear Korean action labels', () => {
 
 test('lobby keeps brawler stats useful while simplifying AI selection', () => {
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-    const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+    const lobbyController = readFileSync(new URL('../js/app/LobbyController.js', import.meta.url), 'utf8');
 
     assert.equal(html.includes('mode-title'), false);
-    assert.equal(main.includes('stats-container-detailed'), true);
-    assert.equal(main.includes('super-container-detailed'), false);
+    assert.equal(lobbyController.includes('stats-container-detailed'), true);
+    assert.equal(lobbyController.includes('super-container-detailed'), false);
     assert.equal(html.includes('blue-difficulty-desc'), false);
     assert.equal(html.includes('red-difficulty-desc'), false);
 });

@@ -22,6 +22,10 @@
 }
 
 .map-option {
+    appearance: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
     width: 154px;
     height: 88px;
     border-radius: 8px;

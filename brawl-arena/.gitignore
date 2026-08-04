@@ -51,3 +51,4 @@ coverage/
 # Debug files
 debug.log
 .worktrees/
+.playwright-cli/

@@ -4,7 +4,7 @@
 
 import { Gem } from '../entities/Gem.js';
 import { Vector2 } from '../utils/Vector2.js';
-import { GEM_CONFIG, GAME_CONFIG, TEAMS, GAME_STATES } from '../utils/constants.js';
+import { GEM_CONFIG, GAME_CONFIG, TEAMS } from '../utils/constants.js';
 
 export class GemGrabMode {
     constructor(game) {
@@ -90,7 +90,7 @@ export class GemGrabMode {
         const blueGems = this.teamGems[TEAMS.BLUE];
         const redGems = this.teamGems[TEAMS.RED];
 
-        // Check if a team has 10+ gems
+        // Check whether one team satisfies the configured gem threshold.
         let leadingTeam = null;
         if (blueGems >= GAME_CONFIG.WIN_GEM_COUNT && blueGems > redGems) {
             leadingTeam = TEAMS.BLUE;
@@ -149,7 +149,7 @@ export class GemGrabMode {
         }
     }
 
-    onBrawlerDeath(brawler, game) {
+    onBrawlerDeath(brawler) {
         // Increment score for the opposing team
         if (brawler.team === TEAMS.BLUE) {
             this.teamScores[TEAMS.RED]++;
@@ -162,40 +162,13 @@ export class GemGrabMode {
     }
 
     updateUI() {
-        // Update gem counters
-        const blueGemsEl = document.querySelector('#blue-gems .gem-count');
-        const redGemsEl = document.querySelector('#red-gems .gem-count');
-
-        if (blueGemsEl) blueGemsEl.textContent = this.teamGems[TEAMS.BLUE];
-        if (redGemsEl) redGemsEl.textContent = this.teamGems[TEAMS.RED];
-
-        // Update score counters
-        const blueScoreEl = document.querySelector('#blue-score .score-count');
-        const redScoreEl = document.querySelector('#red-score .score-count');
-
-        if (blueScoreEl) blueScoreEl.textContent = this.teamScores[TEAMS.BLUE];
-        if (redScoreEl) redScoreEl.textContent = this.teamScores[TEAMS.RED];
-
-        // Update timer
-        const timerEl = document.getElementById('match-timer');
-        if (timerEl) {
-            const minutes = Math.floor(this.matchTimer / 60);
-            const seconds = Math.floor(this.matchTimer % 60);
-            timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        // Update countdown
-        const countdownEl = document.getElementById('countdown-display');
-        const countdownTimeEl = document.getElementById('countdown-time');
-
-        if (countdownEl && countdownTimeEl) {
-            if (this.countdownActive) {
-                countdownEl.classList.remove('hidden');
-                countdownTimeEl.textContent = Math.ceil(this.winCountdown);
-            } else {
-                countdownEl.classList.add('hidden');
-            }
-        }
+        this.game.ui.updateHud({
+            teamGems: this.teamGems,
+            teamScores: this.teamScores,
+            matchTimer: this.matchTimer,
+            countdownActive: this.countdownActive,
+            winCountdown: this.winCountdown,
+        });
     }
 
     getMatchStats() {
