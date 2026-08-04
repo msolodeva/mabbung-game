@@ -300,15 +300,18 @@ export class Brawler extends Entity {
     attack(direction, game) {
         if (!this.canAttack()) return false;
 
+        const attackDirection = direction.normalize();
+        if (attackDirection.magnitudeSquared() === 0) return false;
+
         this.ammo--;
         this.attackCooldown = this.attackSpeed;
-        this.aimDirection = direction.normalize();
-        this.facingAngle = direction.angle();
+        this.aimDirection = attackDirection;
+        this.facingAngle = attackDirection.angle();
         this.isAttacking = true;
         this.recoilOffset = 8; // Visual kickback distance
 
         // Create projectiles (override in subclass)
-        this.createAttackProjectiles(direction, game);
+        this.createAttackProjectiles(attackDirection, game);
 
         setTimeout(() => {
             this.isAttacking = false;

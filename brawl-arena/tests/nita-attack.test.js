@@ -46,3 +46,34 @@ test('nita creates a broad piercing shockwave', () => {
     assert.equal(game.projectiles[0].width, 100);
     assert.equal(game.projectiles[0].radius, 28);
 });
+
+test('nita rejects a zero-length attack instead of leaving a stationary wave', () => {
+    const nita = new Nita('blue', 0, 0);
+    const game = {
+        projectiles: [],
+        audioManager: null,
+    };
+    const initialAmmo = nita.ammo;
+
+    const attacked = nita.attack(new Vector2(0, 0), game);
+
+    assert.equal(attacked, false);
+    assert.equal(game.projectiles.length, 0);
+    assert.equal(nita.ammo, initialAmmo);
+    assert.equal(nita.attackCooldown, 0);
+});
+
+test('nita passes a normalized direction to its moving wave', () => {
+    const nita = new Nita('blue', 0, 0);
+    const game = {
+        projectiles: [],
+        audioManager: null,
+    };
+
+    const attacked = nita.attack(new Vector2(10, 0), game);
+    const wave = game.projectiles[0];
+
+    assert.equal(attacked, true);
+    assert.deepEqual(wave.direction, new Vector2(1, 0));
+    assert.deepEqual(wave.velocity, new Vector2(550, 0));
+});
