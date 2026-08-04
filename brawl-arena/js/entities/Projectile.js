@@ -12,7 +12,7 @@ export class Projectile extends Entity {
         this.type = 'projectile';
         this.direction = direction.normalize();
         this.speed = config.speed || PROJECTILE_CONFIG.BULLET_SPEED;
-        this.damage = config.damage || 100;
+        this.damage = config.damage ?? 100;
         this.radius = config.size || PROJECTILE_CONFIG.BULLET_SIZE;
         this.range = config.range || 500;
         this.owner = config.owner;
@@ -248,6 +248,7 @@ export class ExplosiveProjectile extends Projectile {
         if (this.owner && this.owner.game) {
             const game = this.owner.game;
             const angleStep = (Math.PI * 2) / this.explodeSpikes;
+            const sharedHitTargets = new Set();
 
             for (let i = 0; i < this.explodeSpikes; i++) {
                 const angle = angleStep * i;
@@ -262,6 +263,9 @@ export class ExplosiveProjectile extends Projectile {
                     team: this.team,
                     color: '#27ae60',
                 });
+                // A split burst may damage each target only once, even when
+                // several spikes overlap at the center of the explosion.
+                spike.hitTargets = sharedHitTargets;
 
                 game.projectiles.push(spike);
             }

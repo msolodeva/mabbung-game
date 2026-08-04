@@ -92,7 +92,8 @@ export class Brawler extends Entity {
 
         // Movement
         if (this.moveDirection.magnitude() > 0) {
-            const moveVel = this.moveDirection.normalize().multiply(this.speed);
+            const speedMultiplier = this.getMovementSpeedMultiplier(game);
+            const moveVel = this.moveDirection.normalize().multiply(this.speed * speedMultiplier);
             this.velocity = moveVel;
             this.facingAngle = this.moveDirection.angle();
         } else {
@@ -180,6 +181,21 @@ export class Brawler extends Entity {
             this.spawnScale = x === 1 ? 1 : 1 - Math.pow(2, -10 * x) * Math.cos((x * 10 - 0.75) * (2 * Math.PI) / 3);
             if (this.spawnTimer > 1) this.spawnScale = 1;
         }
+    }
+
+    getMovementSpeedMultiplier(game) {
+        let multiplier = 1;
+
+        for (const field of game.spikeFields || []) {
+            if (!field.active || field.team === this.team) continue;
+
+            const distance = field.position.distanceTo(this.position);
+            if (distance <= field.radius) {
+                multiplier = Math.min(multiplier, field.slowMultiplier ?? 1);
+            }
+        }
+
+        return multiplier;
     }
 
     handleWallCollision(map) {

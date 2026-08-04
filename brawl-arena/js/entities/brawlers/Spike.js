@@ -77,6 +77,7 @@ export class Spike extends Brawler {
             position: position.clone(),
             radius: this.config.superRadius,
             duration: this.config.superSlowDuration,
+            slowMultiplier: this.config.superSlowMultiplier,
             damagePerSecond: this.config.superDamagePerSecond,
             team: this.team,
             owner: this,
@@ -90,6 +91,7 @@ export class Spike extends Brawler {
         // Radial spikes give the field teeth without turning Spike into a burst assassin.
         const spikeCount = this.config.superBurstSpikes || 8;
         const angleStep = (Math.PI * 2) / spikeCount;
+        const sharedHitTargets = new Set();
 
         for (let i = 0; i < spikeCount; i++) {
             const angle = angleStep * i;
@@ -105,6 +107,9 @@ export class Spike extends Brawler {
                 piercing: false,
                 isSuper: true,
             });
+            // The radial burst controls an area instead of stacking every
+            // projectile on a single target at the center.
+            spike.hitTargets = sharedHitTargets;
             game.projectiles.push(spike);
         }
 

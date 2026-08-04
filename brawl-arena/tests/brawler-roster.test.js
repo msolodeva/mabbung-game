@@ -63,3 +63,20 @@ test('brock super burst is capped below three direct rocket hits', () => {
     assert.ok(brock.superRocketCount <= 6);
     assert.ok(brock.superDamage * brock.superRocketCount <= maxSuperBurst);
 });
+
+test('colt keeps a modest per-bullet buff without changing his ranged identity', () => {
+    const colt = BRAWLERS.COLT;
+
+    assert.equal(colt.attackDamage, 300);
+    assert.equal(colt.attackRange, 610);
+    assert.equal(colt.attackDamage * colt.attackProjectiles, 1800);
+});
+
+test('mortis can finish colt with one committed three-dash combo', () => {
+    const mortis = BRAWLERS.MORTIS;
+    const colt = BRAWLERS.COLT;
+
+    assert.equal(mortis.attackDamage, 800);
+    assert.equal(mortis.attackDamage * mortis.ammoMax, colt.health);
+    assert.ok(mortis.attackDamage * mortis.ammoMax < BRAWLERS.DYNAMIKE.health);
+});
