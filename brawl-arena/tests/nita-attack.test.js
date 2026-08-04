@@ -28,7 +28,7 @@ test('wave projectiles use configured width for side hit detection', () => {
 test('nita has stronger close-range bruiser attack stats', () => {
     assert.equal(BRAWLERS.NITA.attackDamage, 900);
     assert.equal(BRAWLERS.NITA.attackRange, 360);
-    assert.equal(BRAWLERS.NITA.attackSpeed, 740);
+    assert.equal(BRAWLERS.NITA.attackSpeed, 600);
 });
 
 test('nita creates a broad piercing shockwave', () => {

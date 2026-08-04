@@ -72,6 +72,26 @@ test('colt keeps a modest per-bullet buff without changing his ranged identity',
     assert.equal(colt.attackDamage * colt.attackProjectiles, 1800);
 });
 
+test('brawlers use the tightened attack cadence while preserving their relative pacing', () => {
+    assert.deepEqual(
+        Object.fromEntries(Object.entries(BRAWLERS).map(([id, brawler]) => [id, brawler.attackSpeed])),
+        {
+            BROCK: 850,
+            NITA: 600,
+            COLT: 500,
+            DYNAMIKE: 850,
+            SPIKE: 730,
+            MORTIS: 420,
+        },
+    );
+
+    assert.ok(BRAWLERS.MORTIS.attackSpeed < BRAWLERS.COLT.attackSpeed);
+    assert.ok(BRAWLERS.COLT.attackSpeed < BRAWLERS.NITA.attackSpeed);
+    assert.ok(BRAWLERS.NITA.attackSpeed < BRAWLERS.SPIKE.attackSpeed);
+    assert.ok(BRAWLERS.SPIKE.attackSpeed < BRAWLERS.BROCK.attackSpeed);
+    assert.equal(BRAWLERS.BROCK.attackSpeed, BRAWLERS.DYNAMIKE.attackSpeed);
+});
+
 test('mortis can finish colt with one committed three-dash combo', () => {
     const mortis = BRAWLERS.MORTIS;
     const colt = BRAWLERS.COLT;
