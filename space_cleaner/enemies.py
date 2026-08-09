@@ -28,6 +28,7 @@ from constants import (
     GHOST_PHASE_DURATION,
     SPLIT_ENEMY_HEALTH_BASE,
     SPLIT_ENEMY_HEALTH_SCALE,
+    SPLIT_ENEMY_CHILD_COUNT,
     LASER_ENEMY_HEALTH_BASE,
     LASER_ENEMY_HEALTH_SCALE,
     LASER_ENEMY_ROTATION_SPEED_BASE,
@@ -39,6 +40,7 @@ from constants import (
     BOSS_CARRIER_FIRE_RATE,
     BOSS_CARRIER_PHASE_DURATION,
     BOSS_CARRIER_DRONE_SPEED,
+    BOSS_CARRIER_DRONE_COUNT,
 )
 
 
@@ -534,7 +536,7 @@ class GhostEnemy:
 class SplitEnemy:
     """
     분열 적.
-    - 격추 시 2~3개의 작은 적(MiniEnemy)으로 분열
+    - 격추 시 2개의 작은 적(MiniEnemy)으로 분열
     - 중간 체력을 가짐
     """
 
@@ -632,10 +634,10 @@ class SplitEnemy:
         )
 
     def on_death(self):
-        """격추 시 MiniEnemy 2~3개 생성."""
-        mini_count = random.randint(2, 3)
+        """격추 시 MiniEnemy 2개 생성."""
         return [
-            MiniEnemy(self.rect.centerx, self.rect.centery) for _ in range(mini_count)
+            MiniEnemy(self.rect.centerx, self.rect.centery)
+            for _ in range(SPLIT_ENEMY_CHILD_COUNT)
         ]
 
 
@@ -1468,10 +1470,9 @@ class BossCarrier:
             # Phase 2: 드론 소환 (1번만)
             if not self.drones_spawned:
                 self.drones_spawned = True
-                drone_count = random.randint(2, 3)
                 self.pending_drones = []
-                for i in range(drone_count):
-                    offset_x = (i - drone_count // 2) * 30
+                for i in range(BOSS_CARRIER_DRONE_COUNT):
+                    offset_x = (i - BOSS_CARRIER_DRONE_COUNT // 2) * 30
                     self.pending_drones.append(
                         CarrierDrone(
                             self.rect.centerx + offset_x,
