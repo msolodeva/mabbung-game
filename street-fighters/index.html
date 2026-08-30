@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Street Fighters vs KOF - Dad & Son Edition</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <header>
+    <h1 class="game-title">⚡ STREET FIGHTERS vs KOF ⚡</h1>
+    <p class="subtitle">스트리트 파이터 & 킹 오브 파이터즈 스타일 2인 대전 격투 (Dad & Son Edition)</p>
+  </header>
+
+  <main class="game-wrapper">
+    <canvas id="game-canvas"></canvas>
+  </main>
+
+  <div class="controls-bar">
+    <button id="btn-guide" class="btn btn-primary">📖 조작 및 스킬 가이드 (G)</button>
+    <button id="btn-sound" class="btn">🔊 효과음 ON (N)</button>
+    <button id="btn-music" class="btn">🎵 BGM ON (M)</button>
+    <button id="btn-hitbox" class="btn">⬜ 히트박스 OFF (F2)</button>
+    <button id="btn-fullscreen" class="btn">⛶ 전체 화면</button>
+  </div>
+
+  <div class="cheatsheet-container">
+    <!-- 1P Control Card -->
+    <div class="cheat-card p1">
+      <div class="card-header p1">
+        <span>🎮 1P 조작키 (키보드 좌측 몰림 / 텐키리스 완벽)</span>
+      </div>
+      <div class="key-grid">
+        <div class="key-item"><span class="kbd">W A S D</span> 이동 / 점프 / 앉기</div>
+        <div class="key-item"><span class="kbd">F</span> 약공격 (Punch)</div>
+        <div class="key-item"><span class="kbd">G</span> 강공격 (Kick)</div>
+        <div class="key-item"><span class="kbd">H</span> 필살기 1 (장풍/스킬)</div>
+        <div class="key-item"><span class="kbd">↑ + H</span> 필살기 2 (승룡/대공)</div>
+        <div class="key-item"><span class="kbd">↓ + H</span> 필살기 3 (돌진/특수)</div>
+        <div class="key-item"><span class="kbd">Space + A/D</span> KOF 구르기 회피</div>
+        <div class="key-item"><span class="kbd">R</span> 초필살기 (게이지 1칸)</div>
+      </div>
+    </div>
+
+    <!-- 2P Control Card -->
+    <div class="cheat-card p2">
+      <div class="card-header p2">
+        <span>🎮 2P 조작키 (키보드 우측 몰림 / 텐키리스 완벽)</span>
+      </div>
+      <div class="key-grid">
+        <div class="key-item"><span class="kbd">방향키 ↑←↓→</span> 이동 / 점프 / 앉기</div>
+        <div class="key-item"><span class="kbd">I</span> 약공격 (Punch)</div>
+        <div class="key-item"><span class="kbd">O</span> 강공격 (Kick)</div>
+        <div class="key-item"><span class="kbd">P</span> 필살기 1 (장풍/스킬)</div>
+        <div class="key-item"><span class="kbd">↑ + P</span> 필살기 2 (승룡/대공)</div>
+        <div class="key-item"><span class="kbd">↓ + P</span> 필살기 3 (돌진/특수)</div>
+        <div class="key-item"><span class="kbd">Enter + ←/→</span> KOF 구르기 회피</div>
+        <div class="key-item"><span class="kbd">[</span> 초필살기 (게이지 1칸)</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
