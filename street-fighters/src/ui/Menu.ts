@@ -1,3 +1,4 @@
+import { titleScreen, selectScreen } from './Presentation';
 export type GameMode = 'PVP' | 'CPU' | 'TRAINING';
 export type CharacterType = 'RYU' | 'CHUN_LI' | 'TERRY' | 'IORI' | 'GUILE' | 'MAI';
 export type StageType = 'SUZAKU' | 'NEO_TOKYO' | 'SOUTH_TOWN';
@@ -109,227 +110,8 @@ export class MenuManager {
     { title: '조작 방법 & 스킬 가이드', mode: null }
   ];
 
-  public renderTitle(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
-
-    // Background Retro Gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 720);
-    bgGrad.addColorStop(0, '#0a0a1a');
-    bgGrad.addColorStop(0.4, '#1b003a');
-    bgGrad.addColorStop(1, '#380026');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 1280, 720);
-
-    // Neon Grid Perspective
-    ctx.strokeStyle = 'rgba(255, 0, 128, 0.25)';
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 16; i++) {
-      const y = 460 + i * 18;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(1280, y);
-      ctx.stroke();
-    }
-
-    // Title Logo
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.font = 'bold 24px "Impact", "Arial Black", sans-serif';
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillText('⚡ CAPCOM vs SNK TRIBUTE ⚡', 640, 120);
-
-    ctx.font = 'italic 900 82px "Impact", "Arial Black", sans-serif';
-    ctx.fillStyle = '#000000';
-    ctx.fillText('STREET FIGHTERS', 644, 204);
-
-    const titleGrad = ctx.createLinearGradient(0, 150, 0, 230);
-    titleGrad.addColorStop(0, '#fff59d');
-    titleGrad.addColorStop(0.3, '#ff9800');
-    titleGrad.addColorStop(0.65, '#f44336');
-    titleGrad.addColorStop(1, '#d500f9');
-
-    ctx.fillStyle = titleGrad;
-    ctx.fillText('STREET FIGHTERS', 640, 200);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.strokeText('STREET FIGHTERS', 640, 200);
-
-    ctx.font = 'bold 26px "Impact", "Arial Black", sans-serif';
-    ctx.fillStyle = '#ffd700';
-    ctx.fillText('★ THE KING OF CLASH ★', 640, 260);
-
-    // Menu Options
-    const startY = 360;
-    this.titleOptions.forEach((opt, idx) => {
-      const isSelected = idx === this.titleSelectedIndex;
-      const y = startY + idx * 64;
-
-      if (isSelected) {
-        ctx.fillStyle = 'rgba(255, 235, 59, 0.2)';
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(400, y - 26, 480, 52, 10);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 28px "Impact", "Arial Black", sans-serif';
-        ctx.fillText(`▶  ${opt.title}  ◀`, 640, y);
-      } else {
-        ctx.fillStyle = '#b0bec5';
-        ctx.font = 'bold 24px "Impact", "Arial Black", sans-serif';
-        ctx.fillText(opt.title, 640, y);
-      }
-    });
-
-    ctx.font = '16px sans-serif';
-    ctx.fillStyle = '#90a4ae';
-    ctx.fillText('선택: W/S 또는 ↑/↓ | 결정: J / Enter / Space | 가이드: G', 640, 670);
-
-    ctx.restore();
-  }
-
-  public renderCharSelect(ctx: CanvasRenderingContext2D, mode: GameMode): void {
-    ctx.save();
-
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 720);
-    bgGrad.addColorStop(0, '#0e0e1e');
-    bgGrad.addColorStop(1, '#05050f');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 1280, 720);
-
-    // Header Title
-    ctx.textAlign = 'center';
-    ctx.font = 'italic 900 44px "Impact", "Arial Black", sans-serif';
-    ctx.fillStyle = '#ffd700';
-    ctx.fillText('SELECT YOUR FIGHTER', 640, 50);
-
-    // 2x3 Character Grid (6 Fighters)
-    const cols = 3;
-    const cardWidth = 350;
-    const cardHeight = 240;
-    const startX = 95;
-    const startY = 85;
-
-    CHARACTERS.forEach((char, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const cardX = startX + col * (cardWidth + 25);
-      const cardY = startY + row * (cardHeight + 18);
-
-      const isP1Selected = this.p1SelectedCharIndex === idx;
-      const isP2Selected = this.p2SelectedCharIndex === idx;
-
-      // Background Card
-      ctx.fillStyle = 'rgba(22, 22, 40, 0.9)';
-      ctx.beginPath();
-      ctx.roundRect(cardX, cardY, cardWidth, cardHeight, 10);
-      ctx.fill();
-
-      // Border highlight
-      if (isP1Selected && isP2Selected) {
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 5;
-      } else if (isP1Selected) {
-        ctx.strokeStyle = '#00e5ff';
-        ctx.lineWidth = 4;
-      } else if (isP2Selected) {
-        ctx.strokeStyle = '#ff1744';
-        ctx.lineWidth = 4;
-      } else {
-        ctx.strokeStyle = '#37474f';
-        ctx.lineWidth = 2;
-      }
-      ctx.stroke();
-
-      // Player badges
-      if (isP1Selected) {
-        ctx.fillStyle = '#00e5ff';
-        ctx.beginPath();
-        ctx.roundRect(cardX + 10, cardY + 10, 55, 24, 4);
-        ctx.fill();
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 14px "Impact", "Arial Black", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.p1Confirmed ? '1P OK' : '1P', cardX + 37, cardY + 27);
-      }
-
-      if (isP2Selected && mode === 'PVP') {
-        ctx.fillStyle = '#ff1744';
-        ctx.beginPath();
-        ctx.roundRect(cardX + cardWidth - 65, cardY + 10, 55, 24, 4);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 14px "Impact", "Arial Black", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.p2Confirmed ? '2P OK' : '2P', cardX + cardWidth - 37, cardY + 27);
-      } else if (isP2Selected && mode === 'CPU') {
-        ctx.fillStyle = '#ab47bc';
-        ctx.beginPath();
-        ctx.roundRect(cardX + cardWidth - 65, cardY + 10, 55, 24, 4);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 14px "Impact", "Arial Black", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('CPU', cardX + cardWidth - 37, cardY + 27);
-      }
-
-      // Origin Tag & Name
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#80deea';
-      ctx.fillText(char.gameOrigin, cardX + 75, cardY + 25);
-
-      ctx.font = 'italic 900 24px "Impact", "Arial Black", sans-serif';
-      ctx.fillStyle = char.color;
-      ctx.fillText(char.name, cardX + 15, cardY + 58);
-
-      ctx.font = '13px sans-serif';
-      ctx.fillStyle = '#b0bec5';
-      ctx.fillText(char.subtitle, cardX + 15, cardY + 80);
-
-      // Specials list
-      ctx.fillStyle = '#ffd54f';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('기술:', cardX + 15, cardY + 106);
-
-      ctx.fillStyle = '#eceff1';
-      ctx.font = '12px sans-serif';
-      char.specials.forEach((sp, sIdx) => {
-        ctx.fillText(`• ${sp}`, cardX + 15, cardY + 126 + sIdx * 18);
-      });
-
-      // Super
-      ctx.fillStyle = '#ff4081';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(`★ ${char.superName}`, cardX + 15, cardY + 215);
-    });
-
-    // Stage & CPU Settings footer bar
-    const footY = 620;
-    ctx.textAlign = 'center';
-
-    if (mode === 'CPU') {
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillStyle = '#ffd700';
-      const diffs = ['쉬움 (Easy - 아들 추천)', '보통 (Normal - 표준)', '어려움 (Hard - 아빠 도전)'];
-      ctx.fillText(`CPU 난이도: [ ${diffs[this.cpuDifficultyIndex]} ] (↑/↓ 키로 변경)`, 420, footY);
-    }
-
-    // Stage Selector
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#00e5ff';
-    const curStage = STAGES[this.selectedStageIndex];
-    ctx.fillText(`스테이지: [ ${curStage.name} ] (스테이지 변경: T 키)`, mode === 'CPU' ? 880 : 640, footY);
-
-    ctx.font = '15px sans-serif';
-    ctx.fillStyle = '#b0bec5';
-    ctx.fillText('1P 선택: W/A/S/D + F (또는 J)  ||  2P 선택: 방향키 + I (또는 Enter)  ||  뒤로가기: ESC', 640, 680);
-
-    ctx.restore();
-  }
+  public renderTitle(ctx:CanvasRenderingContext2D):void { titleScreen(ctx,this); }
+  public renderCharSelect(ctx:CanvasRenderingContext2D,mode:GameMode):void { selectScreen(ctx,this,mode); }
 
   public renderGuideModal(ctx: CanvasRenderingContext2D): void {
     ctx.save();
@@ -374,7 +156,7 @@ export class MenuManager {
       '• 필살기 1 (장풍/스킬) :  H  (보조: L)',
       '• 필살기 2 (대공/승룡) :  ↑ + H  (또는 ↑+L)',
       '• 필살기 3 (돌진/특수) :  ↓ + H  (또는 ↓+L)',
-      '• KOF 구르기 회피 :  Space + A(뒤) 또는 D(앞)',
+      '• 가드 : Space / 뒤로 유지  |  잡기 : F + G',
       '• 초필살기 (게이지 1칸↑) :  R  (보조: U)'
     ];
     p1Controls.forEach((c, i) => {
@@ -395,7 +177,7 @@ export class MenuManager {
       '• 필살기 1 (장풍/스킬) :  P  (보조: 0 / 3번)',
       '• 필살기 2 (대공/승룡) :  ↑ + P',
       '• 필살기 3 (돌진/특수) :  ↓ + P',
-      '• KOF 구르기 회피 :  Enter + ←(뒤) 또는 →(앞)',
+      '• 가드 : Enter / 뒤로 유지  |  잡기 : I + O',
       '• 초필살기 (게이지 1칸↑) :  [  (보조: - / 4번)'
     ];
     p2Controls.forEach((c, i) => {
@@ -411,10 +193,11 @@ export class MenuManager {
     ctx.fillStyle = '#cfd8dc';
     ctx.font = '13.5px sans-serif';
     const tips = [
-      '1. [KOF 긴급회피/구르기]: 가드 버튼과 앞/뒤 방향키를 누르면 무적으로 상대 공격/장풍을 뚫고 지나가 배후를 잡습니다!',
-      '2. [가드 크래시]: 계속 가드만 올리면 가드 게이지가 닳아 방어가 깨지고 무방비 상태가 됩니다.',
-      '3. [캔슬 체인 콤보]: 약공격 적중 즉시 강공격이나 필살기, 초필살기(U)를 누르면 부드럽게 연속기가 들어갑니다.',
-      '4. [정통 아케이드 커맨드]: ↓↘→ + 공격 (파동권/장풍), →↓↘ + 공격 (승룡권), ↓↙← + 공격 (용권선풍각/규화) 완벽 지원!'
+      '1. [방어와 잡기]: 뒤로 유지하거나 가드 버튼을 누르세요. 하단은 앉아서, 점프 공격은 서서 방어합니다. 잡기는 가드를 뚫습니다.',
+      '2. [가드 브레이크]: 가드 게이지가 바닥나면 방어가 깨집니다. 동시 잡기는 잡기 풀기가 됩니다.',
+      '3. [캔슬 콤보]: 약공격이 맞거나 막혔을 때 강공격·필살기로 연결하세요. 헛친 공격은 캔슬할 수 없습니다.',
+      '4. [패드]: 십자키 이동 / A·X 약공격 / B·Y 강공격 / RB 필살기 / RT 초필살기 / LB 가드',
+      '5. [연습]: F4 위치 초기화 / F6 더미 행동 / F7 정지 / F8 한 프레임 / F2 판정 표시'
     ];
     tips.forEach((t, i) => {
       ctx.fillText(t, col1X, tipsY + 26 + i * 22);

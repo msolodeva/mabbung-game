@@ -23,9 +23,10 @@ export class Physics {
   }
 
   public static resolvePushbox(
-    p1: { x: number; width: number; isAirborne: boolean },
-    p2: { x: number; width: number; isAirborne: boolean }
+    p1: { x: number; width: number; isAirborne: boolean; y?: number; height?: number },
+    p2: { x: number; width: number; isAirborne: boolean; y?: number; height?: number }
   ): void {
+    if (Math.abs((p1.y ?? this.GROUND_Y) - (p2.y ?? this.GROUND_Y)) > Math.min(p1.height ?? 140, p2.height ?? 140) * .72) return;
     const minDistance = (p1.width + p2.width) * 0.45;
     const diff = p2.x - p1.x;
 
@@ -40,6 +41,12 @@ export class Physics {
       }
     }
 
+    const left = p1.x < p2.x ? p1 : p2;
+    const right = left === p1 ? p2 : p1;
+    const leftLimit = Physics.STAGE_LEFT + left.width/2;
+    const rightLimit = Physics.STAGE_RIGHT - right.width/2;
+    if (left.x < leftLimit) { right.x += leftLimit-left.x; left.x=leftLimit; }
+    if (right.x > rightLimit) { left.x -= right.x-rightLimit; right.x=rightLimit; }
     // Clamp to stage bounds
     const p1Min = Physics.STAGE_LEFT + p1.width / 2;
     const p1Max = Physics.STAGE_RIGHT - p1.width / 2;

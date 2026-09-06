@@ -71,6 +71,14 @@ export class InputManager {
   private p1History: DirectionEntry[] = [];
   private p2History: DirectionEntry[] = [];
   private currentFrame = 0;
+  private pressedKeys = new Set<string>();
+  private cached = new Map<number, PlayerInput>();
+  private previousPads: boolean[][] = [[], []];
+  public history: string[][] = [[], []];
+  public clear(): void {
+    this.keyState.clear(); this.prevKeyState.clear(); this.pressedKeys.clear(); this.cached.clear();
+    this.previousPads=[[],[]]; this.p1History=[]; this.p2History=[];
+  }
 
   constructor() {
     window.addEventListener('keydown', (e) => {
@@ -78,10 +86,12 @@ export class InputManager {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
+      if (!e.repeat) { this.pressedKeys.add(e.code); this.pressedKeys.add(e.key); }
       this.keyState.set(e.code, true);
       this.keyState.set(e.key, true);
     });
 
+    window.addEventListener('blur', () => this.clear());
     window.addEventListener('keyup', (e) => {
       this.keyState.set(e.code, false);
       this.keyState.set(e.key, false);
@@ -90,6 +100,7 @@ export class InputManager {
 
   public update(): void {
     this.currentFrame++;
+    this.cached.clear();
     // Keep history trimmed to last 60 frames (1 second)
     this.p1History = this.p1History.filter(h => this.currentFrame - h.frame < 45);
     this.p2History = this.p2History.filter(h => this.currentFrame - h.frame < 45);
@@ -97,6 +108,9 @@ export class InputManager {
 
   public endFrame(): void {
     this.prevKeyState = new Map(this.keyState);
+    this.pressedKeys.clear();
+    const pads = navigator.getGamepads?.() ?? [];
+    this.previousPads = [0, 1].map(i => pads[i] ? this.padActions(pads[i]!) : []);
   }
 
   private isDown(keys: string[]): boolean {
@@ -104,7 +118,7 @@ export class InputManager {
   }
 
   private isJustPressed(keys: string[]): boolean {
-    return keys.some(k => this.keyState.get(k) === true && !this.prevKeyState.get(k));
+    return keys.some(k => this.pressedKeys.has(k));
   }
 
   private getNumpadDir(left: boolean, right: boolean, down: boolean, up: boolean, facingRight: boolean): number {
@@ -128,7 +142,7 @@ export class InputManager {
 
     for (let i = history.length - 1; i >= 0; i--) {
       const entry = history[i];
-      if (lastFrame - entry.frame > maxFrames) break;
+      if (this.currentFrame - entry.frame > maxFrames) break;
 
       if (entry.dir === sequence[seqIdx]) {
         seqIdx--;
@@ -139,7 +153,12 @@ export class InputManager {
     return false;
   }
 
+  private padActions(pad: Gamepad): boolean[] {
+    const b=(i:number)=>!!pad.buttons[i]?.pressed;
+    return [(pad.axes[0]||0)<-.4||b(14),(pad.axes[0]||0)>.4||b(15),(pad.axes[1]||0)<-.4||b(12),(pad.axes[1]||0)>.4||b(13),b(0)||b(2),b(1)||b(3),b(5),b(7)||b(6),b(4)];
+  }
   public getPlayerInput(playerIndex: 1 | 2, facingRight: boolean): PlayerInput {
+    const cached=this.cached.get(playerIndex); if(cached) return cached;
     const bindings = playerIndex === 1 ? DEFAULT_P1_KEYS : DEFAULT_P2_KEYS;
     const padIndex = playerIndex - 1;
     const gamepad = navigator.getGamepads ? navigator.getGamepads()[padIndex] : null;
@@ -164,25 +183,13 @@ export class InputManager {
     let rightPressed = this.isJustPressed(bindings.right);
     let guardPressed = this.isJustPressed(bindings.guard);
 
-    // Merge Gamepad input if available
     if (gamepad) {
-      const axisX = gamepad.axes[0] || 0;
-      const axisY = gamepad.axes[1] || 0;
-      const dpadUp = gamepad.buttons[12]?.pressed;
-      const dpadDown = gamepad.buttons[13]?.pressed;
-      const dpadLeft = gamepad.buttons[14]?.pressed;
-      const dpadRight = gamepad.buttons[15]?.pressed;
-
-      if (axisX < -0.4 || dpadLeft) left = true;
-      if (axisX > 0.4 || dpadRight) right = true;
-      if (axisY < -0.4 || dpadUp) up = true;
-      if (axisY > 0.4 || dpadDown) down = true;
-
-      // Buttons: 0=A/X, 1=B/Circle, 2=X/Square, 3=Y/Triangle, 4=LB, 5=RB, 6=LT, 7=RT
-      if (gamepad.buttons[0]?.pressed || gamepad.buttons[2]?.pressed) light = true;
-      if (gamepad.buttons[1]?.pressed || gamepad.buttons[3]?.pressed) heavy = true;
-      if (gamepad.buttons[5]?.pressed || gamepad.buttons[4]?.pressed) special = true;
-      if (gamepad.buttons[7]?.pressed || gamepad.buttons[6]?.pressed) superAttack = true;
+      const a=this.padActions(gamepad), old=this.previousPads[padIndex];
+      const pressed=(i:number)=>a[i]&&!old[i];
+      left ||= a[0]; right ||= a[1]; up ||= a[2]; down ||= a[3];
+      light ||= a[4]; heavy ||= a[5]; special ||= a[6]; superAttack ||= a[7]; guard ||= a[8];
+      leftPressed ||= pressed(0); rightPressed ||= pressed(1); upPressed ||= pressed(2); downPressed ||= pressed(3);
+      lightPressed ||= pressed(4); heavyPressed ||= pressed(5); specialPressed ||= pressed(6); superPressed ||= pressed(7); guardPressed ||= pressed(8);
     }
 
     // Record direction history for motion inputs
@@ -200,7 +207,7 @@ export class InputManager {
     // QCB (↓ ↙ ←): 2 -> 1 -> 4
     const qcb = this.checkMotion(history, [2, 1, 4], 30);
 
-    return {
+    const result: PlayerInput = {
       left,
       right,
       up,
@@ -223,5 +230,13 @@ export class InputManager {
       dpPressed: dp && (lightPressed || heavyPressed || specialPressed),
       qcbPressed: qcb && (lightPressed || heavyPressed || specialPressed)
     };
+    this.cached.set(playerIndex,result);
+    if(lightPressed||heavyPressed||specialPressed||superPressed||upPressed||downPressed||leftPressed||rightPressed) {
+      const arrows=['','↙','↓','↘','←','·','→','↖','↑','↗'];
+      const label=arrows[dir]+(lightPressed?' P':'')+(heavyPressed?' K':'')+(specialPressed?' S':'')+(superPressed?' EX':'');
+      this.history[padIndex].unshift(label);this.history[padIndex].length=Math.min(9,this.history[padIndex].length);
+    }
+    if(result.qcfPressed||result.dpPressed||result.qcbPressed) history.length=0;
+    return result;
   }
 }

@@ -1,3 +1,9 @@
+import { ArcadeFighter } from '../entities/ArcadeFighter';
+import { resolveCombat } from '../combat/Resolve';
+import { FixedStep } from './FixedStep';
+import { drawDojo } from '../render/Stage';
+import { characterMove } from '../combat/Moves';
+import { emptyInput } from './Training';
 import { InputManager } from './Input';
 import { AudioManager } from './Audio';
 import { ParticleManager } from './Particles';
@@ -31,8 +37,8 @@ export class Game {
   public scene: SceneState = 'TITLE';
   public gameMode: GameMode = 'PVP';
 
-  public p1!: Fighter;
-  public p2!: Fighter;
+  public p1!: ArcadeFighter;
+  public p2!: ArcadeFighter;
   public ai: FighterAI | null = null;
   public projectiles: Projectile[] = [];
 
@@ -43,7 +49,12 @@ export class Game {
   public matchWinner: 1 | 2 | null = null;
 
   public debugHitboxes = false;
-  public infiniteHpInTraining = false;
+  public infiniteHpInTraining = true;
+  public trainingDummy = 0;
+  public trainingFrozen = false;
+  private trainingStep = false;
+  public simulationFrames = 0;
+  private fixedStep = new FixedStep();
 
   private isRunning = true;
 
@@ -51,14 +62,43 @@ export class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
 
-    this.initFighters('RYU', 'TERRY');
+    this.initFighters('RYU', 'CHUN_LI');
+    this.canvas.addEventListener('pointerdown', e => {
+      if(this.menu.showGuide||this.menu.isPaused)return;
+      const rect=this.canvas.getBoundingClientRect(),x=(e.clientX-rect.left)*1280/rect.width,y=(e.clientY-rect.top)*720/rect.height;
+      this.audio.enableAudio();
+      if(this.scene==='TITLE'&&x<590&&y>=365&&y<605) {
+        const index=Math.floor((y-365)/60);const mode=this.menu.titleOptions[index]?.mode;
+        if(mode)this.quickStart(mode);else this.menu.showGuide=true;
+      } else if(this.scene==='SELECT') {
+        if(y>=490&&y<=597&&x>=170&&x<=1110) {
+          const index=Math.floor((x-170)/158);
+          if(index<6) {if(!this.menu.p1Confirmed)this.menu.p1SelectedCharIndex=index;else this.menu.p2SelectedCharIndex=index;}
+        }
+        if(y>=621&&y<=669&&x>=455&&x<=825) {
+          if(!this.menu.p1Confirmed)this.menu.p1Confirmed=true;else this.menu.p2Confirmed=true;
+        }
+      }
+    });
 
+    window.addEventListener('blur', () => {
+      if(this.scene==='FIGHTING'||this.scene==='FIGHT_INTRO') this.menu.isPaused=true;
+      this.fixedStep.reset();
+    });
+    document.addEventListener('visibilitychange', () => this.fixedStep.reset());
     window.addEventListener('keydown', (e) => {
+      if ((e.target as HTMLElement)?.closest('button,select,input')) return;
+      if (e.repeat) return;
+      if (['F1','F2','F3','F4','F6','F7','F8'].includes(e.code)) e.preventDefault();
+      if(e.code==='F4'&&this.gameMode==='TRAINING') this.resetTraining();
+      if(e.code==='F6'&&this.gameMode==='TRAINING') this.trainingDummy=(this.trainingDummy+1)%4;
+      if(e.code==='F7'&&this.gameMode==='TRAINING') this.trainingFrozen=!this.trainingFrozen;
+      if(e.code==='F8'&&this.gameMode==='TRAINING') {this.trainingFrozen=true;this.trainingStep=true;}
       if (e.key === 'm' || e.key === 'M') this.audio.toggleMusic();
       if (e.key === 'n' || e.key === 'N') this.audio.toggleSound();
-      if (e.key === 'g' || e.key === 'G') this.menu.showGuide = !this.menu.showGuide;
-      if (e.key === 'F2' || e.key === 'h' || e.key === 'H') this.debugHitboxes = !this.debugHitboxes;
-      if (e.key === 't' || e.key === 'T') {
+      if (e.code === 'F1') this.menu.showGuide = !this.menu.showGuide;
+      if (e.code === 'F2') this.debugHitboxes = !this.debugHitboxes;
+      if (e.code === 'F3' && this.scene === 'SELECT') {
         this.menu.selectedStageIndex = (this.menu.selectedStageIndex + 1) % STAGES.length;
       }
       if (e.key === 'Escape') {
@@ -74,8 +114,8 @@ export class Game {
   }
 
   public initFighters(p1Type: CharacterType, p2Type: CharacterType): void {
-    const p1StartX = 500;
-    const p2StartX = 1100;
+    const p1StartX = 570;
+    const p2StartX = 1030;
 
     this.p1 = this.createFighter(p1Type, 1, p1StartX, true);
     this.p2 = this.createFighter(p2Type, 2, p2StartX, false);
@@ -88,7 +128,11 @@ export class Game {
     }
   }
 
-  private createFighter(type: CharacterType, id: 1 | 2, x: number, facingRight: boolean): Fighter {
+  private createFighter(type:CharacterType,id:1|2,x:number,facing:boolean):ArcadeFighter {
+    const fighter=new ArcadeFighter(type,id,x,facing);
+    fighter.legacy=this.createLegacy(type,id,x,facing);return fighter;
+  }
+  private createLegacy(type: CharacterType, id: 1 | 2, x: number, facingRight: boolean): Fighter {
     switch (type) {
       case 'RYU':
         return new BlazeFighter(id, x, facingRight);
@@ -110,21 +154,30 @@ export class Game {
     requestAnimationFrame(this.gameLoop.bind(this));
   }
 
-  private gameLoop(): void {
+  private gameLoop(now: number): void {
     if (!this.isRunning) return;
-
-    this.input.update();
-
-    if (this.menu.isPaused) {
-      this.updatePaused();
-    } else {
-      this.update();
-    }
-
+    this.fixedStep.advance(now, () => {
+      this.input.update();
+      if (this.menu.isPaused) this.updatePaused();
+      else if (this.gameMode==='TRAINING' && this.trainingFrozen && this.scene==='FIGHTING') {
+        this.p1.captureInput(this.input.getPlayerInput(1,this.p1.facingRight));
+        if(this.trainingStep) {this.trainingStep=false;this.update();}
+      } else this.update();
+      this.input.endFrame();
+    });
     this.render();
-
-    this.input.endFrame();
     requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  public quickStart(mode:GameMode):void {
+    this.gameMode=mode;this.menu.isPaused=false;this.menu.showGuide=false;
+    this.menu.p1Confirmed=false;this.menu.p2Confirmed=false;
+    this.scene='SELECT';this.audio.enableAudio();this.input.clear();
+  }
+  public resetTraining():void {
+    this.p1.resetRound(700,true);this.p2.resetRound(900,false);
+    this.p1.superMeter=300;this.p2.superMeter=300;this.projectiles=[];this.particles.clear();
+    this.hud.announcer=null;this.scene='FIGHTING';this.roundTimer=99;
   }
 
   private updatePaused(): void {
@@ -234,10 +287,10 @@ export class Game {
     const p1In = this.input.getPlayerInput(1, true);
     const p2In = this.input.getPlayerInput(2, false);
 
-    const cols = 3;
+    const cols = CHARACTERS.length;
     const total = CHARACTERS.length;
 
-    // 1P Grid Navigation (2x3)
+    // Navigation follows the visible single-row roster.
     if (!this.menu.p1Confirmed) {
       let p1Idx = this.menu.p1SelectedCharIndex;
       if (p1In.leftPressed) {
@@ -249,11 +302,11 @@ export class Game {
         this.audio.playWhoosh(450);
       }
       if (p1In.upPressed) {
-        p1Idx = (p1Idx - cols + total) % total;
+        p1Idx = (p1Idx - 1 + total) % total;
         this.audio.playWhoosh(400);
       }
       if (p1In.downPressed) {
-        p1Idx = (p1Idx + cols) % total;
+        p1Idx = (p1Idx + 1) % total;
         this.audio.playWhoosh(350);
       }
       this.menu.p1SelectedCharIndex = p1Idx;
@@ -277,11 +330,11 @@ export class Game {
           this.audio.playWhoosh(450);
         }
         if (p2In.upPressed) {
-          p2Idx = (p2Idx - cols + total) % total;
+          p2Idx = (p2Idx - 1 + total) % total;
           this.audio.playWhoosh(400);
         }
         if (p2In.downPressed) {
-          p2Idx = (p2Idx + cols) % total;
+          p2Idx = (p2Idx + 1) % total;
           this.audio.playWhoosh(350);
         }
         this.menu.p2SelectedCharIndex = p2Idx;
@@ -292,7 +345,9 @@ export class Game {
         }
       }
     } else {
-      // In CPU or Training mode
+      // In CPU/Training, arrow keys select the opponent independently of WASD.
+      if(p2In.leftPressed) this.menu.p2SelectedCharIndex=(this.menu.p2SelectedCharIndex-1+total)%total;
+      if(p2In.rightPressed) this.menu.p2SelectedCharIndex=(this.menu.p2SelectedCharIndex+1)%total;
       this.menu.p2Confirmed = true;
       if (this.gameMode === 'CPU' && p1In.specialPressed) {
         this.menu.cpuDifficultyIndex = (this.menu.cpuDifficultyIndex + 1) % 3;
@@ -319,9 +374,11 @@ export class Game {
     this.roundTimerFrames = 0;
     this.stateTimer = 0;
 
-    this.p1.resetRound(500, true);
-    this.p2.resetRound(1100, false);
+    this.p1.resetRound(570, true);
+    this.p2.resetRound(1030, false);
 
+    this.trainingFrozen=false;
+    if(this.gameMode==='TRAINING') {this.p1.superMeter=300;this.p2.superMeter=300;}
     const roundText = this.currentRound === 3 ? 'FINAL ROUND' : `ROUND ${this.currentRound}`;
     this.hud.setAnnouncement(roundText, 'READY...', 70);
     this.audio.playAnnounce('round');
@@ -329,6 +386,7 @@ export class Game {
   }
 
   private updateFightIntro(): void {
+    this.hud.update(this.p1,this.p2);
     this.camera.update(this.p1.x, this.p2.x);
     this.particles.update();
 
@@ -349,61 +407,31 @@ export class Game {
       p2Input = this.input.getPlayerInput(2, this.p2.facingRight);
     }
 
-    if (this.gameMode === 'TRAINING' && this.infiniteHpInTraining) {
-      this.p1.hp = this.p1.maxHp;
-      this.p2.hp = this.p2.maxHp;
+    if(this.gameMode==='TRAINING') {
+      p2Input=emptyInput();
+      if(this.trainingDummy===1) {p2Input.guard=true;p2Input.down=!!p1Input.down||this.p1.move?.level==='low';}
+      if(this.trainingDummy===2) {p2Input.down=true;p2Input.guard=true;}
+      if(this.trainingDummy===3 && !this.p2.isAirborne) {p2Input.up=true;p2Input.upPressed=true;}
+      if(this.infiniteHpInTraining) {
+        for(const f of [this.p1,this.p2]) if(f.neutral && f.stun===0) f.hp=f.maxHp;
+        this.p1.superMeter=300;
+      }
     }
-
-    // Update Fighters
-    this.p1.update(p1Input, this.p2, this.projectiles, this.particles, this.audio);
-    this.p2.update(p2Input, this.p1, this.projectiles, this.particles, this.audio);
-
-    // Pushbox (characters don't overlap unless rolling)
-    if (
-      this.p1.state !== 'ROLL_FWD' && this.p1.state !== 'ROLL_BACK' &&
-      this.p2.state !== 'ROLL_FWD' && this.p2.state !== 'ROLL_BACK'
-    ) {
-      Physics.resolvePushbox(this.p1, this.p2);
+    // Freeze gameplay, but keep sampling input so a cancel entered during impact is retained.
+    if(this.p1.hitStop>0||this.p2.hitStop>0||this.particles.superFreeze) {
+      this.p1.captureInput(p1Input);this.p2.captureInput(p2Input);
+      this.p1.hitStop=Math.max(0,this.p1.hitStop-1);this.p2.hitStop=Math.max(0,this.p2.hitStop-1);
+      this.particles.update();this.hud.update(this.p1,this.p2);this.camera.update(this.p1.x,this.p2.x);return;
     }
-
-    // Update Projectiles
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const proj = this.projectiles[i];
-      proj.update(this.particles);
-
-      if (!proj.isActive) {
-        this.projectiles.splice(i, 1);
-        continue;
-      }
-
-      const target = proj.ownerId === 1 ? this.p2 : this.p1;
-      const attacker = proj.ownerId === 1 ? this.p1 : this.p2;
-
-      if (Physics.checkOverlap(proj.getHitbox(), target.getHurtbox())) {
-        proj.hitsLeft--;
-        if (proj.hitsLeft <= 0) {
-          proj.isActive = false;
-        }
-
-        const isHeavy = proj.damage > 80;
-        const targetInput = target.id === 1 ? p1Input : p2Input;
-        target.takeDamage(proj.damage, isHeavy, 7, isHeavy ? -4 : 0, attacker, this.particles, this.audio, targetInput);
-        this.particles.createHitSparks(proj.x, proj.y, true, proj.color);
-      }
-
-      // Projectile clashes
-      for (let j = i - 1; j >= 0; j--) {
-        const otherProj = this.projectiles[j];
-        if (otherProj.isActive && proj.ownerId !== otherProj.ownerId) {
-          if (Physics.checkOverlap(proj.getHitbox(), otherProj.getHitbox())) {
-            proj.isActive = false;
-            otherProj.isActive = false;
-            this.particles.createHitSparks((proj.x + otherProj.x) / 2, (proj.y + otherProj.y) / 2, true, '#ffffff');
-            this.audio.playBlock();
-            break;
-          }
-        }
-      }
+    this.simulationFrames++;
+    this.p1.update(p1Input,this.p2,this.projectiles,this.particles,this.audio);
+    this.p2.update(p2Input,this.p1,this.projectiles,this.particles,this.audio);
+    Physics.resolvePushbox(this.p1,this.p2);
+    for(const p of this.projectiles) p.update(this.particles);
+    resolveCombat([this.p1,this.p2],this.projectiles,this.particles,this.audio,this.camera);
+    this.projectiles=this.projectiles.filter(p=>p.isActive);
+    if(this.gameMode==='TRAINING' && this.infiniteHpInTraining) {
+      for(const f of [this.p1,this.p2]) if(f.hp<=0) {f.hp=1;f.state='KNOCKDOWN';}
     }
 
     // Update Systems
@@ -457,6 +485,9 @@ export class Game {
   }
 
   private updateRoundEnd(): void {
+    const input=emptyInput();
+    this.p1.update(input,this.p2,this.projectiles,this.particles,this.audio);
+    this.p2.update(input,this.p1,this.projectiles,this.particles,this.audio);
     this.particles.update();
     this.camera.update(this.p1.x, this.p2.x);
     this.hud.update(this.p1, this.p2);
@@ -502,7 +533,7 @@ export class Game {
       } else if (curStage === 'SOUTH_TOWN') {
         this.drawSouthTownStage(ctx);
       } else {
-        this.drawSuzakuStage(ctx);
+        if(!drawDojo(ctx,this.simulationFrames)) this.drawSuzakuStage(ctx);
       }
 
       // Draw Projectiles
@@ -523,7 +554,10 @@ export class Game {
       this.particles.renderSuperFreeze(ctx);
 
       // Draw HUD
-      this.hud.render(ctx, this.p1, this.p2, this.roundTimer, this.currentRound);
+      this.hud.stageName=STAGES[this.menu.selectedStageIndex].name.split(' (')[0];
+      this.hud.render(ctx, this.p1, this.p2, this.gameMode==='TRAINING'?-1:this.roundTimer, this.currentRound);
+
+      if(this.gameMode==='TRAINING'&&!this.particles.superFreeze) this.renderTraining(ctx);
 
       // Match End Screen
       if (this.scene === 'MATCH_END' && this.matchWinner !== null) {
@@ -555,6 +589,22 @@ export class Game {
     if (this.menu.showGuide) {
       this.menu.renderGuideModal(ctx);
     }
+  }
+
+  private renderTraining(ctx:CanvasRenderingContext2D):void {
+    ctx.save();ctx.fillStyle='rgba(9,14,22,.88)';ctx.fillRect(365,124,550,103);
+    ctx.fillStyle='#e7cfa2';ctx.textAlign='center';ctx.font='bold 11px sans-serif';
+    ctx.fillText(`TRAINING  /  ${['STAND','AUTO GUARD','LOW GUARD','JUMP'][this.trainingDummy]}  /  ${this.trainingFrozen?'FRAME PAUSED':'LIVE'}`,640,144);
+    ctx.font='12px monospace';ctx.fillStyle='#eee9df';ctx.fillText(`${this.p1.phase}  |  DAMAGE ${this.p2.lastDamage}  |  COMBO DMG ${this.p1.comboDamage}`,640,166);
+    const move=this.p1.move??(this.p1.lastMove?characterMove(this.p1.character,this.p1.lastMove):null);
+    if(move) {
+      const colors=['#6ba7ec','#eb775c','#8997a7'];let x=425;
+      [move.startup,move.active,move.recovery].forEach((frames,i)=>{ctx.fillStyle=colors[i];ctx.fillRect(x,178,frames*5-1,6);x+=frames*5;});
+    }
+    ctx.fillStyle='#aab5c4';ctx.font='11px sans-serif';ctx.fillText('F4 RESET   F6 DUMMY   F7 PAUSE   F8 +1 FRAME   F2 BOXES',640,207);
+    ctx.textAlign='left';ctx.fillStyle='#e7cfa2';ctx.font='13px monospace';
+    this.input.history[0].forEach((label,i)=>ctx.fillText(label,34,163+i*23));
+    ctx.restore();
   }
 
   // --- STAGE 1: 주작성 도장 (Suzaku Castle - SF Ryu Stage) ---

@@ -8,6 +8,8 @@ export class FighterAI {
   private fighter: Fighter;
   private difficulty: AIDifficulty;
   private thinkTimer = 0;
+  private antiAir = false;
+  private blockLow = false;
   private actionCooldown = 0;
   private currentAction: 'IDLE' | 'APPROACH' | 'RETREAT' | 'ATTACK_LIGHT' | 'ATTACK_HEAVY' | 'SPECIAL' | 'SUPER' | 'GUARD' | 'JUMP' = 'IDLE';
   private actionDuration = 0;
@@ -27,6 +29,7 @@ export class FighterAI {
 
   public update(opponent: Fighter, projectiles: Projectile[]): PlayerInput {
     this.thinkTimer++;
+    this.blockLow=opponent.isCrouching;
     if (this.actionCooldown > 0) {
       this.actionCooldown--;
     }
@@ -41,6 +44,7 @@ export class FighterAI {
     // If currently performing a committed action, tick it down
     if (this.thinkTimer >= this.actionDuration) {
       this.thinkTimer = 0;
+      this.antiAir=false;
 
       // 1. Reactive defense against projectiles & super attacks
       if (hasIncomingProjectile || opponent.state === 'SUPER') {
@@ -57,6 +61,7 @@ export class FighterAI {
         const antiAirChance = this.difficulty === 'NORMAL' ? 0.45 : 0.85;
         if (Math.random() < antiAirChance && this.actionCooldown <= 0) {
           this.currentAction = 'SPECIAL';
+          this.antiAir=true;
           this.actionDuration = 8;
           this.actionCooldown = 30;
           return this.createInput(facingRight);
@@ -174,14 +179,15 @@ export class FighterAI {
 
       case 'GUARD':
         input.guard = true;
-        input.guardPressed = this.thinkTimer === 1;
+        input.down = this.blockLow;
+        input.guardPressed = this.thinkTimer === 0;
         if (facingRight) input.left = true;
         else input.right = true;
         break;
 
       case 'JUMP':
         input.up = true;
-        input.upPressed = this.thinkTimer === 1;
+        input.upPressed = this.thinkTimer === 0;
         if (Math.random() < 0.5) {
           if (facingRight) input.right = true;
           else input.left = true;
@@ -190,25 +196,25 @@ export class FighterAI {
 
       case 'ATTACK_LIGHT':
         input.lightAttack = true;
-        input.lightAttackPressed = this.thinkTimer === 1;
+        input.lightAttackPressed = this.thinkTimer === 0;
         break;
 
       case 'ATTACK_HEAVY':
         input.heavyAttack = true;
-        input.heavyAttackPressed = this.thinkTimer === 1;
+        input.heavyAttackPressed = this.thinkTimer === 0;
         break;
 
       case 'SPECIAL':
         input.special = true;
-        input.specialPressed = this.thinkTimer === 1;
-        if (Math.random() < 0.4) {
+        input.specialPressed = this.thinkTimer === 0;
+        if (this.antiAir) {
           input.up = true; // Up + Special = Dragon Punch
         }
         break;
 
       case 'SUPER':
         input.superAttack = true;
-        input.superAttackPressed = this.thinkTimer === 1;
+        input.superAttackPressed = this.thinkTimer === 0;
         break;
 
       case 'IDLE':

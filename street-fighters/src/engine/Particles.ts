@@ -184,15 +184,12 @@ export class ParticleManager {
       ctx.stroke();
     }
 
-    // Flash Text
-    ctx.globalAlpha = 0.9;
-    ctx.textAlign = 'center';
-    ctx.font = 'italic 900 68px "Impact", "Arial Black", sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('★ SUPER MOVE ★', 640, 220);
-    ctx.strokeStyle = this.superFreeze.color;
-    ctx.lineWidth = 4;
-    ctx.strokeText('★ SUPER MOVE ★', 640, 220);
+    // Keep the fighters readable during the short super activation freeze.
+    ctx.globalAlpha = .95;
+    ctx.fillStyle='#111a28';ctx.fillRect(0,130,1280,82);
+    ctx.fillStyle=this.superFreeze.color;ctx.fillRect(0,130,1280,2);
+    ctx.textAlign='center';ctx.font='italic 900 39px Impact, sans-serif';ctx.fillStyle='#fff0d6';
+    ctx.fillText(this.superFreeze.characterName+'  /  SUPER ART',640,185);
 
     ctx.restore();
   }
@@ -226,7 +223,7 @@ export class ParticleManager {
   }
 
   public createHitSparks(x: number, y: number, isHeavy = false, color = '#ffea00'): void {
-    const count = isHeavy ? 26 : 14;
+    const count = isHeavy ? 20 : 11;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * (isHeavy ? 12 : 7) + 2;

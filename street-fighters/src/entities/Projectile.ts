@@ -1,3 +1,4 @@
+import type { MoveId } from '../combat/Moves';
 import { Rect, Physics } from '../engine/Physics';
 import { ParticleManager } from '../engine/Particles';
 
@@ -28,6 +29,8 @@ export class Projectile {
   public facingRight: boolean;
   public color: string;
   public hitsLeft: number;
+  public combatMove: MoveId = 'fireball';
+  public hitCooldown = 0;
 
   constructor(
     ownerId: 1 | 2,
@@ -110,6 +113,7 @@ export class Projectile {
   }
 
   public update(particles: ParticleManager): void {
+    if (this.hitCooldown > 0) this.hitCooldown--;
     if (!this.isActive) return;
 
     this.x += this.vx;

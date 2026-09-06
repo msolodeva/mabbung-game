@@ -26,7 +26,10 @@ export class AudioManager {
 
       this.sfxGain.connect(this.masterGain);
       this.bgmGain.connect(this.masterGain);
-      this.masterGain.connect(this.ctx.destination);
+      const limiter=this.ctx.createDynamicsCompressor();
+      limiter.threshold.value=-8;limiter.knee.value=10;limiter.ratio.value=4;
+      limiter.attack.value=.003;limiter.release.value=.15;
+      this.masterGain.connect(limiter);limiter.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
@@ -71,8 +74,8 @@ export class AudioManager {
     const gain = this.ctx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(340, t);
-    osc.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(48, t + 0.08);
 
     gain.gain.setValueAtTime(0.7, t);
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
@@ -95,8 +98,8 @@ export class AudioManager {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(200, t);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(105, t);
     osc.frequency.exponentialRampToValueAtTime(35, t + 0.18);
 
     gain.gain.setValueAtTime(1.0, t);
@@ -108,7 +111,8 @@ export class AudioManager {
     osc.start(t);
     osc.stop(t + 0.18);
 
-    this.playNoise(0.14, 450, 0.75);
+    this.playNoise(0.14, 700, 0.6);
+    this.playNoise(0.025, 3200, 0.32);
   }
 
   public playBlock(): void {
@@ -515,7 +519,7 @@ export class AudioManager {
     if (!this.ctx || !this.bgmGain) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'highpass' as unknown as OscillatorType;
+    osc.type = 'triangle';
     gain.gain.setValueAtTime(0.08, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
     osc.connect(gain);

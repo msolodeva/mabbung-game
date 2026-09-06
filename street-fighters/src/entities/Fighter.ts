@@ -438,7 +438,7 @@ export abstract class Fighter {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.beginPath();
     const shadowScale = Math.max(0.4, 1 - (Physics.GROUND_Y - this.y) / 400);
-    ctx.ellipse(0, 0, (this.width / 2 + 10) * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, Physics.GROUND_Y - this.y, (this.width / 2 + 20) * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Super Aura glow
@@ -487,6 +487,8 @@ export abstract class Fighter {
       ctx.restore();
     }
   }
+
+  public drawBody(ctx: CanvasRenderingContext2D): void { this.drawCharacterBody(ctx); }
 
   protected abstract drawCharacterBody(ctx: CanvasRenderingContext2D): void;
 }

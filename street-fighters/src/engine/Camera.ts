@@ -17,7 +17,7 @@ export class Camera {
 
     // Calculate dynamic zoom (closer when fighting close, wider when far apart)
     // 0.85 to 1.15
-    this.targetZoom = Math.max(0.85, Math.min(1.15, 1.15 - (distance / 1200) * 0.3));
+    this.targetZoom = Math.max(0.94, Math.min(1.16, 1.2 - distance / 3000));
 
     // Smooth zoom interpolation
     this.zoom += (this.targetZoom - this.zoom) * 0.1;
@@ -59,7 +59,8 @@ export class Camera {
 
     ctx.translate(offsetX, offsetY);
     ctx.scale(this.zoom, this.zoom);
-    ctx.translate(-this.x, 0);
+    this.y = 580 - 608 / this.zoom;
+    ctx.translate(-this.x, -this.y);
   }
 
   public restoreTransform(ctx: CanvasRenderingContext2D): void {
