@@ -1,4 +1,4 @@
-import { extractFrames } from './ExtractFrames';
+import { extractFrames, extractGridFrames } from './ExtractFrames';
 import { FRAME_BOUNDS } from './AtlasFrames';
 import type { ArcadeFighter } from '../entities/ArcadeFighter';
 interface Frame {x:number;y:number;w:number;h:number;anchorX:number;anchorY:number;}
@@ -11,10 +11,11 @@ class Sprites {
     const loadImage=async(url:string)=>{const i=new Image();i.src=url;await i.decode();return i;};
     const results=await Promise.allSettled([
       loadImage('/assets/dojo.png').then(i=>{this.stage=i;}),
-      ...[['RYU','ryu'],['CHUN_LI','chunli'],['RYU_MOTION','ryu-motion'],['CHUN_LI_MOTION','chunli-motion']].map(async([key,file])=>{
+      ...[['RYU','ryu'],['CHUN_LI','chunli'],['RYU_MOTION','ryu-motion'],['CHUN_LI_MOTION','chunli-motion'],['CAMMY','cammy'],['ZANGIEF','zangief'],['DHALSIM','dhalsim'],['BLANKA','blanka']].map(async([key,file])=>{
         const image=await loadImage(`/assets/${file}${key.endsWith('_MOTION')?'':'-atlas'}.png`);
-        const frames:Frame[]=(FRAME_BOUNDS[key]??extractFrames(image)).map(([x,y,right,bottom],n)=>({
-          x,y,w:right-x+1,h:bottom-y+1,anchorX:key.endsWith('_MOTION')?(right-x)/2:(n%4*384+192)-x,anchorY:bottom-y+1
+        const grid=['CAMMY','ZANGIEF','DHALSIM','BLANKA'].includes(key);
+        const frames:Frame[]=(FRAME_BOUNDS[key]??(grid?extractGridFrames(image):extractFrames(image))).map(([x,y,right,bottom],n)=>({
+          x,y,w:right-x+1,h:bottom-y+1,anchorX:key.endsWith('_MOTION')?(right-x)/2:(n%4*image.width/4+image.width/8)-x,anchorY:bottom-y+1
         }));
         this.atlases.set(key,{image,frames,scale:222/frames[0].h});
       })
@@ -50,7 +51,7 @@ class Sprites {
       pose=t<m.startup?4:t<m.startup+m.active+3?m.sprite:0;
       if(m.projectile) pose=t<7?7:10;
       if(f.moveId==='uppercut') pose=t<4?7:11;
-      if(f.moveId==='spin') pose=t<8?4:6;
+      if(f.moveId==='spin') pose=t<m.startup?4:m.sprite;
       if(f.moveId==='airJab'||f.moveId==='airKick') pose=t<4?8:9;
       offsetX=t>=m.startup&&t<m.startup+m.active?5:0;
     } else if(f.isAirborne) pose=8;
@@ -68,7 +69,14 @@ class Sprites {
     // The mirror match remains readable without recoloring the player's normal costume.
     if(f.id===2 && f.character==='RYU') ctx.filter='sepia(.25) hue-rotate(320deg)';
     if(f.isCrouching&&m&&!m.projectile) {ctx.translate(0,0);ctx.scale(1,.64);}
-    this.drawPose(ctx,key,pose,offsetX,offsetY);ctx.restore();return true;
+    this.drawPose(ctx,key,pose,offsetX,offsetY,f.height);
+    if(f.character==='BLANKA'&&f.moveId==='fireball'&&m&&t>=m.startup&&t<m.startup+m.active) {
+      ctx.strokeStyle=t%4<2?'#efffa7':'#91dcff';ctx.lineWidth=3;
+      ctx.beginPath();
+      for(let i=0;i<=16;i++) {const angle=i*Math.PI/8,r=82+(i+t)%3*10;const x=Math.cos(angle)*r,y=-95+Math.sin(angle)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+      ctx.stroke();
+    }
+    ctx.restore();return true;
   }
 }
 export const sprites=new Sprites();

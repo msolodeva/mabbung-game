@@ -1,6 +1,6 @@
 import { titleScreen, selectScreen } from './Presentation';
 export type GameMode = 'PVP' | 'CPU' | 'TRAINING';
-export type CharacterType = 'RYU' | 'CHUN_LI' | 'TERRY' | 'IORI' | 'GUILE' | 'MAI';
+export type CharacterType = 'RYU' | 'CHUN_LI' | 'CAMMY' | 'ZANGIEF' | 'DHALSIM' | 'BLANKA';
 export type StageType = 'SUZAKU' | 'NEO_TOKYO' | 'SOUTH_TOWN';
 
 export interface CharacterInfo {
@@ -39,55 +39,35 @@ export const CHARACTERS: CharacterInfo[] = [
     color: '#00e5ff'
   },
   {
-    type: 'TERRY',
-    name: 'TERRY (테리)',
-    subtitle: '전설의 늑대',
-    gameOrigin: 'FATAL FURY / KOF',
-    speed: 7,
-    power: 9,
-    specials: ['파워 웨이브: L / ↓↘→+공격', '번 너클: →+L / 돌진', '라이징 태클: ↑+L / 대공'],
-    superName: '초필살기: 버스터 울프 (U 키)',
-    color: '#ff9800'
+    type: 'CAMMY', name: 'CAMMY (캐미)', subtitle: '빠른 돌진 · 근접 압박',
+    gameOrigin: 'STREET FIGHTER', speed: 10, power: 6,
+    specials: ['스파이럴 애로: H / ↓↘→+공격', '캐논 스파이크: ↑+H', '훌리건 킥: ↓+H'],
+    superName: '초필살기: 스핀 드라이브 (R)', color: '#66dfb0'
   },
   {
-    type: 'IORI',
-    name: 'IORI (이오리)',
-    subtitle: '보라색 불꽃의 야가미',
-    gameOrigin: 'KOF',
-    speed: 8,
-    power: 8,
-    specials: ['어둠쫓기: L / 지면 화염', '귀신태우기: ↑+L / 대공', '규화 (3연타): ↓+L'],
-    superName: '초필살기: 금 1211식 팔치녀 (U 키)',
-    color: '#d500f9'
+    type: 'ZANGIEF', name: 'ZANGIEF (장기에프)', subtitle: '강력한 잡기 · 묵직한 한 방',
+    gameOrigin: 'STREET FIGHTER', speed: 4, power: 10,
+    specials: ['스크류 파일드라이버: H / 근접 잡기', '라이징 해머: ↑+H', '더블 래리어트: ↓+H'],
+    superName: '초필살기: 파이널 아토믹 버스터 (R)', color: '#ef7562'
   },
   {
-    type: 'GUILE',
-    name: 'GUILE (가일)',
-    subtitle: '철벽의 군인',
-    gameOrigin: 'STREET FIGHTER',
-    speed: 6,
-    power: 9,
-    specials: ['소닉 붐: L / 진공파', '서머솔트 킥: ↑+L / 제비돌기', '로켓 태클: ↓+L'],
-    superName: '초필살기: 서머솔트 익스플로전 (U 키)',
-    color: '#76ff03'
+    type: 'DHALSIM', name: 'DHALSIM (달심)', subtitle: '늘어나는 팔다리 · 원거리 견제',
+    gameOrigin: 'STREET FIGHTER', speed: 3, power: 7,
+    specials: ['요가 파이어: H / ↓↘→+공격', '요가 라이즈: ↑+H', '요가 플레임: ↓+H'],
+    superName: '초필살기: 요가 인페르노 (R)', color: '#ffbc66'
   },
   {
-    type: 'MAI',
-    name: 'MAI (마이 / 닌자)',
-    subtitle: '질풍의 쿠노이치',
-    gameOrigin: 'KOF / FATAL FURY',
-    speed: 10,
-    power: 6,
-    specials: ['화접선/표창: L / 원거리', '필살인봉: →+L / 불꽃 돌진', '비상용염진: ↑+L / 강하'],
-    superName: '초필살기: 초필살 인봉 분신 난무 (U 키)',
-    color: '#ff4081'
+    type: 'BLANKA', name: 'BLANKA (블랑카)', subtitle: '전기 연속타 · 야성적인 롤링',
+    gameOrigin: 'STREET FIGHTER', speed: 8, power: 8,
+    specials: ['일렉트릭 썬더: H / 근거리 전기', '버티컬 롤링: ↑+H', '롤링 어택: ↓+H'],
+    superName: '초필살기: 그라운드 셰이브 롤 (R)', color: '#c2ee69'
   }
 ];
 
 export const STAGES: { type: StageType; name: string; subtitle: string }[] = [
-  { type: 'SUZAKU', name: '주작성 도장 (Suzaku Castle)', subtitle: 'SF2 Ryu Stage - 풍림화산 & 석양' },
-  { type: 'NEO_TOKYO', name: '네오 도쿄 시티 (Neo Tokyo)', subtitle: 'KOF \'98 Stage - 네온 스트리트' },
-  { type: 'SOUTH_TOWN', name: '사우스타운 하이웨이 (South Town)', subtitle: 'Fatal Fury Stage - 야경 고속도로' }
+  { type: 'SUZAKU', name: '주작성 도장 (Suzaku Castle)', subtitle: '석양 도장 · 바람과 종소리' },
+  { type: 'NEO_TOKYO', name: '네오 도쿄 시티 (Neo Tokyo)', subtitle: '네온 거리 · 빗소리와 신스' },
+  { type: 'SOUTH_TOWN', name: '사우스타운 하이웨이 (South Town)', subtitle: '해안 고속도로 · 베이스와 드럼' }
 ];
 
 export class MenuManager {
@@ -98,7 +78,8 @@ export class MenuManager {
   public p2Confirmed = false;
 
   public selectedStageIndex = 0;
-  public cpuDifficultyIndex = 0; // 0: Easy, 1: Normal, 2: Hard
+  public stageAutomatic = true;
+  public cpuDifficultyIndex = 1; // 0: Easy, 1: Normal, 2: Hard
   public showGuide = false;
   public isPaused = false;
   public pauseSelectedIndex = 0;

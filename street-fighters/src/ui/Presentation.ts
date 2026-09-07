@@ -3,12 +3,7 @@ import { CHARACTERS, STAGES } from './Menu';
 import { sprites } from '../render/Sprites';
 import { BlazeFighter } from '../entities/characters/BlazeFighter';
 import { ChunLiFighter } from '../entities/characters/ChunLiFighter';
-import { TerryFighter } from '../entities/characters/TerryFighter';
-import { IoriFighter } from '../entities/characters/IoriFighter';
-import { IronTitan } from '../entities/characters/IronTitan';
-import { ShadowNinja } from '../entities/characters/ShadowNinja';
-const previews=[new BlazeFighter(1,0,true),new ChunLiFighter(1,0,true),new TerryFighter(1,0,true),new IoriFighter(1,0,true),new IronTitan(1,0,true),new ShadowNinja(1,0,true)];
-const names=['RYU','CHUN-LI','TERRY','IORI','GUILE','MAI'];
+const previews=[new BlazeFighter(1,0,true),new ChunLiFighter(1,0,true)];
 const ink='#eee5d6',muted='#a3acb7',gold='#d8b57e';
 function text(ctx:CanvasRenderingContext2D,value:string,x:number,y:number,size:number,color=ink,align:CanvasTextAlign='left',weight='600') {
  ctx.fillStyle=color;ctx.font=`${weight} ${size}px ${size>30?'Impact, "Arial Black"':'"Arial", sans-serif'}`;ctx.textAlign=align;ctx.fillText(value,x,y);
@@ -22,7 +17,7 @@ function backdrop(ctx:CanvasRenderingContext2D):void {
 }
 function portrait(ctx:CanvasRenderingContext2D,index:number,x:number,y:number,height:number,flip=false):void {
  if(sprites.drawPose(ctx,CHARACTERS[index].type,0,x,y,height,flip))return;
- ctx.save();ctx.translate(x,y);ctx.scale((flip?-1:1)*height/140,height/140);previews[index].drawBody(ctx);ctx.restore();
+ ctx.save();ctx.translate(x,y);ctx.scale((flip?-1:1)*height/140,height/140);previews[index]?.drawBody(ctx);ctx.restore();
 }
 export function titleScreen(ctx:CanvasRenderingContext2D,menu:MenuManager):void {
  ctx.save();backdrop(ctx);
@@ -46,6 +41,7 @@ export function titleScreen(ctx:CanvasRenderingContext2D,menu:MenuManager):void 
  text(ctx,'READY FOR THE NEXT ROUND',1212,663,11,gold,'right');ctx.restore();
 }
 export function selectScreen(ctx:CanvasRenderingContext2D,menu:MenuManager,mode:GameMode):void {
+ const names=CHARACTERS.map(c=>c.name.split(' (')[0]);
  ctx.save();backdrop(ctx);
  text(ctx,'FIGHTER SELECT',640,73,44,ink,'center');
  text(ctx,mode==='PVP'?'LOCAL VERSUS':mode==='CPU'?'ARCADE BATTLE':'TRAINING ROOM',640,100,11,gold,'center');
@@ -60,6 +56,8 @@ export function selectScreen(ctx:CanvasRenderingContext2D,menu:MenuManager,mode:
  text(ctx,'02',1210,178,14,'#ee9682','right');text(ctx,mode==='PVP'?(menu.p2Confirmed?'READY':'PLAYER TWO'):'CPU / DUMMY',1210,199,12,'#ee9682','right');
  text(ctx,names[a],70,449,44);text(ctx,names[b],1210,449,44,ink,'right');
  text(ctx,CHARACTERS[a].subtitle,70,473,12,muted);text(ctx,CHARACTERS[b].subtitle,1210,473,12,muted,'right');
+ text(ctx,CHARACTERS[a].specials[0],70,616,11,CHARACTERS[a].color);
+ text(ctx,CHARACTERS[b].specials[0],1210,616,11,CHARACTERS[b].color,'right');
  names.forEach((name,i)=>{
   const x=170+i*158,p1=a===i,p2=b===i;
   ctx.fillStyle=p1?'#233c4e':p2?'#4c2b2c':'#19222d';ctx.fillRect(x,490,148,106);
@@ -67,13 +65,13 @@ export function selectScreen(ctx:CanvasRenderingContext2D,menu:MenuManager,mode:
   const g=ctx.createLinearGradient(0,548,0,597);g.addColorStop(0,'transparent');g.addColorStop(1,'#0c131d');ctx.fillStyle=g;ctx.fillRect(x,548,148,49);
   ctx.strokeStyle=p1?'#72c5ef':p2?'#ee9682':'#38414b';ctx.lineWidth=p1||p2?3:1;ctx.strokeRect(x,490,148,106);
   text(ctx,name,x+74,582,17,ink,'center');
-  if(i>1)text(ctx,'CLASSIC',x+139,508,8,muted,'right');
+  if(i>1)text(ctx,'NEW',x+139,508,8,muted,'right');
   if(p1||p2)text(ctx,p1&&p2?'1P / 2P':p1?'1P':'2P',x+9,508,10,p1?'#9cdcf6':'#ffc7b1');
  });
  ctx.fillStyle='#d8b57e';ctx.fillRect(455,621,370,46);
  text(ctx,mode==='PVP'?(menu.p1Confirmed?'2P 선택 확정':'1P 선택 확정'):'대전 시작',640,651,17,'#17202b','center');
- text(ctx,'WASD / 방향키  선택     J / ENTER  결정     ESC  뒤로',640,688,12,muted,'center');
- text(ctx,`F3  ${STAGES[menu.selectedStageIndex].name.split(' (')[0]}`,63,648,11,gold);
+ text(ctx,'1P WASD · CPU/2P 방향키  /  F·ENTER 확정  /  F3 배경 · H 난이도',640,688,12,muted,'center');
+ text(ctx,`F3  ${menu.stageAutomatic?'AUTO · ':''}${STAGES[menu.selectedStageIndex].name.split(' (')[0]}`,63,648,11,gold);
  if(mode==='CPU')text(ctx,`H  난이도: ${['EASY','NORMAL','HARD'][menu.cpuDifficultyIndex]}`,1210,648,11,gold,'right');
  ctx.restore();
 }

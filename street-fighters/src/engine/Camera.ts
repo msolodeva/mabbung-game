@@ -1,69 +1,44 @@
 export class Camera {
-  public x = 0;
-  public y = 0;
-  public zoom = 1.0;
-  public shakeIntensity = 0;
-  public shakeDuration = 0;
+  public x=0;
+  public y=0;
+  public zoom=1;
+  public shakeIntensity=0;
+  public shakeDuration=0;
+  public reducedMotion=false;
+  private shakeLength=1;
+  private shakeX=0;
+  private shakeY=0;
+  private tick=0;
+  private punch=0;
 
-  private targetX = 0;
-  private targetZoom = 1.0;
-  private readonly viewportWidth = 1280;
-  private readonly viewportHeight = 720;
-  private readonly stageWidth = 1600;
-
-  public update(p1X: number, p2X: number): void {
-    const midX = (p1X + p2X) / 2;
-    const distance = Math.abs(p1X - p2X);
-
-    // Calculate dynamic zoom (closer when fighting close, wider when far apart)
-    // 0.85 to 1.15
-    this.targetZoom = Math.max(0.94, Math.min(1.16, 1.2 - distance / 3000));
-
-    // Smooth zoom interpolation
-    this.zoom += (this.targetZoom - this.zoom) * 0.1;
-
-    // Center camera on midX
-    this.targetX = midX - (this.viewportWidth / 2) / this.zoom;
-
-    // Clamp camera within stage bounds
-    const minX = 0;
-    const maxX = this.stageWidth - this.viewportWidth / this.zoom;
-    this.targetX = Math.max(minX, Math.min(maxX, this.targetX));
-
-    // Smooth position interpolation
-    this.x += (this.targetX - this.x) * 0.12;
-
-    // Update screen shake
-    if (this.shakeDuration > 0) {
-      this.shakeDuration--;
-      if (this.shakeDuration <= 0) {
-        this.shakeIntensity = 0;
-      }
-    }
+  public update(p1X:number,p2X:number):void {
+    this.tick++;
+    const target=Math.max(.94,Math.min(1.16,1.2-Math.abs(p1X-p2X)/3000));
+    this.punch*=.82;
+    this.zoom+=(target+(this.reducedMotion?0:this.punch)-this.zoom)*.15;
+    const targetX=Math.max(0,Math.min(1600-1280/this.zoom,(p1X+p2X)/2-640/this.zoom));
+    this.x+=(targetX-this.x)*.12;
+    this.y=580-608/this.zoom;
+    if(this.shakeDuration>0)this.shakeDuration--;
+    if(!this.shakeDuration)this.shakeIntensity=0;
+    const amplitude=this.reducedMotion?0:this.shakeIntensity*(this.shakeDuration/this.shakeLength)**1.5;
+    // Sample once per simulation frame, so redraws never alter the camera.
+    this.shakeX=Math.sin(this.tick*2.4)*amplitude;
+    this.shakeY=Math.cos(this.tick*2.9)*amplitude*.45;
   }
-
-  public shake(intensity: number, duration: number): void {
-    this.shakeIntensity = intensity;
-    this.shakeDuration = duration;
+  public shake(intensity:number,duration:number):void {
+    this.shakeIntensity=Math.max(this.shakeIntensity,Math.min(14,intensity));
+    this.shakeDuration=Math.max(this.shakeDuration,duration);
+    this.shakeLength=this.shakeDuration;
   }
-
-  public applyTransform(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (this.shakeIntensity > 0) {
-      offsetX = (Math.random() - 0.5) * this.shakeIntensity * 2;
-      offsetY = (Math.random() - 0.5) * this.shakeIntensity * 2;
-    }
-
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(this.zoom, this.zoom);
-    this.y = 580 - 608 / this.zoom;
-    ctx.translate(-this.x, -this.y);
+  public impact(strength:number):void {
+    this.shake(2+strength*3,8+strength*3);
+    this.punch=Math.max(this.punch,Math.min(.065,strength*.018));
   }
-
-  public restoreTransform(ctx: CanvasRenderingContext2D): void {
-    ctx.restore();
+  public clearEffects():void {this.punch=0;this.shakeDuration=0;this.shakeIntensity=0;this.shakeX=0;this.shakeY=0;}
+  public applyTransform(ctx:CanvasRenderingContext2D):void {
+    ctx.save();ctx.translate(this.reducedMotion?0:this.shakeX,this.reducedMotion?0:this.shakeY);
+    ctx.scale(this.zoom,this.zoom);ctx.translate(-this.x,-this.y);
   }
+  public restoreTransform(ctx:CanvasRenderingContext2D):void {ctx.restore();}
 }

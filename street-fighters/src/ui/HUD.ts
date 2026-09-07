@@ -3,6 +3,7 @@ import type { ArcadeFighter } from '../entities/ArcadeFighter';
 import { sprites } from '../render/Sprites';
 export interface AnnouncerState {text:string;subText?:string;scale:number;alpha:number;life:number;maxLife:number;}
 export class HUD {
+ public cpuLabel:string|null=null;
  public stageName='SUZAKU ROOFTOP';
  private red=[1000,1000];
  public announcer:AnnouncerState|null=null;
@@ -19,7 +20,7 @@ export class HUD {
   [p1,p2].forEach((f,i)=>{
    const x=i===0?106:735,w=439,accent=i===0?'#73cbe5':'#e99681';
    ctx.textAlign=i===0?'left':'right';ctx.font='bold 27px Impact, sans-serif';ctx.fillStyle='#fff0dc';ctx.fillText(f.name,i===0?x:x+w,38);
-   ctx.font='10px sans-serif';ctx.fillStyle=accent;ctx.fillText(i===0?'PLAYER 01':'PLAYER 02',i===0?x:x+w,53);
+   ctx.font='10px sans-serif';ctx.fillStyle=accent;ctx.fillText(i===0?'PLAYER 01':this.cpuLabel??'PLAYER 02',i===0?x:x+w,53);
    ctx.fillStyle='#141a24';ctx.fillRect(x,63,w,23);
    const fill=(ratio:number,color:string)=>{ctx.fillStyle=color;ctx.fillRect(i===0?x+w*(1-ratio):x,64,w*ratio,21);};
    fill(this.red[i]/f.maxHp,'#af493f');fill(f.hp/f.maxHp,'#ead8a7');
@@ -28,7 +29,9 @@ export class HUD {
    ctx.fillStyle='#212936';ctx.fillRect(x,91,w,4);ctx.fillStyle=accent;ctx.fillRect(i===0?x+w*(1-f.guardGauge/100):x,91,w*f.guardGauge/100,4);
    for(let r=0;r<2;r++) {const dx=i===0?x+7+r*20:x+w-7-r*20;ctx.beginPath();ctx.moveTo(dx,105);ctx.lineTo(dx+5,110);ctx.lineTo(dx,115);ctx.lineTo(dx-5,110);ctx.closePath();ctx.fillStyle=r<f.wins?'#f6d385':'#414752';ctx.fill();}
    const portraitX=i===0?30:1192;ctx.fillStyle='#28313d';ctx.fillRect(portraitX,22,58,74);
-   ctx.save();ctx.beginPath();ctx.rect(portraitX,22,58,74);ctx.clip();sprites.drawPose(ctx,(f as ArcadeFighter).character,0,portraitX+30,214,192,i===1);ctx.restore();ctx.strokeStyle=accent;ctx.strokeRect(portraitX,22,58,74);
+   const character=(f as ArcadeFighter).character;
+   const faceOffset=({CAMMY:18,ZANGIEF:42,DHALSIM:6,BLANKA:8} as Partial<Record<typeof character,number>>)[character]??0;
+   ctx.save();ctx.beginPath();ctx.rect(portraitX,22,58,74);ctx.clip();sprites.drawPose(ctx,character,0,portraitX+30+(i===1?faceOffset:-faceOffset),214,192,i===1);ctx.restore();ctx.strokeStyle=accent;ctx.strokeRect(portraitX,22,58,74);
    const sx=i===0?42:938;ctx.fillStyle='rgba(10,17,26,.86)';ctx.fillRect(sx-10,652,310,44);
    ctx.textAlign='left';ctx.font='bold 10px sans-serif';ctx.fillStyle=accent;ctx.fillText('SUPER ART',sx,667);
    for(let n=0;n<3;n++) {ctx.fillStyle='#34404b';ctx.fillRect(sx+n*97,674,91,10);ctx.fillStyle=f.superMeter>=100?accent:'#7d8995';ctx.fillRect(sx+n*97,674,91*Math.max(0,Math.min(1,(f.superMeter-n*100)/100)),10);}

@@ -1,6 +1,8 @@
 import { ArcadeFighter } from '../entities/ArcadeFighter';
 import { resolveCombat } from '../combat/Resolve';
 import { FixedStep } from './FixedStep';
+import { drawNeoTokyo, drawSouthTown } from '../render/CityStages';
+import { HOME_STAGES } from './StageThemes';
 import { drawDojo } from '../render/Stage';
 import { characterMove } from '../combat/Moves';
 import { emptyInput } from './Training';
@@ -14,10 +16,6 @@ import { MenuManager, GameMode, CharacterType, StageType, CHARACTERS, STAGES } f
 import { Fighter } from '../entities/Fighter';
 import { BlazeFighter } from '../entities/characters/BlazeFighter';
 import { ChunLiFighter } from '../entities/characters/ChunLiFighter';
-import { TerryFighter } from '../entities/characters/TerryFighter';
-import { IoriFighter } from '../entities/characters/IoriFighter';
-import { IronTitan } from '../entities/characters/IronTitan';
-import { ShadowNinja } from '../entities/characters/ShadowNinja';
 import { Projectile } from '../entities/Projectile';
 import { FighterAI, AIDifficulty } from '../ai/FighterAI';
 
@@ -71,9 +69,11 @@ export class Game {
         const index=Math.floor((y-365)/60);const mode=this.menu.titleOptions[index]?.mode;
         if(mode)this.quickStart(mode);else this.menu.showGuide=true;
       } else if(this.scene==='SELECT') {
+        if(y>=628&&y<=670&&x>=40&&x<405){this.cycleStage();return;}
+        if(y>=628&&y<=670&&x>910&&x<1240&&this.gameMode==='CPU'){this.menu.cpuDifficultyIndex=(this.menu.cpuDifficultyIndex+1)%3;return;}
         if(y>=490&&y<=597&&x>=170&&x<=1110) {
           const index=Math.floor((x-170)/158);
-          if(index<6) {if(!this.menu.p1Confirmed)this.menu.p1SelectedCharIndex=index;else this.menu.p2SelectedCharIndex=index;}
+          if(index<CHARACTERS.length && (x-170)%158<148) {if(!this.menu.p1Confirmed)this.menu.p1SelectedCharIndex=index;else this.menu.p2SelectedCharIndex=index;}
         }
         if(y>=621&&y<=669&&x>=455&&x<=825) {
           if(!this.menu.p1Confirmed)this.menu.p1Confirmed=true;else this.menu.p2Confirmed=true;
@@ -99,7 +99,7 @@ export class Game {
       if (e.code === 'F1') this.menu.showGuide = !this.menu.showGuide;
       if (e.code === 'F2') this.debugHitboxes = !this.debugHitboxes;
       if (e.code === 'F3' && this.scene === 'SELECT') {
-        this.menu.selectedStageIndex = (this.menu.selectedStageIndex + 1) % STAGES.length;
+        this.cycleStage();
       }
       if (e.key === 'Escape') {
         if (this.menu.showGuide) {
@@ -132,21 +132,14 @@ export class Game {
     const fighter=new ArcadeFighter(type,id,x,facing);
     fighter.legacy=this.createLegacy(type,id,x,facing);return fighter;
   }
-  private createLegacy(type: CharacterType, id: 1 | 2, x: number, facingRight: boolean): Fighter {
+  private createLegacy(type: CharacterType, id: 1 | 2, x: number, facingRight: boolean): Fighter | null {
     switch (type) {
       case 'RYU':
         return new BlazeFighter(id, x, facingRight);
       case 'CHUN_LI':
         return new ChunLiFighter(id, x, facingRight);
-      case 'TERRY':
-        return new TerryFighter(id, x, facingRight);
-      case 'IORI':
-        return new IoriFighter(id, x, facingRight);
-      case 'GUILE':
-        return new IronTitan(id, x, facingRight);
-      case 'MAI':
       default:
-        return new ShadowNinja(id, x, facingRight);
+        return null;
     }
   }
 
@@ -156,6 +149,7 @@ export class Game {
 
   private gameLoop(now: number): void {
     if (!this.isRunning) return;
+    this.audio.setPaused(this.menu.isPaused||this.menu.showGuide);
     this.fixedStep.advance(now, () => {
       this.input.update();
       if (this.menu.isPaused) this.updatePaused();
@@ -169,6 +163,11 @@ export class Game {
     requestAnimationFrame(this.gameLoop.bind(this));
   }
 
+  public cycleStage():void {
+    if(this.menu.stageAutomatic){this.menu.stageAutomatic=false;this.menu.selectedStageIndex=0;}
+    else if(this.menu.selectedStageIndex<STAGES.length-1)this.menu.selectedStageIndex++;
+    else this.menu.stageAutomatic=true;
+  }
   public quickStart(mode:GameMode):void {
     this.gameMode=mode;this.menu.isPaused=false;this.menu.showGuide=false;
     this.menu.p1Confirmed=false;this.menu.p2Confirmed=false;
@@ -176,7 +175,7 @@ export class Game {
   }
   public resetTraining():void {
     this.p1.resetRound(700,true);this.p2.resetRound(900,false);
-    this.p1.superMeter=300;this.p2.superMeter=300;this.projectiles=[];this.particles.clear();
+    this.p1.superMeter=300;this.p2.superMeter=300;this.projectiles=[];this.particles.clear();this.camera.clearEffects();
     this.hud.announcer=null;this.scene='FIGHTING';this.roundTimer=99;
   }
 
@@ -354,6 +353,11 @@ export class Game {
       }
     }
 
+    if(this.menu.stageAutomatic) {
+      const home=HOME_STAGES[CHARACTERS[this.menu.p2SelectedCharIndex].type];
+      this.menu.selectedStageIndex=STAGES.findIndex(s=>s.type===home);
+    }
+    this.audio.setStage(STAGES[this.menu.selectedStageIndex].type);
     // Both confirmed -> Start Match!
     if (this.menu.p1Confirmed && this.menu.p2Confirmed) {
       const p1Type = CHARACTERS[this.menu.p1SelectedCharIndex].type;
@@ -369,11 +373,13 @@ export class Game {
 
   private startRound(): void {
     this.projectiles = [];
-    this.particles.clear();
+    this.particles.clear();this.camera.clearEffects();
     this.roundTimer = 99;
     this.roundTimerFrames = 0;
     this.stateTimer = 0;
 
+    this.ai?.reset();
+    this.audio.setStage(STAGES[this.menu.selectedStageIndex].type);
     this.p1.resetRound(570, true);
     this.p2.resetRound(1030, false);
 
@@ -402,7 +408,7 @@ export class Game {
     let p2Input: ReturnType<typeof this.input.getPlayerInput>;
 
     if (this.gameMode === 'CPU' && this.ai) {
-      p2Input = this.ai.update(this.p1, this.projectiles);
+      p2Input = this.p1.hitStop>0||this.p2.hitStop>0||this.particles.superFreeze?emptyInput():this.ai.update(this.p1, this.projectiles);
     } else {
       p2Input = this.input.getPlayerInput(2, this.p2.facingRight);
     }
@@ -434,6 +440,7 @@ export class Game {
       for(const f of [this.p1,this.p2]) if(f.hp<=0) {f.hp=1;f.state='KNOCKDOWN';}
     }
 
+    if(this.particles.superStarting)this.camera.impact(2);
     // Update Systems
     this.particles.update();
     this.camera.update(this.p1.x, this.p2.x);
@@ -529,12 +536,14 @@ export class Game {
       // Render Chosen Stage
       const curStage = STAGES[this.menu.selectedStageIndex].type;
       if (curStage === 'NEO_TOKYO') {
-        this.drawNeoTokyoStage(ctx);
+        drawNeoTokyo(ctx,this.particles.reducedMotion?0:this.simulationFrames);
       } else if (curStage === 'SOUTH_TOWN') {
-        this.drawSouthTownStage(ctx);
+        drawSouthTown(ctx,this.particles.reducedMotion?0:this.simulationFrames);
       } else {
         if(!drawDojo(ctx,this.simulationFrames)) this.drawSuzakuStage(ctx);
       }
+
+      this.particles.renderTrails(ctx);
 
       // Draw Projectiles
       for (const proj of this.projectiles) {
@@ -550,10 +559,12 @@ export class Game {
 
       this.camera.restoreTransform(ctx);
 
+      this.particles.renderScreenEffects(ctx);
       // Draw Screen-space Super Freeze
       this.particles.renderSuperFreeze(ctx);
 
       // Draw HUD
+      this.hud.cpuLabel=this.gameMode==='CPU'?`CPU · ${this.ai?.getDifficulty()??'NORMAL'}`:null;
       this.hud.stageName=STAGES[this.menu.selectedStageIndex].name.split(' (')[0];
       this.hud.render(ctx, this.p1, this.p2, this.gameMode==='TRAINING'?-1:this.roundTimer, this.currentRound);
 
@@ -686,111 +697,4 @@ export class Game {
     }
   }
 
-  // --- STAGE 2: 네오 도쿄 (Neo Tokyo - KOF '98 Stage) ---
-  private drawNeoTokyoStage(ctx: CanvasRenderingContext2D): void {
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 580);
-    skyGrad.addColorStop(0, '#050014');
-    skyGrad.addColorStop(0.5, '#12002f');
-    skyGrad.addColorStop(1, '#2c004d');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, Physics.STAGE_WIDTH, 580);
-
-    // Skyscrapers with lit windows
-    for (let i = 0; i < 12; i++) {
-      const bx = i * 140;
-      const bw = 110;
-      const bh = 220 + (i % 4) * 80;
-      ctx.fillStyle = '#0a0a1e';
-      ctx.fillRect(bx, 580 - bh, bw, bh);
-
-      // Random lit windows
-      ctx.fillStyle = i % 2 === 0 ? '#00e5ff' : '#ffd700';
-      for (let wy = 580 - bh + 20; wy < 560; wy += 25) {
-        for (let wx = bx + 15; wx < bx + bw - 15; wx += 25) {
-          if ((wx + wy) % 3 === 0) {
-            ctx.fillRect(wx, wy, 12, 14);
-          }
-        }
-      }
-    }
-
-    // Huge Neon Signs (KOF '98 Tribute, SNK, CAPCOM Neon)
-    ctx.save();
-    ctx.font = 'bold 36px "Impact", "Arial Black", sans-serif';
-    ctx.textAlign = 'center';
-
-    // Sign 1: SNK NEON
-    ctx.fillStyle = '#00e5ff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 15;
-    ctx.fillText('⚡ S N K ⚡', 400, 240);
-
-    // Sign 2: KOF '98 NEON
-    ctx.fillStyle = '#ff1744';
-    ctx.shadowColor = '#ff1744';
-    ctx.fillText('★ KOF 2026 ★', 800, 180);
-
-    // Sign 3: CAPCOM NEON
-    ctx.fillStyle = '#ffd700';
-    ctx.shadowColor = '#ffd700';
-    ctx.fillText('◆ CAPCOM ◆', 1200, 240);
-    ctx.restore();
-
-    // Asphalt Ground with Neon Road lines
-    const roadGrad = ctx.createLinearGradient(0, Physics.GROUND_Y, 0, 720);
-    roadGrad.addColorStop(0, '#1c1c28');
-    roadGrad.addColorStop(1, '#0c0c14');
-    ctx.fillStyle = roadGrad;
-    ctx.fillRect(0, Physics.GROUND_Y, Physics.STAGE_WIDTH, 720 - Physics.GROUND_Y);
-
-    // Neon Road curb
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillRect(0, Physics.GROUND_Y - 3, Physics.STAGE_WIDTH, 6);
-  }
-
-  // --- STAGE 3: 사우스타운 (South Town - Fatal Fury Terry Stage) ---
-  private drawSouthTownStage(ctx: CanvasRenderingContext2D): void {
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 580);
-    skyGrad.addColorStop(0, '#1a0933');
-    skyGrad.addColorStop(0.3, '#7b1fa2');
-    skyGrad.addColorStop(0.6, '#e65100');
-    skyGrad.addColorStop(1, '#ffd54f');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, Physics.STAGE_WIDTH, 580);
-
-    // Distant Suspension Bridge (Golden Gate style)
-    ctx.strokeStyle = '#c62828';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(0, 420);
-    ctx.bezierCurveTo(400, 490, 1200, 490, 1600, 420);
-    ctx.stroke();
-
-    // Bridge Towers
-    ctx.fillStyle = '#c62828';
-    ctx.fillRect(450, 240, 30, 260);
-    ctx.fillRect(1150, 240, 30, 260);
-
-    // Palm Tree Silhouettes
-    [100, 250, 1350, 1500].forEach(tx => {
-      ctx.fillStyle = '#1b0020';
-      ctx.fillRect(tx, 380, 14, 200);
-      ctx.beginPath();
-      ctx.arc(tx + 7, 370, 45, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Highway Floor
-    const floorGrad = ctx.createLinearGradient(0, Physics.GROUND_Y, 0, 720);
-    floorGrad.addColorStop(0, '#37474f');
-    floorGrad.addColorStop(1, '#212121');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, Physics.GROUND_Y, Physics.STAGE_WIDTH, 720 - Physics.GROUND_Y);
-
-    // Yellow Highway Dashed Line
-    ctx.fillStyle = '#ffd600';
-    for (let x = 0; x < Physics.STAGE_WIDTH; x += 100) {
-      ctx.fillRect(x, Physics.GROUND_Y + 50, 55, 8);
-    }
-  }
 }

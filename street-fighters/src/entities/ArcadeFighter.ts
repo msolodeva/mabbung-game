@@ -11,10 +11,10 @@ import { sprites } from '../render/Sprites';
 const profiles = {
   RYU: {name:'RYU',speed:4.6,color:'#6ae4ff',skin:'#f1b77c',outfit:'#ebe9e0'},
   CHUN_LI: {name:'CHUN-LI',speed:5.3,color:'#64dbff',skin:'#edba8d',outfit:'#2369d4'},
-  TERRY: {name:'TERRY',speed:4.8,color:'#ffb957',skin:'#eebe87',outfit:'#d53530'},
-  IORI: {name:'IORI',speed:5.0,color:'#bb8eff',skin:'#e5af96',outfit:'#5b1838'},
-  GUILE: {name:'GUILE',speed:4.1,color:'#c2e48f',skin:'#dca57b',outfit:'#5b7349'},
-  MAI: {name:'MAI',speed:5.5,color:'#ff8c9c',skin:'#f0b79b',outfit:'#c42c45'},
+  CAMMY: {name:'CAMMY',speed:5.8,color:'#66dfb0',skin:'#edba8d',outfit:'#287b59'},
+  ZANGIEF: {name:'ZANGIEF',speed:3.5,color:'#ef7562',skin:'#dba178',outfit:'#be3436'},
+  DHALSIM: {name:'DHALSIM',speed:3.2,color:'#ffbc66',skin:'#955d39',outfit:'#e69635'},
+  BLANKA: {name:'BLANKA',speed:5.0,color:'#c2ee69',skin:'#79af40',outfit:'#aa6437'},
 };
 export class ArcadeFighter extends Fighter {
   public moveId: MoveId | null = null;
@@ -34,7 +34,9 @@ export class ArcadeFighter extends Fighter {
   constructor(public readonly character: CharacterType, id: 1 | 2, x: number, facing: boolean) {
     const p = profiles[character];
     super(id,p.name,x,facing,{skin:p.skin,hair:'#29222a',outfit:p.outfit,outfitTrim:'#cf3038',belt:'#252334',effects:p.color});
-    this.height=222; this.width=88; this.speed=p.speed; this.jumpPower=-14.8;
+    this.height=character==='ZANGIEF'?244:character==='BLANKA'?196:222;
+    this.width=character==='ZANGIEF'?108:character==='BLANKA'?100:88;
+    this.speed=p.speed; this.jumpPower=character==='DHALSIM'?-12.8:-14.8;
   }
   public get move(): Move | null { return this.moveId ? characterMove(this.character,this.moveId) : null; }
   public get neutral(): boolean { return ['IDLE','WALK_FWD','WALK_BACK','CROUCH','JUMP'].includes(this.state); }
@@ -73,7 +75,7 @@ export class ArcadeFighter extends Fighter {
     if (this.neutral && !this.isAirborne) this.facingRight=this.x<opponent.x;
     if (this.comboTimer>0 && --this.comboTimer===0) {this.comboHits=0;this.comboDamage=0;}
     if (this.state!=='BLOCK' && this.state!=='GUARD_CRUSH') this.guardGauge=Math.min(100,this.guardGauge+.18);
-    if (this.state==='KO' || this.state==='VICTORY') { this.vx*=.86; this.integrate(particles); return; }
+    if (this.state==='KO' || this.state==='VICTORY') { this.vx*=.86; this.integrate(particles,audio); return; }
     if (this.stun>0) {
       this.stun--; this.vx*=.87;
       if (this.stun===0 && this.state!=='KNOCKDOWN') this.setNeutral();
@@ -97,13 +99,13 @@ export class ArcadeFighter extends Fighter {
           this.state=input.down?'CROUCH':direction ? (direction===(this.facingRight?1:-1)?'WALK_FWD':'WALK_BACK'):'IDLE';
           if (input.upPressed && this.landingLag===0) {
             this.vy=this.jumpPower;this.vx=direction*this.speed;this.state='JUMP';this.isCrouching=false;
-            audio.playJump();particles.createDust(this.x,this.y,6);
+            audio.setPosition(this.x);audio.playJump();particles.createDust(this.x,this.y,6);
           }
         }
       }
     }
     if (this.buffer && --this.buffer.remaining<=0) this.buffer=null;
-    this.integrate(particles);
+    this.integrate(particles,audio);
     const m=this.move;
     if (m && !m.projectile && this.stateTimer>=m.startup && this.stateTimer<m.startup+m.active) {
       this.activeHitbox={x:this.facingRight?this.x+10:this.x-10-m.reach,y:this.y-m.top,width:m.reach,height:m.height};
@@ -114,8 +116,8 @@ export class ArcadeFighter extends Fighter {
     this.isCrouching=id==='low'||id==='sweep';this.isGuarding=false;
     this.state=id==='super'?'SUPER':id==='fireball'?'SPECIAL_1':id==='uppercut'?'SPECIAL_2':id==='spin'?'SPECIAL_3':id==='kick'||id==='sweep'||id==='airKick'?'ATTACK_HEAVY':'ATTACK_LIGHT';
     if (!this.isAirborne) this.vx=0;
-    if (id==='super') {this.consumeSuperMeter(100);particles.triggerSuperFreeze(this.colors.effects,this.move!.name);audio.playSuperActivate();}
-    else if (id==='uppercut') audio.playDragonPunch();
+    audio.setPosition(this.x);
+    if (id==='super') {this.consumeSuperMeter(100);particles.triggerSuperFreeze(this.colors.effects,this.move!.name,this.character,this.facingRight);audio.playSuperActivate();}
     else audio.playWhoosh(id==='kick'||id==='sweep'?190:320);
   }
   private advanceMove(projectiles:Projectile[],particles:ParticleManager,audio:AudioManager): void {
@@ -127,14 +129,27 @@ export class ArcadeFighter extends Fighter {
       if(this.stateTimer===m.startup) {this.vy=-13;this.vx=this.facingRight?3.8:-3.8;}
       if(this.stateTimer>=m.startup+m.active) this.vx*=.94;
     }
-    if(this.moveId==='spin') this.vx=this.stateTimer>=m.startup&&this.stateTimer<m.startup+m.active?(this.facingRight?6:-6):0;
+    if(m.travel!==undefined || this.moveId==='spin') this.vx=this.stateTimer>=m.startup&&this.stateTimer<m.startup+m.active?(this.facingRight?1:-1)*(m.travel??6):0;
+    const active=this.stateTimer>=m.startup&&this.stateTimer<m.startup+m.active;
+    if(active&&this.stateTimer%3===0&&(this.moveId==='uppercut'||this.moveId==='spin'||(m.travel??0)>0)) {
+      const snapshot=Object.assign(Object.create(Object.getPrototypeOf(this)),this) as ArcadeFighter;
+      particles.addGhostTrail({x:this.x,y:this.y,color:this.colors.effects,facingRight:this.facingRight,drawBody:(ctx,alpha)=>{
+        ctx.globalAlpha=alpha;ctx.translate(snapshot.x,snapshot.y);if(!snapshot.facingRight)ctx.scale(-1,1);sprites.drawFighter(ctx,snapshot);
+      }},10);
+      if(!this.isAirborne)particles.createDust(this.x,this.y,2,this.facingRight?1:-1);
+    }
+    if(active&&this.character==='DHALSIM'&&this.moveId==='spin'&&this.stateTimer%2===0)
+      particles.createFireTrail(this.x+(this.facingRight?120:-120),this.y-135,this.colors.effects);
     if(this.stateTimer===m.startup) {
+      audio.setPosition(this.x);
+      if(['fireball','uppercut','spin','super'].includes(this.moveId!))audio.playSpecial(this.character,this.moveId!);
       if(m.projectile) {
-        const p=new Projectile(this.id,this.x+(this.facingRight?125:-125),this.y-148,this.facingRight,this.character==='CHUN_LI'?'kikoken':this.character==='TERRY'?'powerwave':this.character==='IORI'?'yamibarai':this.character==='GUILE'?'sonicboom':this.character==='MAI'?'shuriken':'fireball',m.damage,this.moveId==='super'?13:9);
+        const p=new Projectile(this.id,this.x+(this.facingRight?125:-125),this.y-148,this.facingRight,this.character==='CHUN_LI'?'kikoken':'fireball',m.damage,this.moveId==='super'?13:9);
         p.color=this.colors.effects;p.width=this.moveId==='super'?100:60;p.height=this.moveId==='super'?90:54;
-        p.combatMove=this.moveId!;p.hitsLeft=1;projectiles.push(p);audio.playFireballLaunch();
+        p.combatMove=this.moveId!;p.hitsLeft=1;projectiles.push(p);
+        particles.impact(p.x,p.y,this.colors.effects,this.moveId==='super'?2:1,this.facingRight?1:-1);
       } else if(this.moveId==='kick'||this.moveId==='airKick'||this.moveId==='spin') {
-        particles.addSlashArc({x:this.x+(this.facingRight?45:-45),y:this.y-130,radius:105,startAngle:-.8,endAngle:.65,color:'#ffdfae',lineWidth:5,facingRight:this.facingRight},7);
+        particles.addSlashArc({x:this.x+(this.facingRight?45:-45),y:this.y-130,radius:105,startAngle:-.8,endAngle:.65,color:this.colors.effects,lineWidth:this.moveId==='spin'?10:7,facingRight:this.facingRight},7);
       }
     }
     if(this.stateTimer>=m.startup+m.active+m.recovery) this.setNeutral();
@@ -143,14 +158,18 @@ export class ArcadeFighter extends Fighter {
     this.moveId=null;this.activeHitbox=null;this.isCrouching=false;this.invincible=this.wakeUpInvincibility>0;
     this.state=this.isAirborne?'JUMP':'IDLE';this.stateTimer=0;
   }
-  private integrate(particles:ParticleManager):void {
+  private integrate(particles:ParticleManager,audio:AudioManager):void {
     const wasAir=this.isAirborne;
     this.x+=this.vx;this.y+=this.vy;
     if(this.y<Physics.GROUND_Y) {this.isAirborne=true;this.vy+=Physics.GRAVITY;}
     else {
       this.y=Physics.GROUND_Y;this.vy=0;this.isAirborne=false;
       if(wasAir) {
-        particles.createDust(this.x,this.y,7);this.landingLag=3;
+        const heavy=this.state==='KNOCKDOWN'||this.state==='KO';
+        audio.setPosition(this.x);audio.playLand(heavy);
+        particles.createDust(this.x,this.y,heavy?18:7);
+        if(heavy)particles.impact(this.x,this.y-8,'#e5c395',2,1);
+        this.landingLag=3;
         if(this.state==='JUMP'||this.moveId==='airJab'||this.moveId==='airKick') this.setNeutral();
       }
     }

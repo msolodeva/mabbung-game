@@ -26,7 +26,8 @@ export function resolveCombat(fighters:ArcadeFighter[],projectiles:Projectile[],
   for(let i=0;i<projectiles.length;i++) for(let j=i+1;j<projectiles.length;j++) {
     const a=projectiles[i],b=projectiles[j];
     if(a.isActive&&b.isActive&&a.ownerId!==b.ownerId&&Physics.checkOverlap(a.getHitbox(),b.getHitbox())) {
-      a.isActive=false;b.isActive=false;particles.createBlockSparks((a.x+b.x)/2,(a.y+b.y)/2);audio.playBlock();
+      a.isActive=false;b.isActive=false;particles.createBlockSparks((a.x+b.x)/2,(a.y+b.y)/2);
+      particles.impact((a.x+b.x)/2,(a.y+b.y)/2,'#91ddff',2,1,'block');audio.setPosition((a.x+b.x)/2);audio.playBlock();camera.impact(1);
     }
   }
   for(const p of projectiles) {
@@ -43,6 +44,7 @@ export function resolveCombat(fighters:ArcadeFighter[],projectiles:Projectile[],
   for(const c of contacts) {
     if(throws.length===2&&c.move.level==='throw') continue;
     const {attacker:a,target:t,move:m,direction:d}=c;
+    audio.setPosition(c.x);
     if(c.projectile) {c.projectile.hitCooldown=12;if(--c.projectile.hitsLeft<=0)c.projectile.isActive=false;}
     else a.hitVictims.add(t.id);
     a.attackConnected=true;a.hasHitInCurrentAttack=true;
@@ -51,10 +53,10 @@ export function resolveCombat(fighters:ArcadeFighter[],projectiles:Projectile[],
       t.guardGauge=Math.max(0,t.guardGauge-(m.damage>=85?17:9));
       t.hp=Math.max(1,t.hp-(m.projectile?Math.floor(m.damage*.08):0));
       t.state=t.guardGauge===0?'GUARD_CRUSH':'BLOCK';t.stun=t.guardGauge===0?42:m.blockstun;
-      if(t.guardGauge===0) {t.feedback='GUARD BREAK';t.feedbackTimer=45;t.guardGauge=50;audio.playGuardCrush();}
+      if(t.guardGauge===0) {t.feedback='GUARD BREAK';t.feedbackTimer=45;t.guardGauge=50;audio.playGuardCrush();particles.impact(c.x,c.y,'#9de9ff',3,d,'break');camera.impact(2);}
       else audio.playBlock();
       t.vx=d*m.push*.65;t.vy=0;t.isCrouching=!!t.lastInput?.down;
-      particles.createBlockSparks(c.x,c.y);
+      particles.createBlockSparks(c.x,c.y);particles.impact(c.x,c.y,'#85ddff',1,d,'block');
       a.hitStop=Math.max(a.hitStop,4);t.hitStop=Math.max(t.hitStop,4);a.addSuperMeter(4);t.addSuperMeter(7);
     } else {
       if(!c.combo) {a.comboHits=0;a.comboDamage=0;}
@@ -62,11 +64,14 @@ export function resolveCombat(fighters:ArcadeFighter[],projectiles:Projectile[],
       a.comboHits++;a.comboTimer=65;a.comboDamage+=damage;t.lastDamage=damage;
       t.hp=Math.max(0,t.hp-damage);t.stun=m.hitstun+(c.counter?3:0);t.vx=d*m.push;t.vy=m.launch??0;
       t.state=t.hp<=0?'KO':m.knockdown?'KNOCKDOWN':'HURT';
-      if(t.hp<=0) {t.vy=-9;t.vx=d*9;audio.playKO();}
+      if(t.hp<=0) {t.vy=-9;t.vx=d*9;}
       t.isCrouching=false;
       if(c.counter) {a.feedback='COUNTER HIT';a.feedbackTimer=42;}
       a.hitStop=Math.max(a.hitStop,m.hitstop);t.hitStop=Math.max(t.hitStop,m.hitstop);
-      if(m.damage>=80) {audio.playHitHeavy();camera.shake(4,9);} else audio.playHitLight();
+      const strength=t.hp<=0?4:m.damage>=200?3:m.damage>=80||m.level==='throw'?2:1;
+      if(m.damage>=80)audio.playHitHeavy(a.comboHits);else audio.playHitLight(a.comboHits);
+      if(t.hp<=0)audio.playKO();
+      camera.impact(strength);particles.impact(c.x,c.y,a.colors.effects,strength,d,t.hp<=0?'ko':'hit');
       particles.createHitSparks(c.x,c.y,m.damage>=80,a.colors.effects);
       a.addSuperMeter(13);t.addSuperMeter(9);
     }

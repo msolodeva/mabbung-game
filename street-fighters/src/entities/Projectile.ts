@@ -127,7 +127,7 @@ export class Projectile {
 
     // Spawn trail particles
     if (this.type === 'fireball') {
-      particles.createFireTrail(this.x, this.y, '#ff3d00');
+      particles.createFireTrail(this.x-this.vx*2, this.y, this.color);
     } else if (this.type === 'powerwave') {
       particles.createFireTrail(this.x, this.y + 10, '#ffeb3b');
       if (this.life % 2 === 0) particles.createDust(this.x, Physics.GROUND_Y, 2);
@@ -172,28 +172,16 @@ export class Projectile {
     ctx.translate(this.x, this.y);
     if (!this.facingRight) ctx.scale(-1, 1);
 
-    if (this.type === 'fireball') {
-      // Hadouken fiery energy sphere
-      const pulse = Math.sin(this.life * 0.4) * 4;
-      const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, this.width / 2 + pulse);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, '#ffeb3b');
-      grad.addColorStop(0.7, '#ff5722');
-      grad.addColorStop(1, 'rgba(255, 30, 0, 0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, this.width / 2 + pulse, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Flame streaks
-      ctx.fillStyle = '#ff7043';
-      ctx.beginPath();
-      ctx.moveTo(-10, -14);
-      ctx.lineTo(-38 - Math.random() * 10, 0);
-      ctx.lineTo(-10, 14);
-      ctx.closePath();
-      ctx.fill();
+    if (this.type === 'fireball'||this.type==='kikoken') {
+      const pulse=1+Math.sin(this.life*.4)*.08,r=this.width*.6*pulse;
+      ctx.globalCompositeOperation='lighter';
+      const tail=ctx.createLinearGradient(-r*3,0,r,0);tail.addColorStop(0,'transparent');tail.addColorStop(.65,this.color);tail.addColorStop(1,'#fff8da');
+      ctx.globalAlpha=.5;ctx.fillStyle=tail;ctx.beginPath();ctx.moveTo(-r*3,0);ctx.quadraticCurveTo(-r,-r*.9,r*.5,-r*.4);ctx.quadraticCurveTo(r*1.4,0,r*.5,r*.4);ctx.quadraticCurveTo(-r,r*.9,-r*3,0);ctx.fill();
+      ctx.globalAlpha=1;
+      const glow=ctx.createRadialGradient(0,0,0,0,0,r);glow.addColorStop(0,'#ffffff');glow.addColorStop(.22,'#eaffff');glow.addColorStop(.55,this.color);glow.addColorStop(1,'transparent');
+      ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(0,0,r,r*.8,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=this.color;ctx.lineWidth=2.5;
+      for(let i=0;i<2;i++){ctx.beginPath();ctx.ellipse(0,0,r*.7,r*.32,this.life*.12+i*Math.PI/2,0,Math.PI*2);ctx.stroke();}
     } else if (this.type === 'powerwave') {
       // Terry's Rising Geyser Flame
       const waveGrad = ctx.createLinearGradient(0, this.height / 2, 0, -this.height / 2);
@@ -245,19 +233,6 @@ export class Projectile {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       ctx.stroke();
-    } else if (this.type === 'kikoken') {
-      // Chun-Li's blue ki palm burst
-      const pulse = Math.sin(this.life * 0.45) * 3;
-      const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 22 + pulse);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.4, '#80d8ff');
-      grad.addColorStop(0.8, '#00b0ff');
-      grad.addColorStop(1, 'rgba(0, 176, 255, 0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, 22 + pulse, 0, Math.PI * 2);
-      ctx.fill();
     } else if (this.type === 'shuriken') {
       const spin = this.life * 0.45;
       ctx.rotate(spin);

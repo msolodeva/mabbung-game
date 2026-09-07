@@ -1,3 +1,4 @@
+import './ai.test';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FixedStep } from '../src/engine/FixedStep';
@@ -8,6 +9,8 @@ import { MOVES } from '../src/combat/Moves';
 import { Projectile } from '../src/entities/Projectile';
 import { emptyInput } from '../src/engine/Training';
 import { InputManager } from '../src/engine/Input';
+import { ParticleManager } from '../src/engine/Particles';
+import { Camera } from '../src/engine/Camera';
 const effects=new Proxy({}, {get:()=>()=>{}}) as any;
 const pair=()=>[new ArcadeFighter('RYU',1,700,true),new ArcadeFighter('CHUN_LI',2,810,false)];
 const ready=(f:ArcadeFighter,id:keyof typeof MOVES)=>{f.moveId=id;f.state=id==='jab'?'ATTACK_LIGHT':'ATTACK_HEAVY';f.stateTimer=MOVES[id].startup;f.activeHitbox={x:650,y:350,width:250,height:240};};
@@ -54,4 +57,71 @@ test('inputs retain a tap between ticks and gamepad buttons emit exactly one pre
  const manager=new InputManager();const key=(name:string)=>{const e=new Event(name);Object.assign(e,{code:'KeyF',key:'f',repeat:false});win.dispatchEvent(e);};
  key('keydown');key('keyup');manager.update();assert.equal(manager.getPlayerInput(1,true).lightAttackPressed,true);manager.endFrame();
  pressed=true;manager.update();assert.equal(manager.getPlayerInput(1,true).lightAttackPressed,true);manager.endFrame();manager.update();assert.equal(manager.getPlayerInput(1,true).lightAttackPressed,false);
+});
+
+test('Cammy special advances as a low melee attack without spawning a projectile',()=>{
+ const a=new ArcadeFighter('CAMMY',1,500,true),b=new ArcadeFighter('RYU',2,1100,false),ps:Projectile[]=[];
+ a.update({...emptyInput(),specialPressed:true},b,ps,effects,effects);
+ for(let i=0;i<16;i++)a.update(emptyInput(),b,ps,effects,effects);
+ assert.ok(a.x>540);assert.equal(ps.length,0);assert.equal(a.move?.level,'low');assert.ok(a.activeHitbox);
+});
+test('Zangief command grab beats guard at close range and whiffs at distance',()=>{
+ const run=(distance:number)=>{
+  const a=new ArcadeFighter('ZANGIEF',1,700,true),b=new ArcadeFighter('RYU',2,700+distance,false);
+  b.lastInput={...emptyInput(),guard:true};
+  a.update({...emptyInput(),specialPressed:true},b,[],effects,effects);
+  for(let i=0;i<12;i++){a.update(emptyInput(),b,[],effects,effects);resolve([a,b]);}
+  return b.hp;
+ };
+ assert.equal(run(110),815);assert.equal(run(240),1000);
+});
+test('Dhalsim extended punch connects beyond Ryu jab range',()=>{
+ const run=(character:'DHALSIM'|'RYU')=>{
+  const a=new ArcadeFighter(character,1,600,true),b=new ArcadeFighter('RYU',2,830,false);
+  a.update({...emptyInput(),lightAttackPressed:true},b,[],effects,effects);
+  for(let i=0;i<15;i++){a.update(emptyInput(),b,[],effects,effects);resolve([a,b]);}
+  return b.hp;
+ };
+ assert.ok(run('DHALSIM')<1000);assert.equal(run('RYU'),1000);
+});
+test('Blanka electric thunder is a stationary multi-hit contact attack',()=>{
+ const a=new ArcadeFighter('BLANKA',1,700,true),b=new ArcadeFighter('RYU',2,800,false),ps:Projectile[]=[];
+ a.update({...emptyInput(),specialPressed:true},b,ps,effects,effects);
+ for(let i=0;i<55;i++){a.update(emptyInput(),b,ps,effects,effects);resolve([a,b],ps);}
+ assert.equal(ps.length,0);assert.equal(a.x,700);assert.ok(a.comboHits>=3);assert.ok(b.hp<950);
+});
+test('all replacement fighters finish each special and spend one super stock',()=>{
+ for(const character of ['CAMMY','ZANGIEF','DHALSIM','BLANKA'] as const) {
+  for(const input of [{specialPressed:true},{specialPressed:true,up:true},{specialPressed:true,down:true},{superAttackPressed:true}]) {
+   const a=new ArcadeFighter(character,1,500,true),b=new ArcadeFighter('RYU',2,1200,false),ps:Projectile[]=[];
+   a.superMeter=300;a.update({...emptyInput(),...input},b,ps,effects,effects);
+   for(let i=0;i<120;i++)a.update(emptyInput(),b,ps,effects,effects);
+   assert.equal(a.moveId,null,`${character} special remains active`);assert.equal(a.isAirborne,false);
+   assert.equal(a.superMeter,'superAttackPressed' in input?200:300);
+  }
+ }
+});
+
+// Effects must expire and remain bounded without changing the combat clock.
+test('sustained impact bursts stay bounded and all effects expire',()=>{
+ const p=new ParticleManager();
+ for(let i=0;i<120;i++) {
+  for(let j=0;j<8;j++){p.createHitSparks(800,400,true);p.impact(800,400,'#fff',3);}
+  p.update();assert.ok(p.effectCount<=376);
+ }
+ p.triggerSuperFreeze('#fff','TEST','RYU');
+ for(let i=0;i<80;i++)p.update();
+ assert.equal(p.effectCount,0);assert.equal(p.superFreeze,null);
+ p.impact(800,400,'#fff');p.triggerSuperFreeze();p.clear();
+ assert.equal(p.effectCount,0);assert.equal(p.superFreeze,null);
+});
+test('camera redraws are stable and gentle mode suppresses shake',()=>{
+ const camera=new Camera();camera.impact(3);camera.update(700,900);
+ const trace:unknown[][]=[];
+ const ctx={save(){},translate(...args:number[]){trace.push(args);},scale(...args:number[]){trace.push(args);}} as any;
+ camera.applyTransform(ctx);const first=trace.splice(0);camera.applyTransform(ctx);
+ assert.deepEqual(trace,first);
+ camera.reducedMotion=true;trace.length=0;camera.applyTransform(ctx);assert.deepEqual(trace[0],[0,0]);
+ for(let i=0;i<80;i++)camera.update(700,900);
+ assert.equal(camera.shakeIntensity,0);assert.equal(camera.shakeDuration,0);
 });

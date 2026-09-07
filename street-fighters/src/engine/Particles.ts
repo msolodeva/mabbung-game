@@ -1,3 +1,4 @@
+import { sprites } from '../render/Sprites';
 export interface Particle {
   x: number;
   y: number;
@@ -43,15 +44,27 @@ export interface SuperFreezeEffect {
   maxLife: number;
   color: string;
   characterName: string;
+  character?: string;
+  facingRight?: boolean;
 }
 
+type Impact = {x:number;y:number;color:string;strength:number;direction:number;life:number;kind:'hit'|'block'|'break'|'ko'};
 export class ParticleManager {
+  public reducedMotion=false;
+  public get superStarting():boolean {return this.superFreeze?.life===0;}
+  private impacts:Impact[]=[];
+  public get effectCount():number {return this.particles.length+this.slashArcs.length+this.ghostTrails.length+this.impacts.length;}
   private particles: Particle[] = [];
   private slashArcs: SlashArc[] = [];
   private ghostTrails: GhostTrail[] = [];
   public superFreeze: SuperFreezeEffect | null = null;
 
   public update(): void {
+    this.impacts=this.impacts.filter(p=>++p.life<18);
+    // Bound bursts during sustained multi-hit moves.
+    if(this.particles.length>360)this.particles.splice(0,this.particles.length-360);
+    if(this.ghostTrails.length>18)this.ghostTrails.splice(0,this.ghostTrails.length-18);
+    if(this.slashArcs.length>32)this.slashArcs.splice(0,this.slashArcs.length-32);
     // 1. Update Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -104,13 +117,6 @@ export class ParticleManager {
   public render(ctx: CanvasRenderingContext2D): void {
     ctx.save();
 
-    // 1. Render Ghost Trails (Colored After-images)
-    for (const g of this.ghostTrails) {
-      ctx.save();
-      g.drawBody(ctx, g.alpha * 0.45);
-      ctx.restore();
-    }
-
     // 2. Render Slash Arcs (Kick/Punch/Blade Swings)
     for (const s of this.slashArcs) {
       ctx.save();
@@ -131,6 +137,21 @@ export class ParticleManager {
       ctx.restore();
     }
 
+    for(const p of this.impacts) {
+      const progress=p.life/18, radius=(22+p.strength*14)*(1+progress*1.8);
+      ctx.save();ctx.translate(p.x,p.y);ctx.globalAlpha=(1-progress)**2;
+      ctx.globalCompositeOperation='lighter';ctx.strokeStyle=p.color;ctx.lineWidth=3*(1-progress)+1;
+      ctx.beginPath();ctx.ellipse(0,0,radius,radius*.65,0,0,Math.PI*2);ctx.stroke();
+      if(p.kind==='block') {
+        ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,radius*.75,p.direction>0?Math.PI*.55:-Math.PI*.45,p.direction>0?Math.PI*1.45:Math.PI*.45);ctx.stroke();
+      } else {
+        ctx.fillStyle=p.life<3?'#fff8df':p.color;
+        ctx.beginPath();
+        for(let i=0;i<16;i++) {const angle=i*Math.PI/8,r=(i%2?.16:1)*radius*(1-progress*.7);const x=Math.cos(angle)*r*1.35,y=Math.sin(angle)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+        ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
+    }
     // 3. Render Particles
     for (const p of this.particles) {
       ctx.save();
@@ -149,6 +170,13 @@ export class ParticleManager {
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x - p.vx * 3.5, p.y - p.vy * 3.5);
         ctx.stroke();
+      } else if(p.shape==='smoke'||p.shape==='fire') {
+        const radius=p.size*(p.shape==='smoke'?1+p.life/p.maxLife:1.4);
+        const glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);
+        glow.addColorStop(0,p.color);glow.addColorStop(1,'transparent');
+        ctx.fillStyle=glow;
+        if(p.shape==='fire')ctx.globalCompositeOperation='lighter';
+        ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);ctx.fill();
       } else if (p.shape === 'petal') {
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, p.size, p.size * 0.5, Math.PI / 4, 0, Math.PI * 2);
@@ -164,44 +192,61 @@ export class ParticleManager {
     ctx.restore();
   }
 
-  public renderSuperFreeze(ctx: CanvasRenderingContext2D): void {
-    if (!this.superFreeze) return;
-
-    ctx.save();
-    // Darken Background
-    ctx.fillStyle = 'rgba(0, 0, 15, 0.7)';
-    ctx.fillRect(0, 0, 1280, 720);
-
-    // Radial Speed Lines
-    ctx.strokeStyle = this.superFreeze.color;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 24; i++) {
-      const angle = (i / 24) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(640, 360);
-      ctx.lineTo(640 + Math.cos(angle) * 800, 360 + Math.sin(angle) * 800);
-      ctx.stroke();
+  public renderTrails(ctx:CanvasRenderingContext2D):void {
+    if(this.reducedMotion)return;
+    for(const g of this.ghostTrails) {
+      ctx.save();ctx.globalCompositeOperation='screen';g.drawBody(ctx,g.alpha*.28);ctx.restore();
     }
+  }
 
-    // Keep the fighters readable during the short super activation freeze.
-    ctx.globalAlpha = .95;
-    ctx.fillStyle='#111a28';ctx.fillRect(0,130,1280,82);
-    ctx.fillStyle=this.superFreeze.color;ctx.fillRect(0,130,1280,2);
-    ctx.textAlign='center';ctx.font='italic 900 39px Impact, sans-serif';ctx.fillStyle='#fff0d6';
-    ctx.fillText(this.superFreeze.characterName+'  /  SUPER ART',640,185);
+  public impact(x:number,y:number,color:string,strength=1,direction=1,kind:Impact['kind']='hit'):void {
+    this.impacts.push({x,y,color,strength,direction,kind,life:0});
+    if(this.impacts.length>16)this.impacts.shift();
+    if(kind==='ko'||kind==='break')this.createHitSparks(x,y,true,color);
+  }
 
+  public renderScreenEffects(ctx:CanvasRenderingContext2D):void {
+    const strongest=this.impacts.find(p=>p.strength>=2&&p.life<10);
+    if(!strongest||this.reducedMotion)return;
+    const fade=(1-strongest.life/10)*.2;
+    ctx.save();
+    const glow=ctx.createRadialGradient(640,360,250,640,360,740);
+    glow.addColorStop(0,'transparent');glow.addColorStop(1,strongest.color);
+    ctx.globalAlpha=fade;ctx.fillStyle=glow;ctx.fillRect(0,0,1280,720);ctx.restore();
+  }
+
+  public renderSuperFreeze(ctx:CanvasRenderingContext2D):void {
+    const effect=this.superFreeze;if(!effect)return;
+    const t=effect.life/effect.maxLife,enter=Math.min(1,t*5),exit=Math.min(1,(1-t)*5);
+    ctx.save();ctx.fillStyle='rgba(6,10,22,.48)';ctx.fillRect(0,0,1280,720);
+    if(!this.reducedMotion) {
+      ctx.save();ctx.strokeStyle=effect.color;ctx.globalAlpha=.28*exit;
+      for(let i=0;i<32;i++) {
+        const angle=i*Math.PI/16+.04,inner=180+(i%5)*32+t*170;
+        ctx.lineWidth=i%3===0?3:1;ctx.beginPath();
+        ctx.moveTo(640+Math.cos(angle)*inner,380+Math.sin(angle)*inner);
+        ctx.lineTo(640+Math.cos(angle)*1100,380+Math.sin(angle)*1100);ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // A sliding portrait ribbon leaves the lower arena and HUD visible.
+    const slide=this.reducedMotion?0:(1-enter)**3*420*(effect.facingRight===false?-1:1);
+    ctx.translate(slide,0);ctx.globalAlpha=exit;
+    ctx.fillStyle='#0b1422';ctx.fillRect(0,135,1280,174);
+    ctx.fillStyle=effect.color;ctx.fillRect(0,135,1280,3);ctx.fillRect(0,306,1280,3);
+    ctx.save();ctx.beginPath();ctx.rect(20,138,350,168);ctx.clip();
+    const portraitGlow=ctx.createLinearGradient(20,0,370,0);portraitGlow.addColorStop(0,effect.color);portraitGlow.addColorStop(1,'#0b1422');
+    ctx.globalAlpha=exit*.35;ctx.fillStyle=portraitGlow;ctx.fillRect(20,138,350,168);ctx.globalAlpha=exit;
+    if(effect.character)sprites.drawPose(ctx,effect.character,0,170,590,440,false);
+    ctx.restore();
+    ctx.textAlign='left';ctx.fillStyle=effect.color;ctx.font='bold 13px Arial';ctx.fillText('LIMIT BREAK  /  SUPER ART',395,183);
+    ctx.font='italic 900 43px Impact, sans-serif';ctx.fillStyle='#fff0d6';ctx.fillText(effect.characterName,393,241,845);
+    ctx.fillStyle='#758aa4';ctx.fillRect(395,266,740,2);ctx.fillStyle=effect.color;ctx.fillRect(395,266,740*enter,2);
     ctx.restore();
   }
 
-  public triggerSuperFreeze(color = '#00e5ff', characterName = ''): void {
-    this.superFreeze = {
-      active: true,
-      life: 0,
-      maxLife: 20, // 20 frames cinematic freeze
-      color,
-      characterName
-    };
+  public triggerSuperFreeze(color='#00e5ff',characterName='',character?:string,facingRight=true):void {
+    this.superFreeze={active:true,life:0,maxLife:20,color,characterName,character,facingRight};
   }
 
   public addSlashArc(arc: Omit<SlashArc, 'life' | 'maxLife' | 'alpha'>, duration = 8): void {
@@ -323,6 +368,7 @@ export class ParticleManager {
   }
 
   public clear(): void {
+    this.impacts = [];
     this.particles = [];
     this.slashArcs = [];
     this.ghostTrails = [];
