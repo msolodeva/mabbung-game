@@ -47,15 +47,18 @@ export function resolveCombat(fighters:ArcadeFighter[],projectiles:Projectile[],
     audio.setPosition(c.x);
     if(c.projectile) {c.projectile.hitCooldown=12;if(--c.projectile.hitsLeft<=0)c.projectile.isActive=false;}
     else a.hitVictims.add(t.id);
-    a.attackConnected=true;a.hasHitInCurrentAttack=true;
+    // Only a landed melee hit opens a cancel; a lingering projectile cannot cancel another move.
+    if(!c.projectile && !c.blocked) a.attackConnected=true;
+    a.hasHitInCurrentAttack=true;
     t.moveId=null;t.activeHitbox=null;t.stateTimer=0;t.invincible=false;
     if(c.blocked) {
-      t.guardGauge=Math.max(0,t.guardGauge-(m.damage>=85?17:9));
-      t.hp=Math.max(1,t.hp-(m.projectile?Math.floor(m.damage*.08):0));
-      t.state=t.guardGauge===0?'GUARD_CRUSH':'BLOCK';t.stun=t.guardGauge===0?42:m.blockstun;
+      const normalProjectile=!!c.projectile && c.projectile.combatMove==='fireball';
+      t.guardGauge=Math.max(0,t.guardGauge-(normalProjectile?5:m.damage>=85?17:9));
+      t.hp=Math.max(1,t.hp-(m.projectile&&!normalProjectile?Math.floor(m.damage*.08):0));
+      t.state=t.guardGauge===0?'GUARD_CRUSH':'BLOCK';t.stun=t.guardGauge===0?42:normalProjectile?10:m.blockstun;
       if(t.guardGauge===0) {t.feedback='GUARD BREAK';t.feedbackTimer=45;t.guardGauge=50;audio.playGuardCrush();particles.impact(c.x,c.y,'#9de9ff',3,d,'break');camera.impact(2);}
       else audio.playBlock();
-      t.vx=d*m.push*.65;t.vy=0;t.isCrouching=!!t.lastInput?.down;
+      t.vx=d*m.push*(normalProjectile?.25:.65);t.vy=0;t.isCrouching=!!t.lastInput?.down;
       particles.createBlockSparks(c.x,c.y);particles.impact(c.x,c.y,'#85ddff',1,d,'block');
       a.hitStop=Math.max(a.hitStop,4);t.hitStop=Math.max(t.hitStop,4);a.addSuperMeter(4);t.addSuperMeter(7);
     } else {

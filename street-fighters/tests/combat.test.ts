@@ -125,3 +125,66 @@ test('camera redraws are stable and gentle mode suppresses shake',()=>{
  for(let i=0;i<80;i++)camera.update(700,900);
  assert.equal(camera.shakeIntensity,0);assert.equal(camera.shakeDuration,0);
 });
+
+test('blocked jab cannot cancel into a special, while a landed jab can',()=>{
+ for(const blocked of [true,false]) {
+  const [a,b]=pair();b.lastInput={...emptyInput(),guard:blocked};ready(a,'jab');resolve([a,b]);
+  assert.equal(a.attackConnected,!blocked);
+  a.hitStop=0;
+  a.update({...emptyInput(),specialPressed:true},b,[],effects,effects);
+  assert.equal(a.moveId,blocked?'jab':'fireball');
+ }
+});
+test('normal projectile guard preserves health and reduces pressure for either player',()=>{
+ for(const owner of [1,2] as const) {
+  const fs=pair(),a=fs[owner-1],b=fs[2-owner];
+  b.lastInput={...emptyInput(),guard:true};
+  const p=new Projectile(owner,b.x,b.y-148,owner===1,'fireball');
+  resolve(fs,[p]);
+  assert.equal(b.hp,b.maxHp);assert.equal(b.guardGauge,95);assert.equal(b.stun,10);
+  assert.ok(Math.abs(b.vx)<=2.25);assert.equal(p.isActive,false);assert.equal(a.attackConnected,false);
+ }
+});
+test('super projectile retains chip damage and stronger guard pressure',()=>{
+ const [a,b]=pair();b.lastInput={...emptyInput(),guard:true};
+ const p=new Projectile(1,b.x,b.y-148,true,'fireball');p.combatMove='super';resolve([a,b],[p]);
+ assert.ok(b.hp<b.maxHp);assert.equal(b.stun,24);assert.equal(b.guardGauge,83);
+});
+test('projectile characters cannot stack normal shots, but can shoot again after removal',()=>{
+ for(const character of ['RYU','CHUN_LI','DHALSIM'] as const) {
+  const a=new ArcadeFighter(character,1,300,true),b=new ArcadeFighter('RYU',2,1200,false);
+  const existing=new Projectile(1,900,b.y-148,true,'fireball'),ps=[existing];
+  for(let frame=0;frame<70;frame++) a.update({...emptyInput(),specialPressed:true},b,ps,effects,effects);
+  assert.equal(ps.length,1);assert.equal(a.moveId,null);
+  existing.isActive=false;
+  for(let frame=0;frame<25;frame++) a.update({...emptyInput(),specialPressed:frame===0},b,ps,effects,effects);
+  assert.equal(ps.length,2);assert.equal(ps.filter(p=>p.isActive).length,1);
+ }
+});
+test('an opponents projectile does not prevent casting and melee specials remain available',()=>{
+ for(const character of ['RYU','CAMMY','BLANKA','ZANGIEF'] as const) {
+  const a=new ArcadeFighter(character,1,300,true),b=new ArcadeFighter('RYU',2,1200,false);
+  const p=new Projectile(character==='RYU'?2:1,900,b.y-148,false,'fireball');
+  a.update({...emptyInput(),specialPressed:true},b,[p],effects,effects);
+  assert.equal(a.moveId,'fireball');
+ }
+});
+
+test('every fighter jumps over a normal projectile and lands within a bounded arc',()=>{
+ for(const character of ['RYU','CHUN_LI','CAMMY','ZANGIEF','DHALSIM','BLANKA'] as const) {
+  const a=new ArcadeFighter(character,1,400,true),b=new ArcadeFighter('RYU',2,1200,false);
+  const startX=a.x;
+  a.update({...emptyInput(),up:true,upPressed:true,right:true},b,[],effects,effects);
+  let peak=a.y,airFrames=1,clearFrames=0;
+  while(a.isAirborne&&airFrames<90) {
+   const p=new Projectile(2,a.x,Physics.GROUND_Y-148,false,'fireball');p.width=60;p.height=54;
+   if(!Physics.checkOverlap(p.getHitbox(),a.getHurtbox())) clearFrames++;
+   a.update(emptyInput(),b,[],effects,effects);peak=Math.min(peak,a.y);airFrames++;
+  }
+  assert.ok(Physics.GROUND_Y-peak>=185,`${character} jump height`);
+  assert.ok(clearFrames>=14,`${character} projectile clearance window`);
+  assert.ok(airFrames>=40&&airFrames<=46,`${character} airtime`);
+  assert.ok(a.x-startX>=125,`${character} forward travel`);
+  assert.equal(a.y,Physics.GROUND_Y);assert.equal(a.isAirborne,false);
+ }
+});

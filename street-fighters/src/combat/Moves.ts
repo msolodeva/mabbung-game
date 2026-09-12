@@ -14,7 +14,7 @@ export const MOVES: Record<MoveId, Move> = {
   sweep: {name:'SWEEP',startup:9,active:4,recovery:24,damage:85,hitstun:25,blockstun:14,hitstop:9,reach:160,top:48,height:40,push:10,level:'low',knockdown:true,sprite:6},
   airJab: {name:'JUMP STRIKE',startup:5,active:5,recovery:12,damage:48,hitstun:20,blockstun:13,hitstop:6,reach:110,top:128,height:55,push:5,level:'overhead',sprite:9},
   airKick: {name:'JUMP KICK',startup:7,active:7,recovery:15,damage:70,hitstun:23,blockstun:16,hitstop:8,reach:152,top:125,height:65,push:7,level:'overhead',sprite:9},
-  fireball: {name:'ENERGY WAVE',startup:14,active:1,recovery:28,damage:75,hitstun:23,blockstun:15,hitstop:7,reach:0,top:150,height:52,push:9,level:'mid',projectile:true,sprite:10},
+  fireball: {name:'ENERGY WAVE',startup:14,active:1,recovery:36,damage:75,hitstun:23,blockstun:15,hitstop:7,reach:0,top:150,height:52,push:9,level:'mid',projectile:true,sprite:10},
   uppercut: {name:'RISING STRIKE',startup:5,active:13,recovery:29,damage:120,hitstun:27,blockstun:15,hitstop:10,reach:98,top:235,height:165,push:8,level:'mid',knockdown:true,launch:-11,sprite:11},
   spin: {name:'SPINNING KICK',startup:9,active:16,recovery:23,damage:100,hitstun:25,blockstun:15,hitstop:8,reach:150,top:150,height:80,push:12,level:'mid',knockdown:true,sprite:6},
   super: {name:'SUPER ART',startup:12,active:1,recovery:36,damage:230,hitstun:30,blockstun:24,hitstop:13,reach:0,top:150,height:85,push:15,level:'mid',projectile:true,knockdown:true,launch:-8,sprite:10},
@@ -23,7 +23,7 @@ export const MOVES: Record<MoveId, Move> = {
 
 // Per-character timing and reach are authored separately from animation frames.
 const overrides:Record<string,Partial<Record<MoveId,Partial<Move>>>>={
- CHUN_LI:{jab:{startup:3,damage:35,name:'QUICK PALM'},kick:{startup:8,damage:82,reach:176,name:'HIGH KICK'},low:{startup:4,damage:30},uppercut:{damage:105,name:'RISING KICK'},spin:{name:'LIGHTNING KICKS',damage:24,active:20,recovery:18,hitInterval:5,knockdown:false,push:3},fireball:{name:'KIKOKEN',startup:16,recovery:24,damage:65},super:{name:'KIKOSHO',damage:215}},
+ CHUN_LI:{jab:{startup:3,damage:35,name:'QUICK PALM'},kick:{startup:8,damage:82,reach:176,name:'HIGH KICK'},low:{startup:4,damage:30},uppercut:{damage:105,name:'RISING KICK'},spin:{name:'LIGHTNING KICKS',damage:24,active:20,recovery:18,hitInterval:5,knockdown:false,push:3},fireball:{name:'KIKOKEN',startup:16,recovery:32,damage:65},super:{name:'KIKOSHO',damage:215}},
  RYU:{fireball:{name:'HADOUKEN'},uppercut:{name:'SHORYUKEN'},spin:{name:'TATSUMAKI'},super:{name:'SHINKU HADOUKEN'}},
  CAMMY:{
   jab:{name:'QUICK STRIKE',startup:3,damage:30},kick:{startup:7,damage:76,recovery:17},
@@ -42,7 +42,7 @@ const overrides:Record<string,Partial<Record<MoveId,Partial<Move>>>>={
  DHALSIM:{
   jab:{name:'YOGA STRETCH',startup:10,recovery:18,reach:235,damage:45},
   kick:{name:'YOGA LANCE',startup:15,recovery:27,reach:295,damage:88},low:{reach:205,startup:9},sweep:{reach:255,startup:14},
-  fireball:{name:'YOGA FIRE',startup:20,recovery:28,damage:85},uppercut:{name:'YOGA RISE',startup:9,damage:95},
+  fireball:{name:'YOGA FIRE',startup:20,recovery:36,damage:85},uppercut:{name:'YOGA RISE',startup:9,damage:95},
   spin:{name:'YOGA FLAME',startup:16,active:18,recovery:27,reach:225,damage:115,travel:0,sprite:10},
   super:{name:'YOGA INFERNO',startup:18,damage:250}
  },

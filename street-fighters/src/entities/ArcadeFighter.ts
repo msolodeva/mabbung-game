@@ -36,7 +36,7 @@ export class ArcadeFighter extends Fighter {
     super(id,p.name,x,facing,{skin:p.skin,hair:'#29222a',outfit:p.outfit,outfitTrim:'#cf3038',belt:'#252334',effects:p.color});
     this.height=character==='ZANGIEF'?244:character==='BLANKA'?196:222;
     this.width=character==='ZANGIEF'?108:character==='BLANKA'?100:88;
-    this.speed=p.speed; this.jumpPower=character==='DHALSIM'?-12.8:-14.8;
+    this.speed=p.speed; this.jumpPower=character==='DHALSIM'?-18:-18.5;
   }
   public get move(): Move | null { return this.moveId ? characterMove(this.character,this.moveId) : null; }
   public get neutral(): boolean { return ['IDLE','WALK_FWD','WALK_BACK','CROUCH','JUMP'].includes(this.state); }
@@ -88,7 +88,8 @@ export class ArcadeFighter extends Fighter {
       const cancel=!!requested && !!this.move?.cancel?.includes(requested) && this.attackConnected;
       if (requested && (this.neutral && this.landingLag===0 || cancel)) {
         const allowedAir=requested==='airJab'||requested==='airKick';
-        if ((!this.isAirborne || allowedAir) && (requested!=='super'||this.superMeter>=100)) this.beginMove(requested,particles,audio);
+        const waitingForProjectile=requested==='fireball' && characterMove(this.character,requested).projectile && projectiles.some(p=>p.isActive&&p.ownerId===this.id&&p.combatMove==='fireball');
+        if (!waitingForProjectile && (!this.isAirborne || allowedAir) && (requested!=='super'||this.superMeter>=100)) this.beginMove(requested,particles,audio);
       }
       if (this.moveId) this.advanceMove(projectiles,particles,audio);
       else if (this.neutral) {
