@@ -45,17 +45,19 @@ export class Projectile extends Entity {
             this.trail.pop();
         }
 
-        // Move
-        const moveAmount = this.velocity.multiply(deltaTime);
-        this.position.addInPlace(moveAmount);
-        this.distanceTraveled = this.position.distanceTo(this.startPosition);
-
-        // Check if out of range
-        if (this.distanceTraveled >= this.range) {
-            this.destroy();
-            return;
+        // Small spatial steps keep fast shots from skipping targets or wall tiles.
+        const travel = Math.min(this.speed * Math.max(0, deltaTime), Math.max(0, this.range - this.distanceTraveled));
+        const steps = Math.max(1, Math.ceil(travel / PROJECTILE_CONFIG.COLLISION_STEP));
+        const step = this.direction.multiply(travel / steps);
+        for (let i = 0; i < steps && this.active; i++) {
+            this.position.addInPlace(step);
+            this.distanceTraveled += travel / steps;
+            this.checkCollisions(game);
         }
+        if (this.active && this.distanceTraveled >= this.range) this.destroy();
+    }
 
+    checkCollisions(game) {
         // Check wall collision (projectiles can pass over water)
         if (game.map.isPositionSolidForProjectile(this.position.x, this.position.y)) {
             // Check if it's a destructible wall
@@ -298,10 +300,11 @@ export class HomingMissile extends Projectile {
     update(deltaTime, game) {
         if (!this.active) return;
 
+        this.currentGame = game;
+
         // Update lifetime
         this.elapsedTime += deltaTime * 1000;
         if (this.elapsedTime >= this.lifetime) {
-            this.explodeEffect(game);
             this.destroy();
             return;
         }
@@ -352,53 +355,12 @@ export class HomingMissile extends Projectile {
         // Update velocity based on direction
         this.velocity = this.direction.multiply(this.speed);
 
-        // Move
-        const moveAmount = this.velocity.multiply(deltaTime);
-        this.position.addInPlace(moveAmount);
-        this.distanceTraveled = this.position.distanceTo(this.startPosition);
+        super.update(deltaTime, game);
+    }
 
-        // Check if out of range
-        if (this.distanceTraveled >= this.range) {
-            this.explodeEffect(game);
-            this.destroy();
-            return;
-        }
-
-        // Check wall collision
-        if (game.map.isPositionSolidForProjectile(this.position.x, this.position.y)) {
-            this.explodeEffect(game);
-            game.map.damageWallAtPosition(this.position.x, this.position.y, this.damage);
-            this.destroy();
-            return;
-        }
-
-        // Check brawler collision
-        for (const brawler of game.brawlers) {
-            if (!brawler.isAlive) continue;
-            if (brawler.team === this.team) continue;
-            if (this.hitTargets.has(brawler.id)) continue;
-
-            if (this.collidesWith(brawler)) {
-                this.onHit(brawler, game);
-                this.explodeEffect(game);
-                this.destroy();
-                return;
-            }
-        }
-
-        // Check bear collision
-        for (const bear of game.bears) {
-            if (!bear.isAlive) continue;
-            if (bear.team === this.team) continue;
-            if (this.hitTargets.has(bear.id)) continue;
-
-            if (this.collidesWith(bear)) {
-                this.onHit(bear, game);
-                this.explodeEffect(game);
-                this.destroy();
-                return;
-            }
-        }
+    destroy() {
+        if (this.active && this.currentGame) this.explodeEffect(this.currentGame);
+        super.destroy();
     }
 
     findTarget(game) {

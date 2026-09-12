@@ -116,6 +116,13 @@ class PlayerInput {
         return this.superPressed;
     }
 
+    reset() {
+        for (const key of Object.keys(this.keys)) this.keys[key] = false;
+        this.shootPressed = false;
+        this.superPressed = false;
+        this.moveDirection = new Vector2(0, 0);
+    }
+
     consumeSuper() {
         this.superPressed = false;
     }
@@ -133,6 +140,14 @@ export class InputManager {
         this.handleKeyUp = this.onKeyUp.bind(this);
         this.preventGameKeyDefaults = this.preventGameKeyDefaults.bind(this);
 
+        this.window = document.defaultView;
+        this.resetInputs = () => {
+            this.player1Input.reset();
+            this.player2Input.reset();
+        };
+        this.handleVisibilityChange = () => {
+            if (document.hidden) this.resetInputs();
+        };
         this.init();
     }
 
@@ -150,6 +165,9 @@ export class InputManager {
         document.addEventListener('keydown', this.handleKeyDown);
         document.addEventListener('keyup', this.handleKeyUp);
         document.addEventListener('keydown', this.preventGameKeyDefaults);
+
+        this.window?.addEventListener('blur', this.resetInputs);
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
 
         // Show control hints
         this.showControlHints();
@@ -232,6 +250,9 @@ export class InputManager {
     }
 
     cleanup() {
+        this.resetInputs();
+        this.window?.removeEventListener('blur', this.resetInputs);
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         document.removeEventListener('keydown', this.handleKeyDown);
         document.removeEventListener('keyup', this.handleKeyUp);
         document.removeEventListener('keydown', this.preventGameKeyDefaults);

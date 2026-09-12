@@ -79,7 +79,7 @@ export const COLORS = {
 // ========================================
 // BRAWLER BALANCE SYSTEM
 // ========================================
-// Brawlers with Rock-Paper-Scissors style counters:
+// Intended matchup tendencies; map, aim and ammo can reverse these:
 //
 //   Counter Chain:
 //   Brock → Dynamike → Nita → Mortis → Colt → Brock
@@ -116,17 +116,17 @@ export const BRAWLERS = {
         attackRange: 640,
         attackSpeed: 850,
         rocketExplosionRadius: 70,
-        rocketKnockback: 90,
+        rocketKnockback: 45,
         ammoMax: 3,
         ammoReloadTime: 2100,
         superCharge: 6,
-        superDamage: 520,
+        superDamage: 380,
         superRocketCount: 6,
         superRange: 680,
         superExplosionRadius: 78,
-        superKnockback: 140,
+        superKnockback: 90,
         description: '초장거리 로켓 딜러 - 느린 재장전 대신 강한 한 방으로 압박한다',
-        superDescription: '🚀 로켓 레인: 여러 발의 로켓을 연속 발사해 지역을 폭격',
+        superDescription: '🚀 로켓 레인: 부채꼴로 로켓 6발을 발사해 지역을 폭격',
     },
 
     // =====================================
@@ -141,7 +141,7 @@ export const BRAWLERS = {
         role: 'BRUISER',
         emoji: '🚀',
         color: '#e74c3c',
-        health: 5600,
+        health: 5000,
         speed: 245,
         attackDamage: 900,
         attackProjectiles: 1,
@@ -150,8 +150,8 @@ export const BRAWLERS = {
         attackSpeed: 600,
         ammoMax: 3,
         ammoReloadTime: 1250,
-        superCharge: 7,
-        superDamage: 1100,
+        superCharge: 5,
+        superDamage: 1250,
         description: '근접 브루저 - 높은 체력과 넓은 충격파로 진입을 받아친다',
         superDescription: '🚀 유도 미사일: 가장 가까운 적을 자동으로 추적하는 미사일 발사',
     },
@@ -163,6 +163,8 @@ export const BRAWLERS = {
     // ❌ WEAK vs: Nita (can't kill fast enough, gets overrun)
     // =====================================
     COLT: {
+        bulletInterval: 50,
+        superBulletInterval: 40,
         id: 'colt',
         name: 'Colt',
         role: 'MARKSMAN',
@@ -170,15 +172,15 @@ export const BRAWLERS = {
         color: '#4a90d9',
         health: 2400,
         speed: 330,
-        attackDamage: 300,
+        attackDamage: 260,
         attackProjectiles: 6,
         attackSpread: 0.035,
         attackRange: 610,
         attackSpeed: 500,
         ammoMax: 3,
-        ammoReloadTime: 1550,
-        superCharge: 12,       // 12 히트로 충전 (느림)
-        superDamage: 260,
+        ammoReloadTime: 1650,
+        superCharge: 18,       // Three complete volleys against one target
+        superDamage: 200,
         description: '고기동 연사수 - 빠른 발과 지속 화력으로 거리를 흔든다',
         superDescription: '🔥 불릿 스톰: 관통하는 12발의 총알을 연사',
     },
@@ -205,13 +207,15 @@ export const BRAWLERS = {
         explosionRadius: 105,
         fuseTime: 740,
         ammoMax: 3,
-        ammoReloadTime: 1850,
+        ammoReloadTime: 1700,
         superCharge: 7,
         superDamage: 1700,
         superRadius: 145,
         superKnockback: 460,
         superFuseTime: 900,
-        description: '지연 폭파 포병 - 벽 너머와 좁은 길을 예측 폭발로 장악한다',
+        minThrowRange: 180,
+        throwAimCone: 0.35, // Radians either side of the chosen direction
+        description: '곡사 포병 - 조준 방향의 적까지 거리를 맞춰 던지며, 초근접에는 취약하다',
         superDescription: '💥 빅 배럴: 거대한 폭탄으로 넓은 피해와 넉백',
     },
 
@@ -229,7 +233,7 @@ export const BRAWLERS = {
         color: '#27ae60',
         health: 2500,
         speed: 265,
-        attackDamage: 480,
+        attackDamage: 600,
         attackProjectiles: 1,
         attackSpread: 0,
         attackRange: 470,
@@ -237,8 +241,8 @@ export const BRAWLERS = {
         explodeSpikes: 6,
         explodeSpikeDamage: 240,
         ammoMax: 3,
-        ammoReloadTime: 1750,
-        superCharge: 10,       // 10 히트로 충전
+        ammoReloadTime: 1550,
+        superCharge: 8,        // Four direct hits including the split spike
         superRadius: 220,
         superSlowDuration: 3500,
         superSlowMultiplier: 0.7,
@@ -275,15 +279,16 @@ export const BRAWLERS = {
         ammoMax: 3,
         ammoReloadTime: 2300,
         superCharge: 6,
-        superDamage: 850,
-        superHealPercent: 0.8,
+        superDamage: 1000,
+        superHealPercent: 0.6,
         superProjectiles: 3,
         description: '돌진 암살자 - 긴 재장전 때문에 진입 각을 신중히 골라야 한다',
-        superDescription: '🦇 박쥐 소환: 관통하는 박쥐로 적에게 데미지를 주고 회복',
+        superDescription: '🦇 박쥐 소환: 적마다 한 번 피해를 주고 실제 피해의 60%를 회복',
     },
 };
 
 export const PROJECTILE_CONFIG = {
+    COLLISION_STEP: 4,
     BULLET_SPEED: 600,
     BULLET_SIZE: 8,
     SHOCKWAVE_SPEED: 500,

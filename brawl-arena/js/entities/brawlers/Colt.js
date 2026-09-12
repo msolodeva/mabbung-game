@@ -17,9 +17,9 @@ export class Colt extends Brawler {
 
         // Fire 6 bullets in a line with slight spread
         for (let i = 0; i < this.config.attackProjectiles; i++) {
-            const delay = i * 50; // Stagger bullets slightly
+            const delay = i * this.config.bulletInterval; // Stagger bullets slightly
 
-            setTimeout(() => {
+            game.scheduleAction(this, delay, () => {
                 if (!this.isAlive) return;
 
                 const angleOffset = (Math.random() - 0.5) * this.config.attackSpread;
@@ -42,7 +42,7 @@ export class Colt extends Brawler {
                     }
                 );
                 game.projectiles.push(projectile);
-            }, delay);
+            });
         }
 
         game.audioManager?.play('shoot');
@@ -53,9 +53,9 @@ export class Colt extends Brawler {
 
         // Bullet storm - rapid fire in a line
         for (let i = 0; i < 12; i++) {
-            const delay = i * 40;
+            const delay = i * this.config.superBulletInterval;
 
-            setTimeout(() => {
+            game.scheduleAction(this, delay, () => {
                 if (!this.isAlive) return;
 
                 const angleOffset = (Math.random() - 0.5) * 0.1;
@@ -80,7 +80,7 @@ export class Colt extends Brawler {
                     }
                 );
                 game.projectiles.push(projectile);
-            }, delay);
+            });
         }
 
         game.audioManager?.play('super');

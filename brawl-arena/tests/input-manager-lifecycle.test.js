@@ -70,3 +70,30 @@ test('input manager exposes one indexed API for both players', () => {
         globalThis.document = originalDocument;
     }
 });
+
+test('blur and hidden tab release both players and detach on cleanup', () => {
+    const originalDocument = globalThis.document;
+    const doc = createDocumentStub();
+    const win = createDocumentStub();
+    doc.defaultView = win;
+    globalThis.document = doc;
+    try {
+        const manager = new InputManager({ teamMode: 'vs' });
+        for (const event of ['blur', 'visibilitychange']) {
+            for (const code of ['KeyW', 'KeyF', 'KeyG', 'ArrowRight', 'ShiftRight', 'Enter']) manager.onKeyDown({ code });
+            manager.update();
+            doc.hidden = true;
+            const source = event === 'blur' ? win : doc;
+            for (const listener of source.listeners.get(event)) listener();
+            manager.update();
+            for (const player of [1, 2]) {
+                assert.equal(manager.getMoveDirection(player).magnitude(), 0);
+                assert.equal(manager.getIsAttacking(player), false);
+                assert.equal(manager.isSuperPressed(player), false);
+            }
+        }
+        manager.cleanup();
+        assert.equal(win.listeners.get('blur').size, 0);
+        assert.equal(doc.listeners.get('visibilitychange').size, 0);
+    } finally { globalThis.document = originalDocument; }
+});

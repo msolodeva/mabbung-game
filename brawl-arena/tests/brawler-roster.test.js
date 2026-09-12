@@ -64,12 +64,14 @@ test('brock super burst is capped below three direct rocket hits', () => {
     assert.ok(brock.superDamage * brock.superRocketCount <= maxSuperBurst);
 });
 
-test('colt keeps a modest per-bullet buff without changing his ranged identity', () => {
+test('colt needs two complete volleys for a fragile target and three for super', () => {
     const colt = BRAWLERS.COLT;
 
-    assert.equal(colt.attackDamage, 300);
+    assert.equal(colt.attackDamage, 260);
     assert.equal(colt.attackRange, 610);
-    assert.equal(colt.attackDamage * colt.attackProjectiles, 1800);
+    assert.ok(colt.attackDamage * colt.attackProjectiles < BRAWLERS.BROCK.health);
+    assert.ok(colt.attackDamage * colt.attackProjectiles * 2 >= BRAWLERS.BROCK.health);
+    assert.equal(colt.superCharge, colt.attackProjectiles * 3);
 });
 
 test('brawlers use the tightened attack cadence while preserving their relative pacing', () => {

@@ -52,7 +52,7 @@ test('spike split projectiles damage a direct target only once', () => {
     spike.attack(new Vector2(1, 0), game);
     updateProjectiles(game);
 
-    assert.equal(10000 - target.health, 720);
+    assert.equal(10000 - target.health, 840);
     assert.equal(spike.superCharge, 2);
 });
 

@@ -34,6 +34,8 @@ export class GemGrabMode {
         // Update match timer
         this.matchTimer -= deltaTime;
         if (this.matchTimer <= 0) {
+            this.matchTimer = 0;
+            this.calculateTeamGems();
             this.endMatch();
             return;
         }

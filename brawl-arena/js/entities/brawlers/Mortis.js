@@ -102,6 +102,7 @@ export class Mortis extends Brawler {
     activateSuper(direction, game) {
         const baseAngle = direction.angle();
         const spreadAngle = 0.3; // Narrow spread for bat swarm
+        const hitTargets = new Set();
 
         for (let i = 0; i < this.config.superProjectiles; i++) {
             const angleOffset = spreadAngle * (i / (this.config.superProjectiles - 1) - 0.5);
@@ -127,14 +128,17 @@ export class Mortis extends Brawler {
                 }
             );
 
-            // Override onHit for lifesteal
+            projectile.hitTargets = hitTargets;
+
+            // A swarm hits each enemy once; healing is based on health actually lost.
             const originalOnHit = projectile.onHit.bind(projectile);
             projectile.onHit = (brawler, g) => {
+                if (hitTargets.has(brawler.id) || !brawler.isAlive) return;
+                const healthBefore = Math.max(0, brawler.health);
                 originalOnHit(brawler, g);
-                // Heal owner for damage dealt
-                const healAmount = this.config.superDamage * this.config.superHealPercent;
-                this.heal(healAmount);
-                g.createEffect('heal', this.position.x, this.position.y);
+                const damageDealt = Math.max(0, healthBefore - Math.max(0, brawler.health));
+                this.heal(damageDealt * this.config.superHealPercent);
+                if (damageDealt > 0 && this.isAlive) g.createEffect('heal', this.position.x, this.position.y);
             };
 
             game.projectiles.push(projectile);

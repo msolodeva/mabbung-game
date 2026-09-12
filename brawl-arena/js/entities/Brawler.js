@@ -120,7 +120,7 @@ export class Brawler extends Entity {
             }
 
             // Apply friction to slow down knockback
-            this.knockbackVelocity = this.knockbackVelocity.multiply(this.knockbackFriction);
+            this.knockbackVelocity = this.knockbackVelocity.multiply(Math.pow(this.knockbackFriction, deltaTime * 60));
         } else {
             this.knockbackVelocity = new Vector2(0, 0);
         }
@@ -173,13 +173,13 @@ export class Brawler extends Entity {
             if (this.recoilOffset < 0.5) this.recoilOffset = 0;
         }
 
-        // Spawn pop-in animation
-        if (this.spawnScale < 1) {
-            this.spawnTimer += deltaTime * 10;
+        // Finish by elapsed time, even after the elastic curve overshoots 1.
+        if (this.spawnTimer < 1) {
+            this.spawnTimer = Math.min(1, this.spawnTimer + Math.max(0, deltaTime) * 10);
             // Elastic ease out
             const x = Math.min(this.spawnTimer, 1);
             this.spawnScale = x === 1 ? 1 : 1 - Math.pow(2, -10 * x) * Math.cos((x * 10 - 0.75) * (2 * Math.PI) / 3);
-            if (this.spawnTimer > 1) this.spawnScale = 1;
+            if (this.spawnTimer >= 1) this.spawnScale = 1;
         }
     }
 

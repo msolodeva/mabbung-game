@@ -81,6 +81,16 @@ class LobbedBomb extends Projectile {
         const pulse = 1 + Math.sin(this.elapsedTime * 0.02) * 0.08;
 
         ctx.save();
+        ctx.globalAlpha = 0.25 + progress * 0.35;
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.arc(this.targetPosition.x, this.targetPosition.y, this.explosionRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
         ctx.globalAlpha = 0.22;
         ctx.fillStyle = '#000000';
         ctx.beginPath();
@@ -148,6 +158,22 @@ export class Dynamike extends Brawler {
         game.audioManager?.play('super');
     }
 
+    getThrowRange(direction, game, maxRange) {
+        let range = maxRange;
+        // Keyboard aiming selects a direction. Adjust distance only, leaving
+        // aim and the delayed explosion dodgeable, including behind cover.
+        for (const enemy of [...game.brawlers, ...game.bears]) {
+            if (!enemy.isAlive || enemy.team === this.team) continue;
+            const offset = enemy.position.subtract(this.position);
+            const forward = offset.dot(direction);
+            const lateral = Math.abs(offset.cross(direction));
+            if (forward <= 0 || forward > maxRange) continue;
+            if (lateral > forward * Math.tan(this.config.throwAimCone)) continue;
+            range = Math.min(range, Math.max(this.config.minThrowRange, forward - 18));
+        }
+        return range;
+    }
+
     throwBomb(direction, game, options) {
         const throwDirection = direction.normalize();
         const bomb = new LobbedBomb(
@@ -157,7 +183,7 @@ export class Dynamike extends Brawler {
             {
                 damage: options.damage,
                 size: options.size,
-                range: options.range,
+                range: this.getThrowRange(throwDirection, game, options.range),
                 owner: this,
                 team: this.team,
                 color: options.color,

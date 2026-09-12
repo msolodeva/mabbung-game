@@ -83,6 +83,7 @@ export class Game {
         this.aiDifficulty = AI_DIFFICULTY.EASY;
 
         // Timing
+        this.scheduledActions = [];
         this.lastTime = 0;
         this.running = false;
         this.animationFrameId = null;
@@ -282,7 +283,7 @@ export class Game {
     gameLoop(currentTime) {
         if (!this.running) return;
 
-        const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
+        const deltaTime = Math.max(0, Math.min((currentTime - this.lastTime) / 1000, 0.1)); // Cap at 100ms
         this.lastTime = currentTime;
 
         this.update(deltaTime);
@@ -299,6 +300,8 @@ export class Game {
      */
     update(deltaTime) {
         if (this.state !== GAME_STATES.PLAYING) return;
+
+        this.updateScheduledActions(deltaTime);
 
         // Update input manager
         this.inputManager.update();
@@ -363,6 +366,25 @@ export class Game {
         }
     }
 
+    scheduleAction(owner, delay, callback) {
+        if (delay <= 0) {
+            if (owner.isAlive) callback();
+            return;
+        }
+        this.scheduledActions.push({ owner, remaining: delay, callback });
+    }
+
+    updateScheduledActions(deltaTime) {
+        const pending = this.scheduledActions;
+        this.scheduledActions = [];
+        for (const action of pending) {
+            if (!action.owner.isAlive) continue;
+            action.remaining -= deltaTime * 1000;
+            if (action.remaining <= 0) action.callback();
+            else this.scheduledActions.push(action);
+        }
+    }
+
     onGemCollected(brawler) {
         this.audioManager.play('gemCollect');
         this.createEffect('gemCollect', brawler.position.x, brawler.position.y);
@@ -373,6 +395,7 @@ export class Game {
     }
 
     endGame(outcome) {
+        this.scheduledActions = [];
         this.state = outcome === 'draw'
             ? GAME_STATES.DRAW
             : outcome ? GAME_STATES.VICTORY : GAME_STATES.DEFEAT;
@@ -383,6 +406,7 @@ export class Game {
     }
 
     cleanup() {
+        this.scheduledActions = [];
         this.stop();
         this.brawlers = [];
         this.projectiles = [];
