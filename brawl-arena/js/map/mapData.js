@@ -71,6 +71,16 @@ function addGemCluster(tiles, left, top, width, height) {
     }
 }
 
+// Mirror terrain across the horizontal centerline so both teams get equal routes.
+function mirrorTeamHalves(tiles) {
+    for (let row = 0; row < Math.floor(tiles.length / 2); row++) {
+        tiles[tiles.length - 1 - row] = tiles[row].map(tile =>
+            tile === SR ? SB : tile === SB ? SR : tile
+        );
+    }
+    return tiles;
+}
+
 function buildTheme(theme) {
     return theme;
 }
@@ -179,14 +189,23 @@ function createOpenMap() {
     paintRect(tiles, 18, 20, 21, 21, D);
     paintRect(tiles, 4, 12, 6, 18, B);
     paintRect(tiles, 33, 12, 35, 18, B);
-    addGemCluster(tiles, 18, 13, 4, 4);
+    // Three broad spawn exits and four open approaches to the objective.
+    for (const [left, right] of [[11, 14], [18, 21], [25, 28]]) {
+        clearRect(tiles, left, 7, right, 7);
+    }
+    clearRect(tiles, 18, 9, 21, 10);
+    clearRect(tiles, 16, 14, 23, 16);
+    // Short flank cover breaks long firing lanes without sealing them.
+    paintRect(tiles, 7, 10, 8, 11, D);
+    paintRect(tiles, 31, 10, 32, 11, D);
+    addGemCluster(tiles, 18, 14, 4, 3);
 
     return {
         id: 'open',
         name: 'Sunset Flats',
-        description: '긴 시야와 얇은 엄폐가 교차하는 기본형 맵으로, 중앙 장악과 양옆 포켓 압박을 동시에 요구합니다.',
+        description: '네 방향으로 열린 중앙 광장과 세 갈래 진입로. 측면 엄폐를 타고 합류하거나 긴 시야로 접근을 견제하세요.',
         theme: THEMES.open,
-        tiles,
+        tiles: mirrorTeamHalves(tiles),
     };
 }
 
@@ -199,27 +218,26 @@ function createMazeMap() {
         [[5, 28], [20, 28], [34, 28]]
     );
 
-    [8, 14, 20, 26, 32].forEach((col, index) => {
-        drawVerticalLine(tiles, col, 4, 26, W, index % 2 === 0 ? [8, 15, 22] : [11, 18, 24]);
-    });
-    [11, 17, 23, 29].forEach((row, index) => {
-        drawHorizontalLine(tiles, row, 4, 35, D, index % 2 === 0 ? [10, 18, 27] : [7, 15, 24, 32]);
-    });
-    paintRect(tiles, 17, 12, 22, 18, G);
-    paintRect(tiles, 16, 13, 23, 17, B);
-    clearRect(tiles, 18, 13, 21, 17);
-    addGemCluster(tiles, 18, 14, 4, 2);
-    paintRect(tiles, 3, 6, 5, 9, B);
-    paintRect(tiles, 34, 21, 36, 24, B);
-    paintRect(tiles, 4, 21, 6, 24, B);
-    paintRect(tiles, 33, 6, 35, 9, B);
+    // Offset islands create rotations, with wide crosscuts instead of one-tile doors.
+    for (const [left, top, right, bottom] of [
+        [8, 5, 9, 10], [14, 8, 15, 13],
+        [24, 8, 25, 13], [30, 5, 31, 10],
+    ]) paintRect(tiles, left, top, right, bottom, W);
+    paintRect(tiles, 17, 6, 22, 7, D);
+    paintRect(tiles, 4, 13, 9, 14, D);
+    paintRect(tiles, 30, 13, 35, 14, D);
+    paintRect(tiles, 11, 9, 12, 12, B);
+    paintRect(tiles, 27, 9, 28, 12, B);
+    paintRect(tiles, 16, 13, 17, 14, B);
+    paintRect(tiles, 22, 13, 23, 14, B);
+    addGemCluster(tiles, 18, 14, 4, 3);
 
     return {
         id: 'maze',
         name: 'Switchback',
-        description: '굽이치는 차단벽과 엇갈린 문이 계속 진로를 바꾸게 만들어, 한타보다 회전과 합류 타이밍이 더 중요합니다.',
+        description: '엇갈린 엄폐 섬 사이의 넓은 교차로. 정면 사격을 피하면서 옆길로 회전해 아군과 교차 사격을 만드세요.',
         theme: THEMES.maze,
-        tiles,
+        tiles: mirrorTeamHalves(tiles),
     };
 }
 
@@ -248,14 +266,19 @@ function createRiverMap() {
     paintRect(tiles, 32, 6, 35, 8, B);
     paintRect(tiles, 5, 22, 8, 24, B);
     paintRect(tiles, 31, 22, 34, 24, B);
-    paintRect(tiles, 18, 13, 21, 17, GS);
+    // Partial bridge-head cover leaves both a firing lane and a sheltered entry.
+    paintRect(tiles, 17, 8, 18, 9, D);
+    clearRect(tiles, 19, 8, 22, 9);
+    paintRect(tiles, 5, 8, 6, 9, D);
+    paintRect(tiles, 33, 8, 34, 9, D);
+    addGemCluster(tiles, 18, 14, 4, 3);
 
     return {
         id: 'river',
         name: 'Twin Canals',
-        description: '두 줄의 수로와 시차 브리지가 시야전과 회전전을 동시에 만들며, 어느 다리에서 건널지 선택이 계속 갈립니다.',
+        description: '중앙의 넓은 다리와 양옆 우회 다리. 물 위로 탄환은 통과하므로 교두보 엄폐를 활용해 건널 타이밍을 잡으세요.',
         theme: THEMES.river,
-        tiles,
+        tiles: mirrorTeamHalves(tiles),
     };
 }
 
@@ -286,14 +309,20 @@ function createBushMap() {
     paintRect(tiles, 25, 5, 27, 8, D);
     paintRect(tiles, 12, 22, 14, 25, D);
     paintRect(tiles, 25, 22, 27, 25, D);
-    addGemCluster(tiles, 18, 14, 4, 2);
+    // Break large hiding areas with readable scouting lanes.
+    clearRect(tiles, 2, 9, 11, 10);
+    clearRect(tiles, 28, 9, 37, 10);
+    clearRect(tiles, 18, 10, 21, 13);
+    clearRect(tiles, 13, 15, 17, 15);
+    clearRect(tiles, 22, 15, 26, 15);
+    addGemCluster(tiles, 18, 14, 4, 3);
 
     return {
         id: 'bush',
         name: 'Thorn Garden',
-        description: '풀숲이 대부분을 덮지만 중앙은 비어 있어, 매복과 시야 체크를 반복하면서도 한 번의 돌파 각이 크게 열립니다.',
+        description: '정찰 통로로 나뉜 풀숲과 네 방향 중앙 진입로. 풀숲을 확인하며 접근하고 열린 광장에서 보석을 확보하세요.',
         theme: THEMES.bush,
-        tiles,
+        tiles: mirrorTeamHalves(tiles),
     };
 }
 
@@ -326,12 +355,18 @@ function createFortressMap() {
     paintRect(tiles, 18, 6, 21, 7, D);
     paintRect(tiles, 18, 23, 21, 24, D);
 
+    // Open four gates through BOTH rings; breaking walls only creates shortcuts.
+    clearRect(tiles, 18, 8, 21, 13);
+    clearRect(tiles, 12, 14, 17, 16);
+    clearRect(tiles, 22, 14, 27, 16);
+    clearRect(tiles, 19, 6, 20, 7);
+
     return {
         id: 'fortress',
         name: 'Citadel Ring',
-        description: '파괴 가능한 외곽 성벽과 네 방향 돌입문이 있어, 포지션을 잡아도 벽이 무너지면 전장이 즉시 다시 열립니다.',
+        description: '처음부터 열린 네 방향 성문과 파괴 가능한 외곽 성벽. 성문을 견제하거나 벽을 부숴 새로운 공격 각도를 만드세요.',
         theme: THEMES.fortress,
-        tiles,
+        tiles: mirrorTeamHalves(tiles),
     };
 }
 

@@ -82,15 +82,15 @@ export const COLORS = {
 // Intended matchup tendencies; map, aim and ammo can reverse these:
 //
 //   Counter Chain:
-//   Brock → Dynamike → Nita → Mortis → Colt → Brock
+//   Bea → Spike → Mortis → Colt → Brock → Dynamike
 //            ↘       ↙
 //             Spike (Area Control - objective denial)
 //
 // Detailed Counter Relationships:
 // - Brock beats Dynamike (longest threat range and burst punishes artillery)
 // - Colt beats Brock & Spike (fastest base speed and sustained ranged pressure)
-// - Nita beats Colt & Mortis (highest health and wide close-range shockwave)
-// - Dynamike beats Nita & Spike (delayed AoE punishes slow/objective play)
+// - Bea pressures Spike with accurate long-range shots but is vulnerable to dives
+// - Dynamike beats Bea & Spike (delayed AoE punishes slow/objective play)
 // - Spike beats grouped enemies and gem zones, but loses direct duels to burst
 // - Mortis beats fragile ranged brawlers by spending ammo on committed dives
 // ========================================
@@ -129,38 +129,43 @@ export const BRAWLERS = {
         superDescription: '🚀 로켓 레인: 부채꼴로 로켓 6발을 발사해 지역을 폭격',
     },
 
-    // =====================================
-    // NITA - Tank (High HP + Homing Missile)
-    // =====================================
-    // ✅ STRONG vs: Colt (absorbs damage, missile tracks)
-    // ❌ WEAK vs: Dynamike (slow target punished by lobbed bombs)
-    // =====================================
-    NITA: {
-        id: 'nita',
-        name: 'Nita',
-        role: 'BRUISER',
-        emoji: '🚀',
-        color: '#e74c3c',
-        health: 5000,
-        speed: 245,
+    // BEA - long-range stings briefly slow a single target.
+    BEA: {
+        id: 'bea',
+        name: 'Bea',
+        role: 'STINGER',
+        emoji: '🐝',
+        color: '#f1c40f',
+        health: 2600,
+        speed: 260,
         attackDamage: 900,
         attackProjectiles: 1,
         attackSpread: 0,
-        attackRange: 360,
+        attackRange: 620,
         attackSpeed: 600,
+        stingSlowMultiplier: 0.4,
+        stingSlowDuration: 2000,
+        projectileSpeed: 900,
+        projectileSize: 7,
+        projectileSpawnDistance: 25,
         ammoMax: 3,
-        ammoReloadTime: 1250,
-        superCharge: 5,
-        superDamage: 1250,
-        description: '근접 브루저 - 높은 체력과 넓은 충격파로 진입을 받아친다',
-        superDescription: '🚀 유도 미사일: 가장 가까운 적을 자동으로 추적하는 미사일 발사',
+        ammoReloadTime: 1500,
+        superCharge: 4,
+        superDamage: 180,
+        superProjectileCount: 5,
+        superSpread: 0.8,
+        superRange: 430,
+        superProjectileSpeed: 650,
+        superKnockback: 130,
+        description: '벌침 저격수 - 맞힌 적을 2초간 60% 둔화! 탄창 3발, 둔화 중첩 없음',
+        superDescription: '🐝 벌 떼: 벌 5마리로 적을 밀어내고 2초간 60% 둔화',
     },
 
     // =====================================
     // COLT - Marksman (Long Range DPS)
     // =====================================
     // ✅ STRONG vs: Brock (faster ranged pressure), Spike (outranges)
-    // ❌ WEAK vs: Nita (can't kill fast enough, gets overrun)
+    // ❌ WEAK vs: Mortis (can close distance with dashes)
     // =====================================
     COLT: {
         bulletInterval: 50,
@@ -188,7 +193,7 @@ export const BRAWLERS = {
     // =====================================
     // DYNAMIKE - Artillery (Lobbed AoE)
     // =====================================
-    // ✅ STRONG vs: Nita (punishes slow tanks over cover), grouped enemies
+    // ✅ STRONG vs: Bea (punishes stationary snipers over cover), grouped enemies
     // ❌ WEAK vs: Brock (long-range burst), Colt (long-range pressure)
     // =====================================
     DYNAMIKE: {
@@ -222,7 +227,7 @@ export const BRAWLERS = {
     // =====================================
     // SPIKE - Controller (Area Denial)
     // =====================================
-    // ✅ STRONG vs: Grouped enemies, slow brawlers (Nita, Dynamike)
+    // ✅ STRONG vs: Grouped enemies, slow brawlers (Bea, Dynamike)
     // ❌ WEAK vs: Brock (long-range burst), Colt (outranges and kites)
     // =====================================
     SPIKE: {
@@ -258,7 +263,7 @@ export const BRAWLERS = {
     // MORTIS - Assassin (Dash Melee)
     // =====================================
     // ✅ STRONG vs: Dynamike (dives artillery), Colt (closes gap instantly), Brock (dodges slow rockets)
-    // ❌ WEAK vs: Nita (tanks too much)
+    // ❌ WEAK vs: Spike (zone control punishes dives)
     // =====================================
     MORTIS: {
         id: 'mortis',

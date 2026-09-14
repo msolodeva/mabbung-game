@@ -637,10 +637,10 @@ export class AIController {
         const counters = {
             'brock': ['dynamike'],
             'colt': ['brock', 'spike'],
-            'nita': ['colt', 'mortis'],
-            'dynamike': ['nita', 'spike'],
-            'spike': ['nita', 'mortis'],
-            'mortis': ['brock', 'colt', 'dynamike']
+            'bea': ['spike'],
+            'dynamike': ['bea', 'spike'],
+            'spike': ['bea', 'mortis'],
+            'mortis': ['brock', 'colt', 'dynamike', 'bea']
         };
 
         const myId = this.brawler.config.id;
@@ -1294,9 +1294,9 @@ export class AIController {
                 }
                 break;
 
-            case 'nita':
-                // Summoning Super: Use as soon as enemy is within reasonable distance
-                if (nearestEnemy && distToEnemy <= 500) {
+            case 'bea':
+                // Use the bee fan to push approaching enemies away
+                if (nearestEnemy && distToEnemy <= this.brawler.config.superRange) {
                     const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
                     this.brawler.useSuper(toEnemy, this.game);
                 }

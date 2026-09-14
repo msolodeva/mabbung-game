@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Nita } from '../js/entities/brawlers/Nita.js';
+import { Bea } from '../js/entities/brawlers/Bea.js';
 import { Spike } from '../js/entities/brawlers/Spike.js';
 import { Vector2 } from '../js/utils/Vector2.js';
 
@@ -70,8 +70,8 @@ test('spike super seed deals zero damage and its radial burst hits once', () => 
 });
 
 test('enemy spike fields slow movement by thirty percent', () => {
-    const nita = new Nita('blue', 100, 100);
-    nita.moveDirection = new Vector2(1, 0);
+    const bea = new Bea('blue', 100, 100);
+    bea.moveDirection = new Vector2(1, 0);
 
     const game = {
         spikeFields: [{
@@ -81,7 +81,7 @@ test('enemy spike fields slow movement by thirty percent', () => {
             radius: 220,
             slowMultiplier: 0.7,
         }],
-        brawlers: [nita],
+        brawlers: [bea],
         playerTeam: 'blue',
         map: {
             width: 1000,
@@ -92,7 +92,7 @@ test('enemy spike fields slow movement by thirty percent', () => {
         },
     };
 
-    nita.update(0.1, game);
+    bea.update(0.1, game);
 
-    assert.ok(Math.abs(nita.position.x - 117.15) < 0.001);
+    assert.ok(Math.abs(bea.position.x - 118.2) < 0.001);
 });

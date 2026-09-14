@@ -21,8 +21,8 @@ test('poco, shelly, and gene are replaced without changing mortis or dynamike', 
     assert.equal(typeof BRAWLER_CLASSES.mortis, 'function');
 });
 
-test('brock has a distinct lobby and in-game icon from nita', () => {
-    assert.notEqual(BRAWLERS.BROCK.emoji, BRAWLERS.NITA.emoji);
+test('brock has a distinct lobby and in-game icon from bea', () => {
+    assert.notEqual(BRAWLERS.BROCK.emoji, BRAWLERS.BEA.emoji);
 });
 
 test('brawlers have non-overlapping strategic stat identities', () => {
@@ -35,9 +35,9 @@ test('brawlers have non-overlapping strategic stat identities', () => {
     assert.ok(roster.BROCK.attackDamage > roster.DYNAMIKE.attackDamage);
     assert.ok(roster.BROCK.ammoReloadTime > roster.COLT.ammoReloadTime);
 
-    assert.equal(roster.NITA.health, Math.max(...Object.values(roster).map(brawler => brawler.health)));
-    assert.ok(roster.NITA.attackRange < roster.SPIKE.attackRange);
-    assert.ok(roster.NITA.attackDamage < roster.BROCK.attackDamage);
+    assert.equal(roster.BEA.ammoMax, 3);
+    assert.ok(roster.BEA.attackRange > roster.SPIKE.attackRange);
+    assert.ok(roster.BEA.attackDamage < roster.BROCK.attackDamage);
 
     assert.equal(roster.COLT.speed, Math.max(...Object.values(roster).map(brawler => brawler.speed)));
     assert.ok(roster.COLT.attackProjectiles > roster.BROCK.attackProjectiles);
@@ -45,13 +45,13 @@ test('brawlers have non-overlapping strategic stat identities', () => {
 
     assert.ok(roster.DYNAMIKE.explosionRadius > roster.BROCK.rocketExplosionRadius);
     assert.ok(roster.DYNAMIKE.fuseTime > 650);
-    assert.ok(roster.DYNAMIKE.health < roster.NITA.health);
+    assert.ok(roster.BEA.health < roster.BROCK.health);
 
     assert.ok(roster.SPIKE.superRadius > roster.DYNAMIKE.superRadius);
     assert.ok(roster.SPIKE.superDamagePerSecond < roster.BROCK.attackDamage);
     assert.ok(roster.SPIKE.superBurstSpikes <= 8);
 
-    assert.ok(roster.MORTIS.attackRange < roster.NITA.attackRange);
+    assert.ok(roster.MORTIS.attackRange < roster.BEA.attackRange);
     assert.ok(roster.MORTIS.dashSpeed > 1200);
     assert.ok(roster.MORTIS.ammoReloadTime > roster.BROCK.ammoReloadTime);
 });
@@ -79,7 +79,7 @@ test('brawlers use the tightened attack cadence while preserving their relative 
         Object.fromEntries(Object.entries(BRAWLERS).map(([id, brawler]) => [id, brawler.attackSpeed])),
         {
             BROCK: 850,
-            NITA: 600,
+            BEA: 600,
             COLT: 500,
             DYNAMIKE: 850,
             SPIKE: 730,
@@ -88,8 +88,8 @@ test('brawlers use the tightened attack cadence while preserving their relative 
     );
 
     assert.ok(BRAWLERS.MORTIS.attackSpeed < BRAWLERS.COLT.attackSpeed);
-    assert.ok(BRAWLERS.COLT.attackSpeed < BRAWLERS.NITA.attackSpeed);
-    assert.ok(BRAWLERS.NITA.attackSpeed < BRAWLERS.SPIKE.attackSpeed);
+    assert.ok(BRAWLERS.COLT.attackSpeed < BRAWLERS.BEA.attackSpeed);
+    assert.ok(BRAWLERS.BEA.attackSpeed < BRAWLERS.SPIKE.attackSpeed);
     assert.ok(BRAWLERS.SPIKE.attackSpeed < BRAWLERS.BROCK.attackSpeed);
     assert.equal(BRAWLERS.BROCK.attackSpeed, BRAWLERS.DYNAMIKE.attackSpeed);
 });
@@ -101,4 +101,10 @@ test('mortis can finish colt with one committed three-dash combo', () => {
     assert.equal(mortis.attackDamage, 800);
     assert.equal(mortis.attackDamage * mortis.ammoMax, colt.health);
     assert.ok(mortis.attackDamage * mortis.ammoMax < BRAWLERS.DYNAMIKE.health);
+});
+
+test('Bea replaces Nita in the playable roster', () => {
+    assert.equal(BRAWLER_CLASSES.nita, undefined);
+    assert.equal(BRAWLERS.NITA, undefined);
+    assert.equal(new BRAWLER_CLASSES.bea('blue', 0, 0).config, BRAWLERS.BEA);
 });

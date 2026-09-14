@@ -203,8 +203,8 @@ body {
     background: linear-gradient(180deg, #f5b041 0%, #d35400 100%);
 }
 
-.brawler-card.nita {
-    background: var(--gradient-red);
+.brawler-card.bea {
+    background: linear-gradient(180deg, #f7dc6f 0%, #b7950b 100%);
 }
 
 .brawler-card.colt {

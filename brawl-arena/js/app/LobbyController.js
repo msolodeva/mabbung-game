@@ -1,4 +1,5 @@
 import { MAPS } from '../map/mapData.js';
+import { GameMap } from '../map/Map.js';
 import { AI_DIFFICULTY, BRAWLERS } from '../utils/constants.js';
 
 const DIFFICULTIES_BY_ID = Object.freeze({
@@ -137,9 +138,14 @@ export class LobbyController {
             option.className = 'map-option';
             option.dataset.mapId = map.id;
             option.innerHTML = `
-                <span class="map-preview ${map.id}" aria-hidden="true"></span>
+                <canvas class="map-preview" width="320" height="248" aria-hidden="true"></canvas>
                 <span class="map-option-name">${map.name}</span>
             `;
+            const preview = option.querySelector('canvas');
+            const ctx = preview.getContext('2d');
+            const arena = new GameMap(map);
+            ctx.scale(preview.width / arena.width, preview.height / arena.height);
+            arena.render(ctx, { x: 0, y: 0, width: arena.width, height: arena.height });
             option.addEventListener('click', () => this.selectMap(map.id));
             return option;
         });

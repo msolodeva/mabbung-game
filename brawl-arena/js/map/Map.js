@@ -8,7 +8,7 @@ import { TILE_TYPES, COLORS, GAME_CONFIG, TEAMS } from '../utils/constants.js';
 export class GameMap {
     constructor(mapData) {
         this.tileSize = GAME_CONFIG.TILE_SIZE;
-        this.tiles = mapData.tiles;
+        this.tiles = mapData.tiles.map(row => [...row]);
         this.theme = mapData.theme || {};
         this.cols = this.tiles[0].length;
         this.rows = this.tiles.length;
@@ -200,6 +200,8 @@ export class GameMap {
             }
         }
 
+        this.renderObjectiveZone(ctx);
+
         // 2. Shadows Layer
         for (let row = startRow; row < endRow; row++) {
             for (let col = startCol; col < endCol; col++) {
@@ -231,15 +233,22 @@ export class GameMap {
         const groundDarkColor = this.getThemeColor('groundDark', COLORS.GROUND_DARK);
         const detailColor = this.getThemeColor('detail', COLORS.GROUND_DETAIL);
 
-        // Subtle checkerboard base
-        ctx.fillStyle = (col + row) % 2 === 0 ? groundColor : groundDarkColor;
+        // Keep the floor quiet so cover, projectiles and players carry the contrast.
+        ctx.fillStyle = groundColor;
         ctx.fillRect(x, y, size, size);
+        ctx.save();
+        ctx.globalAlpha = 0.13;
+        ctx.fillStyle = groundDarkColor;
+        if ((col + row) % 2 === 0) ctx.fillRect(x, y, size, size);
+        ctx.restore();
 
         // Deterministic noise for grass/props based on coordinates
         const seed = (col * 73 + row * 37);
         const rand = (s) => (Math.sin(s) * 10000) % 1;
 
-        if (Math.abs(rand(seed)) > 0.8) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        if (Math.abs(rand(seed)) > 0.92) {
             // Grass Tuff
             ctx.fillStyle = detailColor;
             const tx = x + size * 0.2 + rand(seed + 1) * size * 0.5;
@@ -259,6 +268,8 @@ export class GameMap {
         }
 
         this.renderGroundDecoration(ctx, x, y, size, col, row, seed, rand);
+
+        ctx.restore();
 
         const nearWall = this.getNeighborMask(col, row, neighbor =>
             neighbor === TILE_TYPES.WALL || neighbor === TILE_TYPES.DESTRUCTIBLE
@@ -377,7 +388,6 @@ export class GameMap {
         switch (tile) {
             case TILE_TYPES.SPAWN_BLUE:
             case TILE_TYPES.SPAWN_RED:
-            case TILE_TYPES.GEM_SPAWN:
                 this.renderSpecialTile(ctx, x, y, tile, size);
                 break;
 
@@ -402,11 +412,18 @@ export class GameMap {
                     x,
                     y,
                     size,
-                    this.getThemeColor('wall', COLORS.DESTRUCTIBLE),
-                    this.getThemeColor('wallTop', COLORS.DESTRUCTIBLE_TOP),
+                    this.getThemeColor('destructible', '#a56939'),
+                    this.getThemeColor('destructibleTop', '#deb477'),
                     col,
                     row
                 );
+                // A visible seam identifies breakable cover even at full health.
+                ctx.strokeStyle = '#664122';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x + 8, y + size * 0.5);
+                ctx.lineTo(x + size - 8, y + size * 0.5);
+                ctx.stroke();
                 // Cracks if damaged
                 if (healthPercent < 0.7) {
                     ctx.strokeStyle = 'rgba(0,0,0,0.4)';
@@ -580,30 +597,31 @@ export class GameMap {
             ctx.textBaseline = 'middle';
             ctx.fillText('🔴', x + size/2, y + size/2);
 
-        } else if (tile === TILE_TYPES.GEM_SPAWN) {
-            // Premium Gem Mine (Hole-style to avoid confusion with actual gem items)
-            ctx.fillStyle = '#1a1a1a'; // Deep dark hole
-            ctx.beginPath();
-            ctx.roundRect(x + 4, y + 4, size - 8, size - 8, 12);
-            ctx.fill();
-
-            // Inner crater look
-            ctx.fillStyle = '#2c3e50';
-            ctx.beginPath();
-            ctx.roundRect(x + 10, y + 10, size - 20, size - 20, 8);
-            ctx.fill();
-
-            const glow = 0.6 + Math.sin(performance.now() * 0.004) * 0.4;
-            ctx.strokeStyle = this.getThemeColor('accent', `rgba(155, 89, 182, ${glow})`);
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
-            // Minimalist indicator instead of gem emoji
-            ctx.fillStyle = this.getThemeColor('accent', `rgba(155, 89, 182, ${glow * 0.5})`);
-            ctx.beginPath();
-            ctx.arc(x + size / 2, y + size / 2, 6, 0, Math.PI * 2);
-            ctx.fill();
         }
+    }
+
+    renderObjectiveZone(ctx) {
+        if (!this.gemSpawnPoints.length) return;
+        const xs = this.gemSpawnPoints.map(point => point.x);
+        const ys = this.gemSpawnPoints.map(point => point.y);
+        const x = Math.min(...xs) * this.tileSize;
+        const y = Math.min(...ys) * this.tileSize;
+        const width = (Math.max(...xs) - Math.min(...xs) + 1) * this.tileSize;
+        const height = (Math.max(...ys) - Math.min(...ys) + 1) * this.tileSize;
+        ctx.save();
+        ctx.fillStyle = 'rgba(49, 29, 73, 0.8)';
+        ctx.strokeStyle = '#dcc1ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(x + 4, y + 4, width - 8, height - 8, 16);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f4eaff';
+        ctx.font = 'bold 15px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('GEM ZONE', x + width / 2, y + 12);
+        ctx.restore();
     }
 
 }

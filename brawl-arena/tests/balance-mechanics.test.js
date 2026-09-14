@@ -19,7 +19,7 @@ function simulateProjectiles(g, seconds = 1) {
 }
 test('Mortis swarm damages each enemy once but still pierces multiple enemies', () => {
     const mortis = new BRAWLER_CLASSES.mortis('blue', 100, 100);
-    const enemies = [200, 300].map(x => new BRAWLER_CLASSES.nita('red', x, 100));
+    const enemies = [200, 300].map(x => new BRAWLER_CLASSES.bea('red', x, 100));
     const g = world([mortis, ...enemies]);
     mortis.health = 1000;
     mortis.superReady = true;
@@ -42,7 +42,7 @@ test('Mortis does not heal from overkill', () => {
 });
 test('Dynamike hits a midrange target with a delayed throw over cover', () => {
     const mike = new BRAWLER_CLASSES.dynamike('blue', 100, 100);
-    const enemy = new BRAWLER_CLASSES.nita('red', 400, 100);
+    const enemy = new BRAWLER_CLASSES.bea('red', 400, 100);
     const g = world([mike, enemy]);
     g.map.isPositionSolidForProjectile = () => true;
     mike.createAttackProjectiles(right, g);
@@ -56,7 +56,7 @@ test('Dynamike hits a midrange target with a delayed throw over cover', () => {
 test('Dynamike distance assistance preserves aim direction and minimum range', () => {
     const mike = new BRAWLER_CLASSES.dynamike('blue', 100, 100);
     const side = new BRAWLER_CLASSES.colt('red', 100, 350);
-    const ally = new BRAWLER_CLASSES.nita('blue', 300, 100);
+    const ally = new BRAWLER_CLASSES.bea('blue', 300, 100);
     const g = world([mike, side, ally]);
     assert.equal(mike.getThrowRange(right, g, mike.attackRange), mike.attackRange);
     const diver = new BRAWLER_CLASSES.mortis('red', 140, 100);
@@ -75,14 +75,6 @@ test('Dynamike landing can be dodged after the bomb is thrown', () => {
     enemy.position.y += 180;
     simulateProjectiles(g);
     assert.equal(enemy.health, enemy.maxHealth);
-});
-test('Nita takes more than a Mortis three-dash combo while retaining a reachable super', () => {
-    const nita = new BRAWLER_CLASSES.nita('blue', 100, 100);
-    const target = new BRAWLER_CLASSES.nita('red', 200, 100);
-    assert.ok(nita.health > BRAWLERS.MORTIS.attackDamage * 3);
-    for (let i = 0; i < 5; i++) target.takeDamage(nita.attackDamage, nita);
-    assert.equal(nita.superReady, true);
-    assert.equal(target.isAlive, true);
 });
 test('Brock full super cannot delete a full-health Colt on its own', () => {
     const brock = new BRAWLER_CLASSES.brock('blue', 100, 100);

@@ -61,6 +61,9 @@ export class Brawler extends Entity {
         this.facingAngle = 0;
         this.isAttacking = false;
 
+        this.slowRemaining = 0;
+        this.slowMultiplier = 1;
+
         // Movement
         this.moveDirection = new Vector2(0, 0);
         this.aimDirection = new Vector2(1, 0);
@@ -89,6 +92,8 @@ export class Brawler extends Entity {
             }
             return;
         }
+
+        this.slowRemaining = Math.max(0, this.slowRemaining - deltaTime * 1000);
 
         // Movement
         if (this.moveDirection.magnitude() > 0) {
@@ -183,8 +188,16 @@ export class Brawler extends Entity {
         }
     }
 
+    applySlow(multiplier, duration) {
+        if (!this.isAlive) return;
+        // Repeated stings refresh duration; they never multiply the slowdown.
+        this.slowMultiplier = this.slowRemaining > 0
+            ? Math.min(this.slowMultiplier, multiplier) : multiplier;
+        this.slowRemaining = Math.max(this.slowRemaining, duration);
+    }
+
     getMovementSpeedMultiplier(game) {
-        let multiplier = 1;
+        let multiplier = this.slowRemaining > 0 ? this.slowMultiplier : 1;
 
         for (const field of game.spikeFields || []) {
             if (!field.active || field.team === this.team) continue;
@@ -435,6 +448,8 @@ export class Brawler extends Entity {
     }
 
     die() {
+        this.slowRemaining = 0;
+        this.slowMultiplier = 1;
         this.isAlive = false;
         this.justDied = true;
         this.respawnTimer = 3000;
@@ -448,6 +463,8 @@ export class Brawler extends Entity {
     }
 
     respawn(game) {
+        this.slowRemaining = 0;
+        this.slowMultiplier = 1;
         this.isAlive = true;
         this.health = this.maxHealth;
         this.ammo = this.ammoMax;
@@ -473,6 +490,17 @@ export class Brawler extends Entity {
 
         const x = this.position.x;
         const y = this.position.y;
+
+        if (this.slowRemaining > 0 && this.isAlive && (this.isVisible || isPlayerTeam)) {
+            ctx.save();
+            ctx.strokeStyle = '#f5cf56';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(x, y, this.radius + 7, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
 
         // Render Movement Trail
         if (this.moveTrail.length > 0 && this.isAlive && (this.isVisible || isPlayerTeam)) {

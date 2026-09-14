@@ -57,3 +57,72 @@ test('game map uses the provided visual theme instead of only global defaults', 
     assert.equal(map.getThemeColor('accent', '#fff'), '#b0b0b0');
     assert.equal(map.getThemeColor('missing', '#fff'), '#fff');
 });
+
+const blocked = new Set([TILE_TYPES.WALL, TILE_TYPES.DESTRUCTIBLE, TILE_TYPES.WATER]);
+function distances(tiles, start) {
+    const queue = [start];
+    const result = new Map([[start.join(','), 0]]);
+    for (let i = 0; i < queue.length; i++) {
+        const [x, y] = queue[i];
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = x + dx, ny = y + dy, key = [nx, ny].join(',');
+            if (tiles[ny]?.[nx] === undefined || blocked.has(tiles[ny][nx]) || result.has(key)) continue;
+            result.set(key, result.get([x, y].join(',')) + 1);
+            queue.push([nx, ny]);
+        }
+    }
+    return result;
+}
+
+test('every spawn reaches every gem without destroying cover, with equal team travel distances', () => {
+    for (const data of Object.values(MAPS)) {
+        const map = new GameMap(data);
+        for (const spawn of map.spawnPoints.red) {
+            const red = distances(map.tiles, [spawn.x, spawn.y]);
+            const blue = distances(map.tiles, [spawn.x, map.rows - 1 - spawn.y]);
+            for (const gem of map.gemSpawnPoints) {
+                const distance = red.get([gem.x, gem.y].join(','));
+                assert.ok(Number.isFinite(distance), `${data.id}: spawn cannot reach gem`);
+                assert.equal(distance, blue.get([gem.x, map.rows - 1 - gem.y].join(',')), data.id);
+            }
+        }
+    }
+});
+
+test('team halves have mirrored terrain and spawns', () => {
+    for (const data of Object.values(MAPS)) {
+        const tiles = data.tiles;
+        for (let y = 0; y < tiles.length; y++) {
+            for (let x = 0; x < tiles[0].length; x++) {
+                const tile = tiles[y][x];
+                const mirror = tile === TILE_TYPES.SPAWN_RED ? TILE_TYPES.SPAWN_BLUE
+                    : tile === TILE_TYPES.SPAWN_BLUE ? TILE_TYPES.SPAWN_RED : tile;
+                assert.equal(tiles[tiles.length - 1 - y][x], mirror, data.id);
+            }
+        }
+    }
+});
+
+test('open and fortress objectives have usable gates on all four sides', () => {
+    for (const id of ['open', 'fortress']) {
+        const tiles = MAPS[id].tiles;
+        for (const y of [14, 15, 16]) {
+            for (let x = 11; x <= 28; x++) assert.equal(blocked.has(tiles[y][x]), false, id);
+        }
+        for (let y = 8; y <= 22; y++) {
+            for (let x = 18; x <= 21; x++) assert.equal(blocked.has(tiles[y][x]), false, id);
+        }
+    }
+});
+
+test('destroyed cover does not leak into the next match or map preview', () => {
+    const data = MAPS.fortress;
+    const first = new GameMap(data);
+    const y = first.tiles.findIndex(row => row.includes(TILE_TYPES.DESTRUCTIBLE));
+    const x = first.tiles[y].indexOf(TILE_TYPES.DESTRUCTIBLE);
+    const position = first.getTileCenter(x, y);
+    assert.equal(first.damageWallAtPosition(position.x, position.y, 3000), true);
+    assert.equal(first.getTile(x, y), TILE_TYPES.GROUND);
+    assert.equal(data.tiles[y][x], TILE_TYPES.DESTRUCTIBLE);
+    assert.equal(new GameMap(data).getTile(x, y), TILE_TYPES.DESTRUCTIBLE);
+});
