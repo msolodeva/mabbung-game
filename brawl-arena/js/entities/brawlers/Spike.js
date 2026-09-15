@@ -34,7 +34,7 @@ export class Spike extends Brawler {
         projectile.owner.game = game;
         game.projectiles.push(projectile);
 
-        game.audioManager?.play('shoot');
+        game.audioManager?.play('shoot', this.config.id);
     }
 
     // Create spike field at current position
@@ -63,7 +63,7 @@ export class Spike extends Brawler {
         };
 
         game.projectiles.push(projectile);
-        game.audioManager?.play('shoot'); // Play throw sound
+        game.audioManager?.play('shoot', this.config.id); // Play throw sound
     }
 
     createSuperEffect(position, game) {

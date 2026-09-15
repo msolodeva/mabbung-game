@@ -3,7 +3,7 @@ import { Bea } from './Bea.js';
 import { Colt } from './Colt.js';
 import { Dynamike } from './Dynamike.js';
 import { Spike } from './Spike.js';
-import { Mortis } from './Mortis.js';
+import { Rico } from './Rico.js';
 
 // 6 Brawlers with balanced counter relationships
 export const BRAWLER_CLASSES = {
@@ -12,5 +12,5 @@ export const BRAWLER_CLASSES = {
     colt: Colt,
     dynamike: Dynamike,
     spike: Spike,
-    mortis: Mortis,
+    rico: Rico,
 };

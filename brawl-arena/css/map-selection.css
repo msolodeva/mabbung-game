@@ -15,10 +15,12 @@
 
 .map-selector {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
     margin-bottom: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 4px 12px;
 }
 
 .map-option {
@@ -26,7 +28,8 @@
     padding: 0;
     color: inherit;
     font: inherit;
-    width: 154px;
+    flex: 1 0 140px;
+    min-width: 140px;
     height: 142px;
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.4);
@@ -125,8 +128,7 @@
     }
 
     .map-option {
-        width: calc(50% - 4px);
-        min-width: 132px;
+        flex: 0 0 140px;
         height: 78px;
     }
 
@@ -142,4 +144,12 @@
     .map-desc {
         font-size: 0.9rem;
     }
+}
+
+.random-map-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    background: linear-gradient(135deg, #233650, #593a76);
 }

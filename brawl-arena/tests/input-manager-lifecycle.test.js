@@ -97,3 +97,32 @@ test('blur and hidden tab release both players and detach on cleanup', () => {
         assert.equal(doc.listeners.get('visibilitychange').size, 0);
     } finally { globalThis.document = originalDocument; }
 });
+
+test('both keyboard players lock aim on attack press and can retreat while firing', () => {
+    const original = globalThis.document;
+    globalThis.document = createDocumentStub();
+    try {
+        const manager = new InputManager({ teamMode: 'vs' });
+        for (const [number, forward, back, shoot] of [
+            [1, 'KeyW', 'KeyS', 'KeyF'], [2, 'ArrowUp', 'ArrowDown', 'ShiftRight'],
+        ]) {
+            const input = manager.getPlayerInput(number);
+            // No frame between direction and attack: lock still captures the new direction.
+            input.handleKeyDown(forward);
+            input.handleKeyDown(shoot);
+            input.handleKeyUp(forward);
+            input.handleKeyDown(back);
+            input.update();
+            assert.equal(input.getMoveDirection().y, 1);
+            assert.equal(input.getAimDirection().y, -1);
+            input.update();
+            assert.equal(input.getAimDirection().y, -1);
+            input.handleKeyUp(shoot);
+            input.update();
+            assert.equal(input.getAimDirection().y, 1);
+            input.reset();
+            assert.equal(input.isShootPressed(), false);
+        }
+        manager.cleanup();
+    } finally { globalThis.document = original; }
+});

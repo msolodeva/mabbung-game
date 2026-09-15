@@ -17,7 +17,6 @@ export class GameMap {
 
         // 타일 맵에서 스폰 포인트 자동 추출
         this.spawnPoints = this.extractSpawnPoints();
-        this.gemSpawnPoints = this.extractGemSpawnPoints();
 
         // Destructible wall health
         this.destructibleHealth = {};
@@ -43,23 +42,6 @@ export class GameMap {
         }
 
         return { blue, red };
-    }
-
-    /**
-     * 타일 맵에서 보석 스폰 포인트 추출
-     */
-    extractGemSpawnPoints() {
-        const gemSpawns = [];
-
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
-                if (this.tiles[row][col] === TILE_TYPES.GEM_SPAWN) {
-                    gemSpawns.push({ x: col, y: row });
-                }
-            }
-        }
-
-        return gemSpawns;
     }
 
     initDestructibles() {
@@ -170,13 +152,6 @@ export class GameMap {
         return this.getTileCenter(spawn.x, spawn.y);
     }
 
-    getGemSpawnPosition() {
-        if (this.gemSpawnPoints.length === 0) {
-            return new Vector2(this.width / 2, this.height / 2);
-        }
-        const spawn = this.gemSpawnPoints[Math.floor(Math.random() * this.gemSpawnPoints.length)];
-        return this.getTileCenter(spawn.x, spawn.y);
-    }
 
     render(ctx, camera) {
         const startCol = Math.max(0, Math.floor(camera.x / this.tileSize));
@@ -200,7 +175,6 @@ export class GameMap {
             }
         }
 
-        this.renderObjectiveZone(ctx);
 
         // 2. Shadows Layer
         for (let row = startRow; row < endRow; row++) {
@@ -278,7 +252,7 @@ export class GameMap {
         const nearWater = this.getNeighborMask(col, row, neighbor => neighbor === TILE_TYPES.WATER);
 
         ctx.save();
-        if (tile === TILE_TYPES.GROUND || tile === TILE_TYPES.SPAWN_BLUE || tile === TILE_TYPES.SPAWN_RED || tile === TILE_TYPES.GEM_SPAWN) {
+        if (tile === TILE_TYPES.GROUND || tile === TILE_TYPES.SPAWN_BLUE || tile === TILE_TYPES.SPAWN_RED) {
             ctx.globalAlpha = 0.22;
             ctx.fillStyle = this.getThemeColor('wall', '#7b613f');
             this.renderEdgeBand(ctx, x, y, size, nearWall, 5);
@@ -295,7 +269,7 @@ export class GameMap {
     }
 
     renderGroundDecoration(ctx, x, y, size, col, row, seed, rand) {
-        const accent = this.getThemeColor('accent', COLORS.GEM_GLOW);
+        const accent = this.getThemeColor('accent', '#bb8fce');
         const style = this.theme.decorationStyle || 'default';
 
         ctx.save();
@@ -600,28 +574,5 @@ export class GameMap {
         }
     }
 
-    renderObjectiveZone(ctx) {
-        if (!this.gemSpawnPoints.length) return;
-        const xs = this.gemSpawnPoints.map(point => point.x);
-        const ys = this.gemSpawnPoints.map(point => point.y);
-        const x = Math.min(...xs) * this.tileSize;
-        const y = Math.min(...ys) * this.tileSize;
-        const width = (Math.max(...xs) - Math.min(...xs) + 1) * this.tileSize;
-        const height = (Math.max(...ys) - Math.min(...ys) + 1) * this.tileSize;
-        ctx.save();
-        ctx.fillStyle = 'rgba(49, 29, 73, 0.8)';
-        ctx.strokeStyle = '#dcc1ff';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(x + 4, y + 4, width - 8, height - 8, 16);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f4eaff';
-        ctx.font = 'bold 15px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText('GEM ZONE', x + width / 2, y + 12);
-        ctx.restore();
-    }
 
 }

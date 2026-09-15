@@ -23,7 +23,7 @@
                     <!-- Player 1 Selection -->
                     <div class="player-selection player1">
                         <h3 class="player-title">🔵 플레이어 1</h3>
-                        <div class="control-info"><b>WASD</b> 선택/이동 | <b>F</b> 공격 | <b>G</b> 궁극기</div>
+                        <div class="control-info"><b>WASD</b> 선택/이동 | <b>F</b> 공격·조준 고정 | <b>G</b> 궁극기</div>
                         <div class="brawler-grid" id="player1-brawler-grid">
                             <!-- Brawlers will be added by JS -->
                         </div>
@@ -32,14 +32,14 @@
 
                     <div class="team-mode-toggle" id="team-mode-toggle">
                         <div class="toggle-label">팀 모드</div>
-                        <button class="toggle-btn active" id="mode-vs" data-mode="vs">⚔️ 대결</button>
-                        <button class="toggle-btn" id="mode-same" data-mode="same">🤝 같은 팀</button>
+                        <button class="toggle-btn" id="mode-vs" data-mode="vs">⚔️ 대결</button>
+                        <button class="toggle-btn active" id="mode-same" data-mode="same">🤝 같은 팀</button>
                     </div>
 
                     <!-- Player 2 Selection -->
                     <div class="player-selection player2">
                         <h3 class="player-title">🔴 플레이어 2</h3>
-                        <div class="control-info"><b>방향키</b> 선택/이동 | <b>R-Shift</b> 공격 | <b>Enter</b> 궁극기</div>
+                        <div class="control-info"><b>방향키</b> 선택/이동 | <b>R-Shift</b> 공격·조준 고정 | <b>Enter</b> 궁극기</div>
                         <div class="brawler-grid" id="player2-brawler-grid">
                             <!-- Brawlers will be added by JS -->
                         </div>
@@ -81,10 +81,10 @@
                                 <button class="difficulty-btn" id="red-diff-easy" data-team="red" data-difficulty="easy">
                                     낮음
                                 </button>
-                                <button class="difficulty-btn" id="red-diff-normal" data-team="red" data-difficulty="normal">
+                                <button class="difficulty-btn active" id="red-diff-normal" data-team="red" data-difficulty="normal">
                                     보통
                                 </button>
-                                <button class="difficulty-btn active" id="red-diff-hard" data-team="red" data-difficulty="hard">
+                                <button class="difficulty-btn" id="red-diff-hard" data-team="red" data-difficulty="hard">
                                     높음
                                 </button>
                             </div>
@@ -92,6 +92,7 @@
                     </div>
                 </div>
 
+                <p id="match-rules" class="match-rules"></p>
                 <button class="play-button" id="play-button">
                     <span>전투 시작</span>
                 </button>
@@ -104,36 +105,24 @@
 
             <!-- HUD Overlay -->
             <div id="hud">
-                <div class="team-gems">
+                <div class="team-scores">
                     <div class="team-hud-group blue-team">
-                        <div class="gem-counter blue-team" id="blue-gems">
-                            <span class="gem-icon">💎</span>
-                            <span class="gem-count">0</span>
-                        </div>
                         <div class="score-counter blue-team" id="blue-score">
                             <span class="score-icon">💀</span>
                             <span class="score-count">0</span>
                         </div>
                     </div>
 
-                    <div class="match-timer" id="match-timer">2:30</div>
+                    <div class="match-timer" id="match-timer">5:00</div>
 
                     <div class="team-hud-group red-team">
                         <div class="score-counter red-team" id="red-score">
                             <span class="score-count">0</span>
                             <span class="score-icon">💀</span>
                         </div>
-                        <div class="gem-counter red-team" id="red-gems">
-                            <span class="gem-count">0</span>
-                            <span class="gem-icon">💎</span>
-                        </div>
                     </div>
                 </div>
 
-                <div class="countdown-display hidden" id="countdown-display">
-                    <span>TEAM WINNING IN</span>
-                    <span class="countdown-time" id="countdown-time">15</span>
-                </div>
             </div>
 
             <!-- Controls hint for 2 player -->

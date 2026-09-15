@@ -306,38 +306,12 @@ body {
     z-index: 1000;
 }
 
-.team-gems {
+.team-scores {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 20px;
     width: 100%;
-}
-
-.gem-counter {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 22px;
-    border-radius: 8px;
-    font-size: 2.0rem;
-    font-weight: bold;
-    color: white;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-}
-
-.gem-counter.blue-team {
-    background: linear-gradient(135deg, var(--blue-team) 0%, var(--blue-team-dark) 100%);
-    box-shadow: 0 4px 0 var(--blue-team-dark);
-}
-
-.gem-counter.red-team {
-    background: linear-gradient(135deg, var(--red-team) 0%, var(--red-team-dark) 100%);
-    box-shadow: 0 4px 0 var(--red-team-dark);
-}
-
-.gem-icon {
-    font-size: 1.5rem;
 }
 
 .match-timer {
@@ -351,50 +325,6 @@ body {
     font-family: 'Lilita One', cursive;
     letter-spacing: 2px;
     border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.countdown-display {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    padding: 10px 30px;
-    border-radius: 8px;
-    border: 3px solid var(--gold);
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
-    animation: pulseGlow 1.5s infinite alternate;
-}
-
-.countdown-display.hidden {
-    display: none;
-}
-
-.countdown-display span:first-child {
-    font-size: 1.2rem;
-    color: var(--gold);
-    font-family: 'Lilita One', cursive;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-}
-
-.countdown-time {
-    font-size: 2.8rem;
-    color: white;
-    font-family: 'Lilita One', cursive;
-    text-shadow: 0 0 15px var(--gold), 2px 2px 4px rgba(0, 0, 0, 0.8);
-}
-
-@keyframes pulseGlow {
-    from {
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-    }
-
-    to {
-        box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
-    }
 }
 
 /* ========================================
@@ -695,27 +625,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.team-score-display .gem-icon {
-    font-size: 3.5rem;
-    filter: drop-shadow(0 0 20px rgba(155, 89, 182, 0.9));
-    animation: gemPulse 2s infinite ease-in-out;
-}
-
-@keyframes gemPulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 15px rgba(155, 89, 182, 0.8));
-    }
-
-    50% {
-        transform: scale(1.1);
-        filter: drop-shadow(0 0 25px rgba(155, 89, 182, 1));
-    }
-}
-
-.team-score-display .gem-count {
+.team-score-display .score-count {
     font-size: 4.5rem;
     font-family: 'Lilita One', cursive;
     color: white;
@@ -735,13 +645,6 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.player-stat-row .player-gems {
-    color: var(--gold);
-    font-weight: bold;
-    font-family: 'Lilita One', cursive;
-    font-size: 1.3rem;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
-}
 
 .matches-divider {
     font-family: 'Lilita One', cursive;
@@ -1279,7 +1182,6 @@ body {
 }
 
 /* Score UI */
-/* Score UI */
 .team-hud-group {
     display: flex;
     align-items: center;
@@ -1441,4 +1343,14 @@ body {
     background: var(--bg-medium);
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
     transform: scale(1.08);
+}
+
+.match-rules {
+    max-width: 900px;
+    margin: 8px auto;
+    padding: 0 16px;
+    color: #e0e5ef;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
 }

@@ -4,7 +4,7 @@ import { Projectile, HomingMissile } from '../js/entities/Projectile.js';
 import { Colt } from '../js/entities/brawlers/Colt.js';
 import { Vector2 } from '../js/utils/Vector2.js';
 import { Game } from '../js/game/Game.js';
-import { GemGrabMode } from '../js/modes/GemGrab.js';
+import { TeamDeathmatchMode } from '../js/modes/TeamDeathmatch.js';
 import { GAME_STATES } from '../js/utils/constants.js';
 
 function world() {
@@ -72,16 +72,15 @@ test('cleanup cancels outstanding bursts', () => {
     g.cleanup(); g.updateScheduledActions(1);
     assert.equal(g.projectiles.length, 0);
 });
-test('expiry uses current gem totals after a final-frame death', () => {
+test('expiry includes the final-frame death score', () => {
     let outcome;
-    const mode = new GemGrabMode({ playerTeam: 'blue', brawlers: [
-        { team: 'blue', isAlive: false, gems: 0 }, { team: 'red', isAlive: true, gems: 1 },
-    ], endGame: result => { outcome = result; } });
-    mode.teamGems = { blue: 2, red: 1 };
+    const mode = new TeamDeathmatchMode({ playerTeam: 'blue', endGame(value) { outcome = value; } });
+    mode.teamScores = { blue: 2, red: 2 };
+    mode.onBrawlerDeath({ team: 'blue' });
     mode.matchTimer = 0.01;
     mode.update(0.02);
     assert.equal(outcome, false);
-    assert.equal(mode.getMatchStats().blueGems, 0);
+    assert.equal(mode.getMatchStats().redScore, 3);
     assert.equal(mode.matchTimer, 0);
 });
 test('spawn animation returns to normal size at different frame rates and after respawn', () => {

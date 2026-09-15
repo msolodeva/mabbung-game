@@ -1,6 +1,6 @@
 import { MAPS } from '../map/mapData.js';
 import { GameMap } from '../map/Map.js';
-import { AI_DIFFICULTY, BRAWLERS } from '../utils/constants.js';
+import { AI_DIFFICULTY, BRAWLERS, GAME_CONFIG } from '../utils/constants.js';
 
 const DIFFICULTIES_BY_ID = Object.freeze({
     easy: AI_DIFFICULTY.EASY,
@@ -20,19 +20,20 @@ const STAT_MAXIMUMS = Object.freeze({
 });
 
 export class LobbyController {
-    constructor({ documentRef = document, windowRef = window, onStart }) {
+    constructor({ documentRef = document, windowRef = window, onStart, randomFn = Math.random }) {
         this.document = documentRef;
         this.window = windowRef;
         this.onStart = onStart;
+        this.random = randomFn;
         this.brawlers = Object.values(BRAWLERS);
         this.brawlerIds = this.brawlers.map(({ id }) => id);
         this.selection = {
             brawlers: { ...PLAYER_DEFAULTS },
-            mapId: 'open',
-            teamMode: 'vs',
+            mapId: 'random',
+            teamMode: 'same',
             difficulties: {
                 blue: AI_DIFFICULTY.NORMAL,
-                red: AI_DIFFICULTY.HARD,
+                red: AI_DIFFICULTY.NORMAL,
             },
         };
 
@@ -40,6 +41,8 @@ export class LobbyController {
     }
 
     init() {
+        const rules = this.getElement('match-rules');
+        if (rules) rules.textContent = `${GAME_CONFIG.MATCH_DURATION / 60}분 동안 팀 처치 수가 많은 쪽이 승리 · 동점은 무승부 · 사망 후 부활. 풀숲에서는 모두 숨고, 공격·피격·적 접근 시 드러납니다.`;
         this.renderBrawlerGrids();
         this.renderMapOptions();
         this.bindDifficultyButtons();
@@ -54,7 +57,9 @@ export class LobbyController {
     getGameOptions() {
         return {
             playerBrawlerIds: [this.selection.brawlers[1], this.selection.brawlers[2]],
-            mapData: MAPS[this.selection.mapId],
+            mapData: this.selection.mapId === 'random'
+                ? Object.values(MAPS)[Math.floor(this.random() * Object.keys(MAPS).length)]
+                : MAPS[this.selection.mapId],
             teamMode: this.selection.teamMode,
             aiDifficultiesByTeam: { ...this.selection.difficulties },
         };
@@ -150,12 +155,20 @@ export class LobbyController {
             return option;
         });
 
-        mapSelector.replaceChildren(...options);
+        const randomOption = this.document.createElement('button');
+        randomOption.type = 'button';
+        randomOption.className = 'map-option';
+        randomOption.dataset.mapId = 'random';
+        randomOption.innerHTML = '<div class="map-preview random-map-preview" aria-hidden="true">🎲</div><span class="map-option-name">랜덤</span>';
+        randomOption.addEventListener('click', () => this.selectMap('random'));
+        mapSelector.replaceChildren(randomOption, ...options);
         this.selectMap(this.selection.mapId);
     }
 
     selectMap(mapId) {
-        const map = MAPS[mapId];
+        const map = mapId === 'random'
+            ? { name: '랜덤 전장', description: '전투를 시작할 때마다 다섯 전장 중 하나를 무작위로 선택합니다.' }
+            : MAPS[mapId];
         if (!map) return;
 
         this.selection.mapId = mapId;

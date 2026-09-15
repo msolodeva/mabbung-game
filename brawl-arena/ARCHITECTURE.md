@@ -13,7 +13,7 @@ index.html
               ├─ game/RenderSystem
               ├─ game/GameUI
               ├─ input/InputManager
-              ├─ modes/GemGrabMode
+              ├─ modes/TeamDeathmatchMode
               ├─ ai/*
               └─ entities/*
 ```
@@ -49,7 +49,7 @@ index.html
 
 ### `RenderSystem`
 
-맵 전체가 뷰포트에 맞도록 카메라 배율을 계산합니다. 렌더 순서는 맵, 보석, 지역 효과, 발사체, 소환물, Y축 정렬 브롤러, 파티클, 플레이어 표식입니다.
+맵 전체가 뷰포트에 맞도록 카메라 배율을 계산합니다. 렌더 순서는 맵, 지역 효과, 발사체, 소환물, Y축 정렬 브롤러, 파티클, 플레이어 표식입니다.
 
 ### `GameUI`
 
@@ -64,8 +64,8 @@ index.html
 - `Entity`: 위치, 속도, 활성 상태를 갖는 기본 객체
 - `Brawler`: 체력, 탄약, 공격, 궁극기, 사망과 부활의 공통 구현
 - `entities/brawlers/*`: 브롤러별 공격과 궁극기 구현
-- `Projectile`, `Gem`, `Bear`: 전투와 모드에서 사용하는 독립 엔티티
-- `GemGrabMode`: 보석 생성, 점수, 카운트다운, 승패 판정
+- `Projectile`, `Bear`: 전투와 모드에서 사용하는 독립 엔티티
+- `TeamDeathmatchMode`: 팀 처치 점수, 제한시간, 승패 판정
 
 게임 밸런스는 `js/utils/constants.js`의 `BRAWLERS`, `AI_DIFFICULTY`, `GAME_CONFIG` 등에 집중합니다.
 

@@ -2,4 +2,4 @@
 // Modes - Barrel Export
 // ========================================
 
-export { GemGrabMode } from './GemGrab.js';
+export { TeamDeathmatchMode } from './TeamDeathmatch.js';

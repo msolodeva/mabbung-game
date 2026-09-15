@@ -139,7 +139,7 @@ export class Dynamike extends Brawler {
             color: this.config.color,
         });
 
-        game.audioManager?.play('shoot');
+        game.audioManager?.play('shoot', this.config.id);
     }
 
     activateSuper(direction, game) {
@@ -163,7 +163,7 @@ export class Dynamike extends Brawler {
         // Keyboard aiming selects a direction. Adjust distance only, leaving
         // aim and the delayed explosion dodgeable, including behind cover.
         for (const enemy of [...game.brawlers, ...game.bears]) {
-            if (!enemy.isAlive || enemy.team === this.team) continue;
+            if (enemy.isVisible === false || !enemy.isAlive || enemy.team === this.team) continue;
             const offset = enemy.position.subtract(this.position);
             const forward = offset.dot(direction);
             const lateral = Math.abs(offset.cross(direction));

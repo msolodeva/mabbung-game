@@ -1,4 +1,6 @@
+import { traceRicochet } from '../utils/ricochet.js';
 
+import { VISIBILITY_CONFIG } from '../utils/constants.js';
 import { renderSpikeField } from '../entities/brawlers/Spike.js';
 
 /**
@@ -63,7 +65,7 @@ export class RenderSystem {
 
     /**
      * 게임 전체 렌더링
-     * @param {Game} gameState - 현재 게임 상태 (brawlers, projectiles, gems 등 포함)
+     * @param {Game} gameState - 현재 게임 상태 (brawlers, projectiles 등 포함)
      */
     render(gameState) {
         // Clear canvas with background color
@@ -79,9 +81,6 @@ export class RenderSystem {
         // 2. Render game elements
         this.map.render(this.ctx, this.camera);
 
-        for (const gem of gameState.gems) {
-            gem.render(this.ctx, this.camera);
-        }
 
         for (const field of gameState.spikeFields) {
             renderSpikeField(this.ctx, this.camera, field);
@@ -97,20 +96,73 @@ export class RenderSystem {
 
         const sortedBrawlers = [...gameState.brawlers].sort((a, b) => a.position.y - b.position.y);
         for (const brawler of sortedBrawlers) {
-            brawler.render(this.ctx, this.camera, true);
+            if (brawler.isAlive && !brawler.isVisible) {
+                this.renderConcealedBrawler(brawler);
+            } else {
+                brawler.render(this.ctx, this.camera, false);
+            }
         }
 
         gameState.effectsManager.render(this.ctx, this.camera);
 
         // Indicators use world coordinates, so keep them inside the translate/scale block
         this.renderPlayerIndicators(gameState);
+        for (const player of [gameState.player1, gameState.player2]) {
+            if (!player?.isAlive || !player.isVisible || !player.isAimLocked) continue;
+            if (player.config.maxBounces) {
+                const points = traceRicochet(player.position, player.aimDirection, player.attackRange, player.config.maxBounces, this.map);
+                this.ctx.save();
+                this.ctx.strokeStyle = '#79f6ee';
+                this.ctx.globalAlpha = 0.65;
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([8, 6]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[0].x, points[0].y);
+                for (const point of points.slice(1)) this.ctx.lineTo(point.x, point.y);
+                this.ctx.stroke();
+                this.ctx.restore();
+                continue;
+            }
+            const start = player.position.add(player.aimDirection.multiply(player.radius + 10));
+            const end = player.position.add(player.aimDirection.multiply(100));
+            this.ctx.save();
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 3;
+            this.ctx.setLineDash([8, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(start.x, start.y);
+            this.ctx.lineTo(end.x, end.y);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
 
         this.ctx.restore();
+    }
+
+    renderConcealedBrawler(brawler) {
+        const ctx = this.ctx;
+        const { x, y } = brawler.position;
+        ctx.save();
+        ctx.globalAlpha = VISIBILITY_CONFIG.CONCEALED_OPACITY;
+        ctx.fillStyle = brawler.color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, brawler.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = `bold ${brawler.radius * 1.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(brawler.config.emoji, x, y);
+        ctx.restore();
     }
 
     renderPlayerIndicators(gameState) {
         const renderPremiumIndicator = (player, label, color) => {
             if (!player || !player.isAlive) return;
+            ctx.save();
+            ctx.globalAlpha = player.isVisible ? 1 : VISIBILITY_CONFIG.CONCEALED_OPACITY;
 
             const x = player.position.x;
             const y = player.position.y;
@@ -144,6 +196,7 @@ export class RenderSystem {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(label, x, tagY + tagH / 2 + 2);
+            ctx.restore();
         };
 
         const ctx = this.ctx;

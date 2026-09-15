@@ -25,7 +25,7 @@ export class FlowField {
 
     /**
      * Generate or retrieve a flow field for a destination.
-     * @param {string} key - Cache key (e.g., "center", "gem_5_8")
+     * @param {string} key - Cache key (e.g., "center", "target_5_8")
      * @param {number} targetX - World X coordinate
      * @param {number} targetY - World Y coordinate
      * @returns {Int8Array[][]} 2D array of direction indices
@@ -271,7 +271,7 @@ export class FlowField {
      * Pre-generate common flow fields at map load
      */
     pregenerate() {
-        // Generate field for map center (gem area)
+        // Generate field for map center
         const centerX = this.map.width / 2;
         const centerY = this.map.height / 2;
         this.getOrCreateField('center', centerX, centerY);

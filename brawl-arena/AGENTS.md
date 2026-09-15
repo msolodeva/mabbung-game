@@ -2,7 +2,7 @@
 
 ## Project
 
-Brawl Arena is a two-player top-down canvas game inspired by Gem Grab. It uses browser-native ES modules, HTML, and CSS with no build step.
+Brawl Arena is a two-player top-down canvas game with team deathmatch rules. It uses browser-native ES modules, HTML, and CSS with no build step.
 
 ## Commands
 

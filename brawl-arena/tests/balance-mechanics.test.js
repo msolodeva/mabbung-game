@@ -17,29 +17,6 @@ function simulateProjectiles(g, seconds = 1) {
         g.projectiles = g.projectiles.filter(p => p.active);
     }
 }
-test('Mortis swarm damages each enemy once but still pierces multiple enemies', () => {
-    const mortis = new BRAWLER_CLASSES.mortis('blue', 100, 100);
-    const enemies = [200, 300].map(x => new BRAWLER_CLASSES.bea('red', x, 100));
-    const g = world([mortis, ...enemies]);
-    mortis.health = 1000;
-    mortis.superReady = true;
-    mortis.useSuper(right, g);
-    simulateProjectiles(g);
-    assert.deepEqual(enemies.map(e => e.maxHealth - e.health), [1000, 1000]);
-    assert.equal(mortis.health, 2200);
-    assert.equal(mortis.superCharge, 0);
-});
-test('Mortis does not heal from overkill', () => {
-    const mortis = new BRAWLER_CLASSES.mortis('blue', 100, 100);
-    const enemy = new BRAWLER_CLASSES.colt('red', 200, 100);
-    enemy.health = 100;
-    mortis.health = 1000;
-    const g = world([mortis, enemy]);
-    mortis.activateSuper(right, g);
-    simulateProjectiles(g);
-    assert.equal(mortis.health, 1060);
-    assert.equal(enemy.isAlive, false);
-});
 test('Dynamike hits a midrange target with a delayed throw over cover', () => {
     const mike = new BRAWLER_CLASSES.dynamike('blue', 100, 100);
     const enemy = new BRAWLER_CLASSES.bea('red', 400, 100);
@@ -59,7 +36,7 @@ test('Dynamike distance assistance preserves aim direction and minimum range', (
     const ally = new BRAWLER_CLASSES.bea('blue', 300, 100);
     const g = world([mike, side, ally]);
     assert.equal(mike.getThrowRange(right, g, mike.attackRange), mike.attackRange);
-    const diver = new BRAWLER_CLASSES.mortis('red', 140, 100);
+    const diver = new BRAWLER_CLASSES.rico('red', 140, 100);
     g.brawlers.push(diver);
     mike.createAttackProjectiles(right, g);
     assert.equal(g.projectiles[0].targetPosition.y, 100);

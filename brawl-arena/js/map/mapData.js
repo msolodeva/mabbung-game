@@ -1,5 +1,5 @@
 // ========================================
-// MAP DATA - Curated Gem Grab Arenas
+// MAP DATA - Curated Team Deathmatch Arenas
 // ========================================
 
 import { TILE_TYPES } from '../utils/constants.js';
@@ -10,7 +10,6 @@ const B = TILE_TYPES.BUSH;
 const D = TILE_TYPES.DESTRUCTIBLE;
 const SB = TILE_TYPES.SPAWN_BLUE;
 const SR = TILE_TYPES.SPAWN_RED;
-const GS = TILE_TYPES.GEM_SPAWN;
 const WA = TILE_TYPES.WATER;
 
 const ROWS = 31;
@@ -61,14 +60,6 @@ function setTiles(tiles, coords, tile) {
 function addSpawnRows(tiles, topSpawns, bottomSpawns) {
     setTiles(tiles, topSpawns, SR);
     setTiles(tiles, bottomSpawns, SB);
-}
-
-function addGemCluster(tiles, left, top, width, height) {
-    for (let row = top; row < top + height; row++) {
-        for (let col = left; col < left + width; col++) {
-            tiles[row][col] = GS;
-        }
-    }
 }
 
 // Mirror terrain across the horizontal centerline so both teams get equal routes.
@@ -189,7 +180,7 @@ function createOpenMap() {
     paintRect(tiles, 18, 20, 21, 21, D);
     paintRect(tiles, 4, 12, 6, 18, B);
     paintRect(tiles, 33, 12, 35, 18, B);
-    // Three broad spawn exits and four open approaches to the objective.
+    // Three broad spawn exits and four open approaches to the center.
     for (const [left, right] of [[11, 14], [18, 21], [25, 28]]) {
         clearRect(tiles, left, 7, right, 7);
     }
@@ -198,7 +189,7 @@ function createOpenMap() {
     // Short flank cover breaks long firing lanes without sealing them.
     paintRect(tiles, 7, 10, 8, 11, D);
     paintRect(tiles, 31, 10, 32, 11, D);
-    addGemCluster(tiles, 18, 14, 4, 3);
+    clearRect(tiles, 18, 14, 21, 16);
 
     return {
         id: 'open',
@@ -230,7 +221,7 @@ function createMazeMap() {
     paintRect(tiles, 27, 9, 28, 12, B);
     paintRect(tiles, 16, 13, 17, 14, B);
     paintRect(tiles, 22, 13, 23, 14, B);
-    addGemCluster(tiles, 18, 14, 4, 3);
+    clearRect(tiles, 18, 14, 21, 16);
 
     return {
         id: 'maze',
@@ -271,7 +262,7 @@ function createRiverMap() {
     clearRect(tiles, 19, 8, 22, 9);
     paintRect(tiles, 5, 8, 6, 9, D);
     paintRect(tiles, 33, 8, 34, 9, D);
-    addGemCluster(tiles, 18, 14, 4, 3);
+    clearRect(tiles, 18, 14, 21, 16);
 
     return {
         id: 'river',
@@ -315,12 +306,12 @@ function createBushMap() {
     clearRect(tiles, 18, 10, 21, 13);
     clearRect(tiles, 13, 15, 17, 15);
     clearRect(tiles, 22, 15, 26, 15);
-    addGemCluster(tiles, 18, 14, 4, 3);
+    clearRect(tiles, 18, 14, 21, 16);
 
     return {
         id: 'bush',
         name: 'Thorn Garden',
-        description: '정찰 통로로 나뉜 풀숲과 네 방향 중앙 진입로. 풀숲을 확인하며 접근하고 열린 광장에서 보석을 확보하세요.',
+        description: '정찰 통로로 나뉜 풀숲과 네 방향 중앙 진입로. 풀숲을 확인하며 접근하고 열린 광장에서 교전을 펼치세요.',
         theme: THEMES.bush,
         tiles: mirrorTeamHalves(tiles),
     };
@@ -339,7 +330,7 @@ function createFortressMap() {
     clearRect(tiles, 15, 11, 24, 19);
     paintRect(tiles, 16, 12, 23, 18, W);
     clearRect(tiles, 18, 14, 21, 16);
-    addGemCluster(tiles, 18, 14, 4, 3);
+    clearRect(tiles, 18, 14, 21, 16);
     clearRect(tiles, 18, 12, 21, 13);
     clearRect(tiles, 18, 17, 21, 18);
     clearRect(tiles, 14, 14, 15, 16);
@@ -384,4 +375,4 @@ export const MAPS = {
     [MAP_FORTRESS.id]: MAP_FORTRESS,
 };
 
-export const GEM_GRAB_MAP = MAP_OPEN;
+export const DEFAULT_MAP = MAP_OPEN;

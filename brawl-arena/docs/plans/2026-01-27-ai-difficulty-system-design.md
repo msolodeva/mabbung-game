@@ -57,7 +57,7 @@ export const AI_DIFFICULTY = {
 - `poorDecisionChance` 확률로:
   - 패닉 후퇴 (40%)
   - 무모한 돌진 (30%)
-  - 보석 무시 (30%)
+  - 무작위 순찰 (30%)
 
 #### 슈퍼 낭비
 - `wasteSuperChance` 확률로 허공에 발사

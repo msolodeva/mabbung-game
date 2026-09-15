@@ -20,8 +20,8 @@ test('game UI maps match outcomes to one presentation model', () => {
     });
 });
 
-test('game UI awards stars from the gem margin', () => {
-    assert.equal(ui.calculateStarCount({ blueGems: 5, redGems: 5 }), 1);
-    assert.equal(ui.calculateStarCount({ blueGems: 5, redGems: 2 }), 2);
-    assert.equal(ui.calculateStarCount({ blueGems: 7, redGems: 2 }), 3);
+test('game UI awards stars from the kill margin', () => {
+    assert.equal(ui.calculateStarCount({ blueScore: 5, redScore: 5 }), 1);
+    assert.equal(ui.calculateStarCount({ blueScore: 5, redScore: 2 }), 2);
+    assert.equal(ui.calculateStarCount({ blueScore: 7, redScore: 2 }), 3);
 });

@@ -118,7 +118,7 @@ export class Brock extends Brawler {
             color: this.config.color,
         });
 
-        game.audioManager?.play('shoot');
+        game.audioManager?.play('shoot', this.config.id);
     }
 
     activateSuper(direction, game) {

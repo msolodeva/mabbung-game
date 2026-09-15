@@ -4,7 +4,7 @@
 
 import { Entity } from './Entity.js';
 import { Vector2 } from '../utils/Vector2.js';
-import { COLORS, TEAMS } from '../utils/constants.js';
+import { COLORS, TEAMS, VISIBILITY_CONFIG } from '../utils/constants.js';
 
 /**
  * 브롤러 기본 클래스 - 플레이어블 캐릭터
@@ -48,16 +48,14 @@ export class Brawler extends Entity {
         this.superChargeMax = config.superCharge;
         this.superReady = false;
 
-        // Gem grab
-        this.gems = 0;
 
         // State
         this.isAlive = true;
         this.justDied = false;
-        this.droppedGems = 0;
         this.respawnTimer = 0;
         this.isInBush = false;
         this.isVisible = true;
+        this.revealRemaining = 0;
         this.facingAngle = 0;
         this.isAttacking = false;
 
@@ -94,13 +92,14 @@ export class Brawler extends Entity {
         }
 
         this.slowRemaining = Math.max(0, this.slowRemaining - deltaTime * 1000);
+        this.revealRemaining = Math.max(0, this.revealRemaining - deltaTime * 1000);
 
         // Movement
         if (this.moveDirection.magnitude() > 0) {
             const speedMultiplier = this.getMovementSpeedMultiplier(game);
             const moveVel = this.moveDirection.normalize().multiply(this.speed * speedMultiplier);
             this.velocity = moveVel;
-            this.facingAngle = this.moveDirection.angle();
+            this.facingAngle = this.isAimLocked ? this.aimDirection.angle() : this.moveDirection.angle();
         } else {
             this.velocity = new Vector2(0, 0);
         }
@@ -289,27 +288,16 @@ export class Brawler extends Entity {
         }
     }
 
-    updateVisibility(game) {
-        // Players on the same team are always visible
-        // Enemies in bushes are invisible unless a teammate is nearby
+    reveal() {
+        this.revealRemaining = VISIBILITY_CONFIG.ACTION_REVEAL_MS;
         this.isVisible = true;
+    }
 
-        if (this.isInBush) {
-            // Check if any enemy is close enough to reveal
-            const revealDistance = 60;
-            for (const brawler of game.brawlers) {
-                if (brawler.team !== this.team && brawler.isAlive) {
-                    if (this.distanceTo(brawler) < revealDistance) {
-                        this.isVisible = true;
-                        return;
-                    }
-                }
-            }
-            // Hidden in bush
-            if (this.team !== game.playerTeam) {
-                this.isVisible = false;
-            }
-        }
+    updateVisibility(game) {
+        this.isInBush = game.map.isPositionInBush(this.position.x, this.position.y);
+        this.isVisible = !this.isInBush || this.revealRemaining > 0 ||
+            game.brawlers.some(other => other.isAlive && other.team !== this.team &&
+                this.distanceTo(other) <= VISIBILITY_CONFIG.REVEAL_DISTANCE);
     }
 
     /**
@@ -332,6 +320,7 @@ export class Brawler extends Entity {
         const attackDirection = direction.normalize();
         if (attackDirection.magnitudeSquared() === 0) return false;
 
+        this.reveal();
         this.ammo--;
         this.attackCooldown = this.attackSpeed;
         this.aimDirection = attackDirection;
@@ -365,7 +354,8 @@ export class Brawler extends Entity {
      * @returns {boolean} 슈퍼 사용 성공 여부
      */
     useSuper(direction, game) {
-        if (!this.superReady) return false;
+        if (!this.isAlive || !this.superReady || direction.magnitudeSquared() === 0) return false;
+        this.reveal();
 
         this.superCharge = 0;
         this.superReady = false;
@@ -395,6 +385,7 @@ export class Brawler extends Entity {
     takeDamage(amount, attacker, source = null) {
         if (!this.isAlive) return;
 
+        if (amount > 0) this.reveal();
         this.health -= amount;
         this.damageFlashTimer = 100;
 
@@ -455,11 +446,6 @@ export class Brawler extends Entity {
         this.respawnTimer = 3000;
         this.health = 0;
 
-        // Drop gems
-        this.droppedGems = this.gems;
-        this.gems = 0;
-
-        return this.droppedGems;
     }
 
     respawn(game) {
@@ -468,6 +454,7 @@ export class Brawler extends Entity {
         this.isAlive = true;
         this.health = this.maxHealth;
         this.ammo = this.ammoMax;
+        this.reveal();
 
         // Find spawn position
         const spawnPos = game.map.getSpawnPosition(this.team);
@@ -481,9 +468,6 @@ export class Brawler extends Entity {
         game.createEffect('heal', spawnPos.x, spawnPos.y, { lifetime: 1000 });
     }
 
-    collectGem() {
-        this.gems++;
-    }
 
     render(ctx, camera, isPlayerTeam) {
         if (!this.active) return;
@@ -668,9 +652,6 @@ export class Brawler extends Entity {
         this.renderPolishedAmmo(ctx, x, y);
         this.renderSuperChargeBar(ctx, x, y);
 
-        if (this.gems > 0) {
-            this.renderPremiumGemsIndicator(ctx, x, y);
-        }
 
         if (this.superReady) {
             ctx.save();
@@ -883,25 +864,4 @@ export class Brawler extends Entity {
         }
     }
 
-    renderPremiumGemsIndicator(ctx, x, y) {
-        const gemY = y - this.radius - 60;
-        ctx.save();
-
-        // Background pill for contrast
-        const text = `💎 ${this.gems}`;
-        ctx.font = 'bold 22px "Lilita One", Arial';
-        ctx.textAlign = 'center';
-        const textWidth = ctx.measureText(this.gems.toString()).width + 45;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.beginPath();
-        ctx.roundRect(x - textWidth / 2 - 6, gemY - 18, textWidth + 12, 32, 16);
-        ctx.fill();
-
-        // Gem text with glow
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = '#9b59b6';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(text, x, gemY);
-        ctx.restore();
-    }
 }

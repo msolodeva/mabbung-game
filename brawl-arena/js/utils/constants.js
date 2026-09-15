@@ -8,8 +8,6 @@ export const GAME_CONFIG = {
     TILE_SIZE: 50, // Increased tile size for better detail
     FPS: 60,
     MATCH_DURATION: 300, // 5 minutes
-    WIN_GEM_COUNT: 5, // Now only 3 gems needed!
-    WIN_COUNTDOWN: 40,
     RESPAWN_TIME: 3000,
 };
 
@@ -22,7 +20,6 @@ export const GAME_STATES = {
     LOBBY: 'lobby',
     PLAYING: 'playing',
     PAUSED: 'paused',
-    COUNTDOWN: 'countdown',
     VICTORY: 'victory',
     DEFEAT: 'defeat',
     DRAW: 'draw',
@@ -35,7 +32,6 @@ export const TILE_TYPES = {
     DESTRUCTIBLE: 3,
     SPAWN_BLUE: 4,
     SPAWN_RED: 5,
-    GEM_SPAWN: 6,
     WATER: 7,
 };
 
@@ -69,8 +65,6 @@ export const COLORS = {
     HEALTH_YELLOW: '#f1c40f',
     HEALTH_RED: '#e74c3c',
 
-    GEM: '#9b59b6',
-    GEM_GLOW: '#bb8fce',
 
     SUPER_GOLD: '#ffd700',
     SHADOW: 'rgba(0, 0, 0, 0.25)',
@@ -82,7 +76,6 @@ export const COLORS = {
 // Intended matchup tendencies; map, aim and ammo can reverse these:
 //
 //   Counter Chain:
-//   Bea → Spike → Mortis → Colt → Brock → Dynamike
 //            ↘       ↙
 //             Spike (Area Control - objective denial)
 //
@@ -91,8 +84,7 @@ export const COLORS = {
 // - Colt beats Brock & Spike (fastest base speed and sustained ranged pressure)
 // - Bea pressures Spike with accurate long-range shots but is vulnerable to dives
 // - Dynamike beats Bea & Spike (delayed AoE punishes slow/objective play)
-// - Spike beats grouped enemies and gem zones, but loses direct duels to burst
-// - Mortis beats fragile ranged brawlers by spending ammo on committed dives
+// - Spike beats grouped enemies and chokepoints, but loses direct duels to burst
 // ========================================
 
 export const BRAWLERS = {
@@ -100,7 +92,6 @@ export const BRAWLERS = {
     // BROCK - Rocket Artillery (Long Range Burst)
     // =====================================
     // ✅ STRONG vs: Dynamike (outranges setup), Spike (long-range burst)
-    // ❌ WEAK vs: Colt (faster ranged pressure), Mortis (dash dive)
     // =====================================
     BROCK: {
         id: 'brock',
@@ -145,7 +136,7 @@ export const BRAWLERS = {
         attackSpeed: 600,
         stingSlowMultiplier: 0.4,
         stingSlowDuration: 2000,
-        projectileSpeed: 900,
+        projectileSpeed: 700,
         projectileSize: 7,
         projectileSpawnDistance: 25,
         ammoMax: 3,
@@ -165,7 +156,6 @@ export const BRAWLERS = {
     // COLT - Marksman (Long Range DPS)
     // =====================================
     // ✅ STRONG vs: Brock (faster ranged pressure), Spike (outranges)
-    // ❌ WEAK vs: Mortis (can close distance with dashes)
     // =====================================
     COLT: {
         bulletInterval: 50,
@@ -255,40 +245,39 @@ export const BRAWLERS = {
         superBurstSpikes: 8,
         superBurstRange: 280,
         superBurstDamageMultiplier: 1.0,
-        description: '지역 장악 전문가 - 순간 폭딜보다 이동 제한과 보석 구역 통제에 강하다',
+        description: '지역 장악 전문가 - 순간 폭딜보다 이동 제한과 주요 통로 통제에 강하다',
         superDescription: '🌵 가시 덫: 지속 피해와 슬로우를 주는 가시밭 생성',
     },
 
     // =====================================
-    // MORTIS - Assassin (Dash Melee)
+    // RICO - Bank-shot specialist
     // =====================================
-    // ✅ STRONG vs: Dynamike (dives artillery), Colt (closes gap instantly), Brock (dodges slow rockets)
-    // ❌ WEAK vs: Spike (zone control punishes dives)
-    // =====================================
-    MORTIS: {
-        id: 'mortis',
-        name: 'Mortis',
-        role: 'ASSASSIN',
-        emoji: '⚰️',
-        color: '#7d3c98',
-        health: 3400,
-        speed: 315,
-        attackDamage: 800,
-        attackProjectiles: 0,
+    RICO: {
+        id: 'rico',
+        name: 'Rico',
+        role: 'RICOCHET',
+        emoji: '🤖',
+        color: '#36c9cf',
+        health: 2600,
+        speed: 285,
+        attackDamage: 240,
+        attackProjectiles: 3,
         attackSpread: 0,
-        attackRange: 180,
-        attackSpeed: 420,
-        dashSpeed: 1320,
-        dashDuration: 140,
-        dashDamageRadius: 55,
+        attackRange: 630,
+        attackSpeed: 700,
+        bulletInterval: 90,
+        projectileSpeed: 600,
+        projectileSize: 7,
+        maxBounces: 2,
         ammoMax: 3,
-        ammoReloadTime: 2300,
-        superCharge: 6,
-        superDamage: 1000,
-        superHealPercent: 0.6,
-        superProjectiles: 3,
-        description: '돌진 암살자 - 긴 재장전 때문에 진입 각을 신중히 골라야 한다',
-        superDescription: '🦇 박쥐 소환: 적마다 한 번 피해를 주고 실제 피해의 60%를 회복',
+        ammoReloadTime: 1600,
+        superCharge: 12,
+        superDamage: 220,
+        superProjectiles: 8,
+        superRange: 1000,
+        superBounces: 4,
+        description: '반사 사격수 - 벽에 두 번 튕기는 3연발로 코너를 공략한다',
+        superDescription: '🤖 반사 탄막: 네 번 반사되는 관통탄 8발 연사',
     },
 };
 
@@ -300,18 +289,17 @@ export const PROJECTILE_CONFIG = {
     SHOCKWAVE_WIDTH: 60,
 };
 
-export const GEM_CONFIG = {
-    SPAWN_INTERVAL: 5000, // 5 seconds - faster spawning
-    MAX_GEMS_ON_FIELD: 15,
-    COLLECT_RADIUS: 40,
-    DROP_SPREAD: 60,
+export const VISIBILITY_CONFIG = {
+    CONCEALED_OPACITY: 0.3,
+    REVEAL_DISTANCE: 125,
+    ACTION_REVEAL_MS: 1400,
 };
+
 
 export const AI_CONFIG = {
     DECISION_INTERVAL: 200, // ms
     ATTACK_RANGE_MULTIPLIER: 0.8,
     RETREAT_HEALTH_THRESHOLD: 0.3,
-    GEM_PRIORITY_DISTANCE: 300,
     AGGRESSION_LEVELS: {
         PASSIVE: 0.3,
         NORMAL: 0.6,
@@ -408,4 +396,15 @@ export const AI_DIFFICULTY = {
         stuckThreshold: 500,
         smoothingFactor: 0.26,
     },
+};
+
+// Team composition uses combat capabilities rather than presentation role labels.
+export const BOT_TEAM_CONFIG = {
+    LONG_RANGE: 500,
+    CONTROL_IDS: ['bea', 'spike', 'dynamike'],
+    RICOCHET_IDS: ['rico'],
+    MISSING_CAPABILITY_BONUS: 35,
+    DUPLICATE_PENALTY: 1000,
+    SAME_ROLE_PENALTY: 15,
+    RANDOM_VARIATION: 10,
 };

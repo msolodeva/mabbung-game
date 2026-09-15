@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { BRAWLER_CLASSES } from '../js/entities/brawlers/index.js';
 import { BRAWLERS } from '../js/utils/constants.js';
 
-test('poco, shelly, and gene are replaced without changing mortis or dynamike', () => {
+test('poco, shelly, and gene are replaced with rico and dynamike', () => {
     const brawlerIds = Object.values(BRAWLERS).map(brawler => brawler.id);
 
     assert.equal(brawlerIds.includes('poco'), false);
@@ -12,13 +12,13 @@ test('poco, shelly, and gene are replaced without changing mortis or dynamike', 
     assert.equal(brawlerIds.includes('gene'), false);
     assert.equal(brawlerIds.includes('dynamike'), true);
     assert.equal(brawlerIds.includes('brock'), true);
-    assert.equal(brawlerIds.includes('mortis'), true);
+    assert.equal(brawlerIds.includes('rico'), true);
     assert.equal(BRAWLER_CLASSES.poco, undefined);
     assert.equal(BRAWLER_CLASSES.shelly, undefined);
     assert.equal(BRAWLER_CLASSES.gene, undefined);
     assert.equal(typeof BRAWLER_CLASSES.dynamike, 'function');
     assert.equal(typeof BRAWLER_CLASSES.brock, 'function');
-    assert.equal(typeof BRAWLER_CLASSES.mortis, 'function');
+    assert.equal(typeof BRAWLER_CLASSES.rico, 'function');
 });
 
 test('brock has a distinct lobby and in-game icon from bea', () => {
@@ -51,9 +51,9 @@ test('brawlers have non-overlapping strategic stat identities', () => {
     assert.ok(roster.SPIKE.superDamagePerSecond < roster.BROCK.attackDamage);
     assert.ok(roster.SPIKE.superBurstSpikes <= 8);
 
-    assert.ok(roster.MORTIS.attackRange < roster.BEA.attackRange);
-    assert.ok(roster.MORTIS.dashSpeed > 1200);
-    assert.ok(roster.MORTIS.ammoReloadTime > roster.BROCK.ammoReloadTime);
+    assert.ok(roster.RICO.attackRange > roster.BEA.attackRange);
+    assert.ok(roster.RICO.maxBounces === 2);
+    assert.ok(roster.RICO.ammoReloadTime < roster.BROCK.ammoReloadTime);
 });
 
 test('brock super burst is capped below three direct rocket hits', () => {
@@ -83,24 +83,22 @@ test('brawlers use the tightened attack cadence while preserving their relative 
             COLT: 500,
             DYNAMIKE: 850,
             SPIKE: 730,
-            MORTIS: 420,
+            RICO: 700,
         },
     );
 
-    assert.ok(BRAWLERS.MORTIS.attackSpeed < BRAWLERS.COLT.attackSpeed);
+    assert.ok(BRAWLERS.RICO.attackSpeed > BRAWLERS.COLT.attackSpeed);
     assert.ok(BRAWLERS.COLT.attackSpeed < BRAWLERS.BEA.attackSpeed);
     assert.ok(BRAWLERS.BEA.attackSpeed < BRAWLERS.SPIKE.attackSpeed);
     assert.ok(BRAWLERS.SPIKE.attackSpeed < BRAWLERS.BROCK.attackSpeed);
     assert.equal(BRAWLERS.BROCK.attackSpeed, BRAWLERS.DYNAMIKE.attackSpeed);
 });
 
-test('mortis can finish colt with one committed three-dash combo', () => {
-    const mortis = BRAWLERS.MORTIS;
-    const colt = BRAWLERS.COLT;
-
-    assert.equal(mortis.attackDamage, 800);
-    assert.equal(mortis.attackDamage * mortis.ammoMax, colt.health);
-    assert.ok(mortis.attackDamage * mortis.ammoMax < BRAWLERS.DYNAMIKE.health);
+test('Rico replaces the melee slot with bank shots and bounded burst damage', () => {
+    assert.equal(BRAWLER_CLASSES.mortis, undefined);
+    assert.equal(BRAWLERS.MORTIS, undefined);
+    assert.ok(BRAWLERS.RICO.attackDamage * BRAWLERS.RICO.attackProjectiles < BRAWLERS.COLT.attackDamage * BRAWLERS.COLT.attackProjectiles);
+    assert.ok(BRAWLERS.RICO.superDamage * BRAWLERS.RICO.superProjectiles < BRAWLERS.COLT.health);
 });
 
 test('Bea replaces Nita in the playable roster', () => {

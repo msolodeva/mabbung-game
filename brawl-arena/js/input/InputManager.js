@@ -58,7 +58,10 @@ class PlayerInput {
         if (this.keyConfig.right.includes(code)) this.keys.right = true;
 
         // Shoot
-        if (this.keyConfig.shoot.includes(code)) this.shootPressed = true;
+        if (this.keyConfig.shoot.includes(code) && !this.shootPressed) {
+            this.update(); // Capture pending movement key events before locking aim.
+            this.shootPressed = true;
+        }
 
         // Super
         if (this.keyConfig.super.includes(code)) this.superPressed = true;
@@ -91,12 +94,12 @@ class PlayerInput {
         if (x !== 0 || y !== 0) {
             this.moveDirection = new Vector2(x, y).normalize();
             this.lastMoveDirection = this.moveDirection.clone();
-            // In simplified controls, movement direction is also the aiming direction
-            this.aimDirection = this.moveDirection.clone();
+            // Holding attack locks aim while movement remains independent.
+            if (!this.shootPressed) this.aimDirection = this.moveDirection.clone();
         } else {
             this.moveDirection = new Vector2(0, 0);
             // If not moving, stay aiming in the last moved direction
-            this.aimDirection = this.lastMoveDirection.clone();
+            if (!this.shootPressed) this.aimDirection = this.lastMoveDirection.clone();
         }
     }
 
@@ -181,7 +184,7 @@ export class InputManager {
                     <div class="player-controls p1">
                         <div class="player-label">🔵 P1 (Blue Team)</div>
                         <div class="keys"><b>WASD</b> 이동/조준</div>
-                        <div class="keys"><b>F</b> 슈팅 | <b>G</b> 궁극기</div>
+                        <div class="keys"><b>F</b> 누르는 동안 조준 고정 | <b>G</b> 궁극기</div>
                     </div>
                     <div class="pause-hint">
                         <div class="keys"><b>ESC</b> 일시정지</div>
@@ -189,7 +192,7 @@ export class InputManager {
                     <div class="player-controls p2 ${this.game.teamMode === 'same' ? 'same-team' : ''}">
                         <div class="player-label">${this.game.teamMode === 'same' ? '🔵' : '🔴'} P2 (${this.game.teamMode === 'same' ? 'Blue' : 'Red'} Team)</div>
                         <div class="keys"><b>방향키</b> 이동/조준</div>
-                        <div class="keys"><b>R-Shift</b> 슈팅 | <b>Enter</b> 궁극기</div>
+                        <div class="keys"><b>R-Shift</b> 누르는 동안 조준 고정 | <b>Enter</b> 궁극기</div>
                     </div>
                 </div>
             `;
@@ -201,6 +204,7 @@ export class InputManager {
 
         // ESC 키로 일시정지 토글
         if (e.code === 'Escape') {
+            this.resetInputs();
             this.game.togglePause();
             return;
         }

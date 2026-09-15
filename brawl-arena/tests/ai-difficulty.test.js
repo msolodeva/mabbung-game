@@ -15,7 +15,6 @@ function createController(difficulty) {
         maxHealth: 3000,
         ammo: 3,
         ammoMax: 3,
-        gems: 0,
         attack: () => {},
         canAttack: () => true,
         isAlive: true,
@@ -34,7 +33,6 @@ function createController(difficulty) {
         map,
         flowField: null,
         brawlers: [brawler],
-        gems: [],
     };
 
     return new AIController(brawler, game);
@@ -138,7 +136,6 @@ test('chase preserves combat spacing inside attack range instead of rushing dire
         position: new Vector2(220, 0),
         health: 3000,
         maxHealth: 3000,
-        gems: 0,
         isAlive: true,
         team: 'red',
     };

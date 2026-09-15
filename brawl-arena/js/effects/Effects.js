@@ -45,9 +45,6 @@ export class Effect {
             case 'spikeField':
                 this.renderSpikeField(ctx, screenX, screenY, progress);
                 break;
-            case 'gemCollect':
-                this.renderGemCollect(ctx, screenX, screenY, progress);
-                break;
             case 'explosion':
                 this.renderExplosion(ctx, screenX, screenY, progress);
                 break;
@@ -230,30 +227,6 @@ export class Effect {
         }
     }
 
-    renderGemCollect(ctx, x, y, progress) {
-        const size = 10 + progress * 20;
-        const alpha = 1 - progress;
-        const yOffset = -progress * 30;
-
-        // Sparkles
-        for (let i = 0; i < 5; i++) {
-            const angle = (Math.PI * 2 / 5) * i + progress * 3;
-            const dist = size * 0.8;
-            const sparkX = x + Math.cos(angle) * dist;
-            const sparkY = y + yOffset + Math.sin(angle) * dist;
-
-            ctx.fillStyle = `rgba(155, 89, 182, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(sparkX, sparkY, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Center glow
-        ctx.fillStyle = `rgba(155, 89, 182, ${alpha * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(x, y + yOffset, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
 
     renderExplosion(ctx, x, y, progress) {
         const size = (this.options.radius || 100) * (0.5 + progress * 0.5);

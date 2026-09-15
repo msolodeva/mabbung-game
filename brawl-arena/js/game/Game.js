@@ -5,11 +5,12 @@
 import { Vector2 } from '../utils/Vector2.js';
 import { TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY } from '../utils/constants.js';
 import { GameMap } from '../map/Map.js';
-import { GEM_GRAB_MAP } from '../map/mapData.js';
+import { DEFAULT_MAP } from '../map/mapData.js';
 import { InputManager } from '../input/InputManager.js';
 import { AIController } from '../ai/AIController.js';
+import { scoreTeamCandidate } from '../ai/teamComposition.js';
 import { FlowField } from '../ai/FlowField.js';
-import { GemGrabMode } from '../modes/GemGrab.js';
+import { TeamDeathmatchMode } from '../modes/TeamDeathmatch.js';
 import { AudioManager } from '../audio/AudioManager.js';
 import { EffectsManager } from '../effects/Effects.js';
 import { RenderSystem } from './RenderSystem.js';
@@ -40,7 +41,7 @@ export class Game {
     constructor({
         canvas,
         playerBrawlerIds = ['brock', 'colt'],
-        mapData = GEM_GRAB_MAP,
+        mapData = DEFAULT_MAP,
         teamMode = 'vs',
         aiDifficultiesByTeam = {},
     }) {
@@ -59,7 +60,6 @@ export class Game {
         // Game entities
         this.brawlers = [];
         this.projectiles = [];
-        this.gems = [];
         this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];
@@ -106,7 +106,7 @@ export class Game {
      */
     init() {
         // Create game mode
-        this.gameMode = new GemGrabMode(this);
+        this.gameMode = new TeamDeathmatchMode(this);
 
         // Pre-generate flow fields for common destinations
         this.flowField.pregenerate();
@@ -155,54 +155,10 @@ export class Game {
         // Get current team members
         const teamMembers = this.brawlers.filter(b => b.team === team);
 
-        // Analyze current team composition
-        const hasTank = teamMembers.some(b => ['TANK', 'FIGHTER'].includes(b.config.role));
-        const hasDamage = teamMembers.some(b => ['MARKSMAN', 'CONTROLLER', 'FIGHTER'].includes(b.config.role));
-        const hasSupport = teamMembers.some(b => b.config.role === 'SUPPORT');
-
-        // Count roles for diversity
-        const roleCounts = {};
-        teamMembers.forEach(b => {
-            const r = b.config.role;
-            roleCounts[r] = (roleCounts[r] || 0) + 1;
-        });
-
-        // Calculate scores for each available brawler
-        const candidates = BRAWLER_CANDIDATES.map(({ BrawlerClass, config }) => {
-            let score = 0;
-
-            // 1. Avoid Duplicates (Strong negative)
-            if (teamMembers.some(m => m.config.id === config.id)) {
-                score -= 1000;
-            }
-
-            // 2. Role Needs
-            if (!hasTank && ['TANK', 'FIGHTER'].includes(config.role)) {
-                score += 50; // Strong need for frontline
-            }
-            if (!hasDamage && ['MARKSMAN', 'CONTROLLER', 'FIGHTER'].includes(config.role)) {
-                score += 50; // Strong need for damage
-            }
-            if (!hasSupport && config.role === 'SUPPORT') {
-                score += 30; // Moderate need for support
-            }
-
-            // 3. Balance Factors
-            // If we have a tank, we probably want ranged damage
-            if (hasTank && config.role === 'MARKSMAN') {
-                score += 20;
-            }
-
-            // 4. Role Diversity (Penalty for too many of same role)
-            if ((roleCounts[config.role] || 0) > 0) {
-                score -= 20;
-            }
-
-            // 5. Randomness
-            score += Math.random() * 10;
-
-            return { score, BrawlerClass };
-        });
+        const candidates = BRAWLER_CANDIDATES.map(({ BrawlerClass, config }) => ({
+            BrawlerClass,
+            score: scoreTeamCandidate(config, teamMembers),
+        }));
 
         // Sort by score descending
         candidates.sort((a, b) => b.score - a.score);
@@ -309,6 +265,9 @@ export class Game {
         this.updateHumanPlayer(this.player1, 1);
         this.updateHumanPlayer(this.player2, 2);
 
+        // Use one shared visibility rule for human rendering and AI targeting.
+        for (const brawler of this.brawlers) brawler.updateVisibility(this);
+
         // Update AI controllers
         for (const ai of this.aiControllers) {
             ai.update(deltaTime);
@@ -337,10 +296,13 @@ export class Game {
         // Check brawler deaths
         for (const brawler of this.brawlers) {
             if (brawler.justDied) {
+                this.audioManager?.play('death');
                 this.gameMode.onBrawlerDeath(brawler);
                 brawler.justDied = false;
             }
         }
+
+        for (const brawler of this.brawlers) brawler.updateVisibility(this);
 
         // Update game mode
         this.gameMode.update(deltaTime);
@@ -354,6 +316,8 @@ export class Game {
 
         player.moveDirection = this.inputManager.getMoveDirection(playerNumber);
         const attackDirection = this.inputManager.getAttackDirection(playerNumber);
+        player.aimDirection = attackDirection;
+        player.isAimLocked = this.inputManager.getIsAttacking(playerNumber);
 
         if (this.inputManager.getIsAttacking(playerNumber) && player.canAttack() && attackDirection.magnitude() > 0) {
             player.attack(attackDirection, this);
@@ -385,13 +349,12 @@ export class Game {
         }
     }
 
-    onGemCollected(brawler) {
-        this.audioManager.play('gemCollect');
-        this.createEffect('gemCollect', brawler.position.x, brawler.position.y);
-    }
 
     createEffect(type, x, y, options) {
         this.effectsManager.add(type, x, y, options);
+        if (type === 'hit' || type === 'explosion' || type === 'heal') {
+            this.audioManager?.play(type);
+        }
     }
 
     endGame(outcome) {
@@ -402,6 +365,7 @@ export class Game {
         this.stop();
 
         const stats = this.gameMode.getMatchStats();
+        this.audioManager?.play(outcome === 'draw' ? 'draw' : 'finish');
         this.ui.showResult(outcome, stats);
     }
 
@@ -410,7 +374,6 @@ export class Game {
         this.stop();
         this.brawlers = [];
         this.projectiles = [];
-        this.gems = [];
         this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];

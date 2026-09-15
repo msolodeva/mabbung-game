@@ -74,16 +74,16 @@ function distances(tiles, start) {
     return result;
 }
 
-test('every spawn reaches every gem without destroying cover, with equal team travel distances', () => {
+test('every spawn reaches the center without destroying cover, with equal team travel distances', () => {
     for (const data of Object.values(MAPS)) {
         const map = new GameMap(data);
         for (const spawn of map.spawnPoints.red) {
             const red = distances(map.tiles, [spawn.x, spawn.y]);
             const blue = distances(map.tiles, [spawn.x, map.rows - 1 - spawn.y]);
-            for (const gem of map.gemSpawnPoints) {
-                const distance = red.get([gem.x, gem.y].join(','));
-                assert.ok(Number.isFinite(distance), `${data.id}: spawn cannot reach gem`);
-                assert.equal(distance, blue.get([gem.x, map.rows - 1 - gem.y].join(',')), data.id);
+            for (const center of [{ x: Math.floor(map.cols / 2), y: Math.floor(map.rows / 2) }]) {
+                const distance = red.get([center.x, center.y].join(','));
+                assert.ok(Number.isFinite(distance), `${data.id}: spawn cannot reach center`);
+                assert.equal(distance, blue.get([center.x, map.rows - 1 - center.y].join(',')), data.id);
             }
         }
     }
@@ -103,7 +103,7 @@ test('team halves have mirrored terrain and spawns', () => {
     }
 });
 
-test('open and fortress objectives have usable gates on all four sides', () => {
+test('open and fortress central clearings have usable gates on all four sides', () => {
     for (const id of ['open', 'fortress']) {
         const tiles = MAPS[id].tiles;
         for (const y of [14, 15, 16]) {

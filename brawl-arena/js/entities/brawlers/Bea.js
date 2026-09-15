@@ -11,7 +11,7 @@ export class Bea extends Brawler {
     createAttackProjectiles(direction, game) {
         const shot = this.createBee(direction, { damage: this.attackDamage });
         game.projectiles.push(shot);
-        game.audioManager?.play('shoot');
+        game.audioManager?.play('shoot', this.config.id);
     }
 
     createBee(direction, overrides) {
