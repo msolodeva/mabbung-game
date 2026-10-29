@@ -47,19 +47,6 @@ export class Entity {
     }
 
     /**
-     * 엔티티의 경계 박스 반환
-     * @returns {{x: number, y: number, width: number, height: number}} AABB 경계 박스
-     */
-    getBounds() {
-        return {
-            x: this.position.x - this.radius,
-            y: this.position.y - this.radius,
-            width: this.radius * 2,
-            height: this.radius * 2,
-        };
-    }
-
-    /**
      * 다른 엔티티와의 원형 충돌 감지
      * @param {Entity} other - 충돌 검사할 다른 엔티티
      * @returns {boolean} 충돌 여부

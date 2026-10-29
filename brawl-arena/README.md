@@ -14,11 +14,12 @@ Brawl Stars에서 영감을 받은 로컬 2인용 탑다운 슈팅 게임입니�
 | 브롤러 | 역할 | 특징 |
 | --- | --- | --- |
 | Brock | Rocketeer | 긴 사거리와 강한 단발 로켓 |
-| Nita | Bruiser | 높은 체력과 넓은 관통 충격파 |
+| Bea | Stinger | 맞힌 적을 둔화시키는 장거리 벌침, 벌 떼 궁극기 |
 | Colt | Marksman | 빠른 이동과 연속 사격 |
 | Dynamike | Artillery | 벽 너머 지연 폭발 공격 |
 | Spike | Controller | 분열 투사체와 감속 지대 |
 | Rico | Ricochet | 벽에 두 번 튕기는 3연발, 관통 반사 탄막 궁극기 |
+| Rex | Railgunner | 긴 재장전 대신 강력한 관통 슬러그, 3연속 레일 버스트 |
 
 각 팀 AI는 낮음, 보통, 높음 중 하나로 설정할 수 있습니다. 난이도에 따라 반응 시간, 조준 오차, 판단 실수, 전투 움직임이 달라집니다.
 

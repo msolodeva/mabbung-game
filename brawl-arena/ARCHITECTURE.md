@@ -64,14 +64,14 @@ index.html
 - `Entity`: 위치, 속도, 활성 상태를 갖는 기본 객체
 - `Brawler`: 체력, 탄약, 공격, 궁극기, 사망과 부활의 공통 구현
 - `entities/brawlers/*`: 브롤러별 공격과 궁극기 구현
-- `Projectile`, `Bear`: 전투와 모드에서 사용하는 독립 엔티티
+- `Projectile`, `RicochetProjectile`: 전투에서 사용하는 독립 발사체 엔티티
 - `TeamDeathmatchMode`: 팀 처치 점수, 제한시간, 승패 판정
 
 게임 밸런스는 `js/utils/constants.js`의 `BRAWLERS`, `AI_DIFFICULTY`, `GAME_CONFIG` 등에 집중합니다.
 
 ## AI와 길 찾기
 
-`AIController`는 상태 기반으로 수집, 추격, 공격, 후퇴를 선택합니다. 공통 목적지는 `FlowField`로 빠르게 조회하고, 복잡하거나 막힌 경로는 `Pathfinder`의 A* 탐색으로 보완합니다. 난이도 프리셋은 반응 속도뿐 아니라 조준과 판단의 불완전성도 조절합니다.
+`AIController`는 상태 기반으로 수집, 추격, 공격, 후퇴를 선택합니다. 공통 목적지는 `FlowField`로 빠르게 조회하고, 복잡하거나 막힌 경로는 `Pathfinder`의 A* 탐색으로 보완합니다. 파괴 가능한 벽이 부서지면 `GameMap.onTilesChanged`를 통해 두 캐시가 모두 무효화됩니다. AI 타이머는 게임 업데이트로만 진행되는 내부 시계를 사용하므로 일시정지 중에는 멈춥니다. 난이도 프리셋은 반응 속도뿐 아니라 조준과 판단의 불완전성도 조절합니다.
 
 ## 생명주기
 

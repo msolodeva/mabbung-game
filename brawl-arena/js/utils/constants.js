@@ -9,6 +9,9 @@ export const GAME_CONFIG = {
     FPS: 60,
     MATCH_DURATION: 300, // 5 minutes
     RESPAWN_TIME: 3000,
+    SPAWN_SHIELD_DURATION: 2000,
+    REGEN_DELAY: 3000,
+    REGEN_RATE: 0.15,
 };
 
 export const TEAMS = {
@@ -279,14 +282,43 @@ export const BRAWLERS = {
         description: '반사 사격수 - 벽에 두 번 튕기는 3연발로 코너를 공략한다',
         superDescription: '🤖 반사 탄막: 네 번 반사되는 관통탄 8발 연사',
     },
+
+    // =====================================
+    // REX - Railgunner (Heavy single-shot burst)
+    // =====================================
+    // One slow, piercing slug per long reload. Fragile and quick to compensate.
+    REX: {
+        id: 'rex',
+        name: 'Rex',
+        role: 'RAILGUNNER',
+        emoji: '🔫',
+        color: '#8e44ad',
+        health: 2200,
+        speed: 275,
+        attackDamage: 2000,
+        attackProjectiles: 1,
+        attackSpread: 0,
+        attackRange: 600,
+        attackSpeed: 1000,
+        projectileSpeed: 900,
+        projectileSize: 10,
+        projectileSpawnDistance: 28,
+        ammoMax: 1,
+        ammoReloadTime: 3600,
+        superCharge: 3,
+        superDamage: 700,
+        superProjectiles: 3,
+        superBulletInterval: 140,
+        superRange: 720,
+        description: '레일건 저격수 - 재장전이 매우 길지만 관통하는 한 방이 극강! 체력은 낮고 이동이 빠르다',
+        superDescription: '🔫 레일 버스트: 관통 슬러그 3발을 연속 발사',
+    },
 };
 
 export const PROJECTILE_CONFIG = {
     COLLISION_STEP: 4,
     BULLET_SPEED: 600,
     BULLET_SIZE: 8,
-    SHOCKWAVE_SPEED: 500,
-    SHOCKWAVE_WIDTH: 60,
 };
 
 export const VISIBILITY_CONFIG = {
@@ -295,11 +327,19 @@ export const VISIBILITY_CONFIG = {
     ACTION_REVEAL_MS: 1400,
 };
 
+export const EFFECT_CONFIG = {
+    DAMAGE_TEXT_LIFETIME: 650,
+    HEAVY_HIT_THRESHOLD: 1000,
+    SHAKE_EXPLOSION: { intensity: 8, duration: 200 },
+    SHAKE_SUPER: { intensity: 7, duration: 180 },
+    SHAKE_HEAVY_HIT: { intensity: 6, duration: 140 },
+    SHAKE_DEATH: { intensity: 11, duration: 250 },
+};
+
 
 export const AI_CONFIG = {
-    DECISION_INTERVAL: 200, // ms
     ATTACK_RANGE_MULTIPLIER: 0.8,
-    RETREAT_HEALTH_THRESHOLD: 0.3,
+    HAZARD_AVOIDANCE_MARGIN: 30,
     AGGRESSION_LEVELS: {
         PASSIVE: 0.3,
         NORMAL: 0.6,

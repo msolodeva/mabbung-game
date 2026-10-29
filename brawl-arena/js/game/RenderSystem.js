@@ -1,6 +1,6 @@
 import { traceRicochet } from '../utils/ricochet.js';
 
-import { VISIBILITY_CONFIG } from '../utils/constants.js';
+import { PROJECTILE_CONFIG, VISIBILITY_CONFIG } from '../utils/constants.js';
 import { renderSpikeField } from '../entities/brawlers/Spike.js';
 
 /**
@@ -25,6 +25,10 @@ export class RenderSystem {
             height: this.canvas.height,
             zoom: 1
         };
+
+        this.shakeRemaining = 0;
+        this.shakeDuration = 0;
+        this.shakeIntensity = 0;
 
         // Bind for event listener removal if needed
         this.handleResize = this.resizeCanvas.bind(this);
@@ -63,6 +67,145 @@ export class RenderSystem {
         this.camera.y = (this.map.height - this.camera.height) / 2;
     }
 
+    triggerShake(intensity, durationMs) {
+        if (intensity <= 0 || durationMs <= 0) return;
+        this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+        this.shakeDuration = Math.max(this.shakeDuration, durationMs);
+        this.shakeRemaining = Math.max(this.shakeRemaining, durationMs);
+    }
+
+    updateShake(deltaTime) {
+        if (this.shakeRemaining <= 0) return;
+        this.shakeRemaining = Math.max(0, this.shakeRemaining - Math.max(0, deltaTime) * 1000);
+        if (this.shakeRemaining === 0) {
+            this.shakeIntensity = 0;
+            this.shakeDuration = 0;
+        }
+    }
+
+    getShakeOffset(randomFn = Math.random) {
+        if (this.shakeRemaining <= 0 || this.shakeDuration <= 0) {
+            return { x: 0, y: 0 };
+        }
+        const decay = this.shakeRemaining / this.shakeDuration;
+        const magnitude = this.shakeIntensity * decay;
+        return {
+            x: (randomFn() * 2 - 1) * magnitude,
+            y: (randomFn() * 2 - 1) * magnitude,
+        };
+    }
+
+    /**
+     * 브롤러 특성에 맞는 조준 궤적/탄착 정보 계산
+     */
+    getAimPreview(player, gameState) {
+        const heading = player.aimDirection.normalize();
+        if (heading.magnitudeSquared() === 0) return null;
+
+        if (player.config.maxBounces) {
+            return {
+                type: 'ricochet',
+                points: traceRicochet(player.position, heading, player.attackRange, player.config.maxBounces, this.map),
+                color: '#79f6ee',
+            };
+        }
+
+        if (typeof player.getThrowRange === 'function') {
+            const start = player.position.add(heading.multiply(18));
+            const range = player.getThrowRange(heading, gameState, player.attackRange);
+            const target = start.add(heading.multiply(range));
+            return {
+                type: 'lobbed',
+                start,
+                target,
+                radius: player.config.explosionRadius || 90,
+                color: player.config.color || '#f39c12',
+            };
+        }
+
+        const startOffset = player.config.projectileSpawnDistance || (player.radius + 10);
+        const start = player.position.add(heading.multiply(startOffset));
+        let end = player.position.add(heading.multiply(player.attackRange));
+        let blockedByWall = false;
+        const step = PROJECTILE_CONFIG.COLLISION_STEP;
+
+        if (this.map?.isPositionSolidForProjectile) {
+            for (let dist = startOffset; dist <= player.attackRange; dist += step) {
+                const probe = player.position.add(heading.multiply(dist));
+                if (this.map.isPositionSolidForProjectile(probe.x, probe.y)) {
+                    end = probe;
+                    blockedByWall = true;
+                    break;
+                }
+            }
+        }
+
+        return {
+            type: 'line',
+            start,
+            end,
+            endRadius: player.config.rocketExplosionRadius || 0,
+            blockedByWall,
+            piercing: player.config.id === 'rex',
+            color: player.config.color || '#ffffff',
+        };
+    }
+
+    renderAimPreview(player, gameState) {
+        const preview = this.getAimPreview(player, gameState);
+        if (!preview) return;
+
+        const ctx = this.ctx;
+        ctx.save();
+        if (preview.type === 'ricochet') {
+            ctx.strokeStyle = preview.color;
+            ctx.globalAlpha = 0.65;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(preview.points[0].x, preview.points[0].y);
+            for (const point of preview.points.slice(1)) ctx.lineTo(point.x, point.y);
+            ctx.stroke();
+        } else if (preview.type === 'lobbed') {
+            ctx.strokeStyle = preview.color;
+            ctx.globalAlpha = 0.6;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(preview.start.x, preview.start.y);
+            ctx.lineTo(preview.target.x, preview.target.y);
+            ctx.stroke();
+
+            ctx.fillStyle = preview.color;
+            ctx.globalAlpha = 0.16;
+            ctx.beginPath();
+            ctx.arc(preview.target.x, preview.target.y, preview.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.7;
+            ctx.stroke();
+        } else {
+            ctx.strokeStyle = preview.piercing ? '#d2b4de' : '#ffffff';
+            ctx.globalAlpha = 0.7;
+            ctx.lineWidth = preview.piercing ? 4 : 3;
+            ctx.setLineDash([8, 5]);
+            ctx.beginPath();
+            ctx.moveTo(preview.start.x, preview.start.y);
+            ctx.lineTo(preview.end.x, preview.end.y);
+            ctx.stroke();
+
+            if (preview.endRadius > 0) {
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = preview.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(preview.end.x, preview.end.y, preview.endRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+
     /**
      * 게임 전체 렌더링
      * @param {Game} gameState - 현재 게임 상태 (brawlers, projectiles 등 포함)
@@ -74,9 +217,10 @@ export class RenderSystem {
 
         this.ctx.save();
 
-        // 1. Zoom and Center the whole map
+        // 1. Zoom and Center the whole map (with camera shake offset)
+        const shake = this.getShakeOffset();
         this.ctx.scale(this.camera.zoom, this.camera.zoom);
-        this.ctx.translate(-this.camera.x, -this.camera.y);
+        this.ctx.translate(-this.camera.x + shake.x, -this.camera.y + shake.y);
 
         // 2. Render game elements
         this.map.render(this.ctx, this.camera);
@@ -88,10 +232,6 @@ export class RenderSystem {
 
         for (const projectile of gameState.projectiles) {
             projectile.render(this.ctx, this.camera);
-        }
-
-        for (const bear of gameState.bears) {
-            bear.render(this.ctx, this.camera);
         }
 
         const sortedBrawlers = [...gameState.brawlers].sort((a, b) => a.position.y - b.position.y);
@@ -109,31 +249,7 @@ export class RenderSystem {
         this.renderPlayerIndicators(gameState);
         for (const player of [gameState.player1, gameState.player2]) {
             if (!player?.isAlive || !player.isVisible || !player.isAimLocked) continue;
-            if (player.config.maxBounces) {
-                const points = traceRicochet(player.position, player.aimDirection, player.attackRange, player.config.maxBounces, this.map);
-                this.ctx.save();
-                this.ctx.strokeStyle = '#79f6ee';
-                this.ctx.globalAlpha = 0.65;
-                this.ctx.lineWidth = 2;
-                this.ctx.setLineDash([8, 6]);
-                this.ctx.beginPath();
-                this.ctx.moveTo(points[0].x, points[0].y);
-                for (const point of points.slice(1)) this.ctx.lineTo(point.x, point.y);
-                this.ctx.stroke();
-                this.ctx.restore();
-                continue;
-            }
-            const start = player.position.add(player.aimDirection.multiply(player.radius + 10));
-            const end = player.position.add(player.aimDirection.multiply(100));
-            this.ctx.save();
-            this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = 3;
-            this.ctx.setLineDash([8, 5]);
-            this.ctx.beginPath();
-            this.ctx.moveTo(start.x, start.y);
-            this.ctx.lineTo(end.x, end.y);
-            this.ctx.stroke();
-            this.ctx.restore();
+            this.renderAimPreview(player, gameState);
         }
 
         this.ctx.restore();

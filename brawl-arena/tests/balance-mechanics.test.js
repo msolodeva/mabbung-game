@@ -6,7 +6,7 @@ import { Vector2 } from '../js/utils/Vector2.js';
 
 const right = new Vector2(1, 0);
 function world(brawlers) {
-    return { brawlers, bears: [], projectiles: [], spikeFields: [], createEffect() {},
+    return { brawlers, projectiles: [], spikeFields: [], createEffect() {},
         map: { width: 2000, height: 2000, isPositionSolid: () => false,
             getTileAtPosition: () => null, isPositionInBush: () => false,
             isPositionSolidForProjectile: () => false, damageWallAtPosition() {} } };

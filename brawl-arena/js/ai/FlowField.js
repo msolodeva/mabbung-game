@@ -43,9 +43,7 @@ export class FlowField {
         // LRU 캐시 정리
         if (this.fieldCache.size >= this.maxCacheSize) {
             const oldestKey = this.cacheOrder.shift();
-            if (oldestKey && !oldestKey.startsWith('spawn_') && oldestKey !== 'center') {
-                this.fieldCache.delete(oldestKey);
-            }
+            if (oldestKey) this.fieldCache.delete(oldestKey);
         }
 
         this.fieldCache.set(key, field);
@@ -268,29 +266,26 @@ export class FlowField {
     }
 
     /**
-     * Pre-generate common flow fields at map load
+     * Cache key for a destination. Shared with AI navigation so that
+     * pre-generated fields are actually reused at runtime.
+     */
+    destinationKey(worldX, worldY) {
+        return `dynamic_${Math.floor(worldX / this.tileSize)}_${Math.floor(worldY / this.tileSize)}`;
+    }
+
+    /**
+     * Pre-generate common flow fields at map load (center and spawn tiles)
      */
     pregenerate() {
-        // Generate field for map center
-        const centerX = this.map.width / 2;
-        const centerY = this.map.height / 2;
-        this.getOrCreateField('center', centerX, centerY);
+        this.getOrCreateField(this.destinationKey(this.map.width / 2, this.map.height / 2),
+            this.map.width / 2, this.map.height / 2);
 
-        // Generate fields for spawn areas
-        if (this.map.spawnPoints) {
-            if (this.map.spawnPoints.blue && this.map.spawnPoints.blue.length > 0) {
-                const spawn = this.map.spawnPoints.blue[0];
-                const spawnX = spawn.x * this.tileSize + this.tileSize / 2;
-                const spawnY = spawn.y * this.tileSize + this.tileSize / 2;
-                this.getOrCreateField('spawn_blue', spawnX, spawnY);
-            }
-            if (this.map.spawnPoints.red && this.map.spawnPoints.red.length > 0) {
-                const spawn = this.map.spawnPoints.red[0];
-                const spawnX = spawn.x * this.tileSize + this.tileSize / 2;
-                const spawnY = spawn.y * this.tileSize + this.tileSize / 2;
-                this.getOrCreateField('spawn_red', spawnX, spawnY);
+        for (const spawns of [this.map.spawnPoints?.blue, this.map.spawnPoints?.red]) {
+            for (const spawn of spawns || []) {
+                const x = spawn.x * this.tileSize + this.tileSize / 2;
+                const y = spawn.y * this.tileSize + this.tileSize / 2;
+                this.getOrCreateField(this.destinationKey(x, y), x, y);
             }
         }
-
     }
 }

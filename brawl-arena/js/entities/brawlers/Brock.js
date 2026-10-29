@@ -19,8 +19,8 @@ class RocketProjectile extends Projectile {
     }
 
     destroy() {
-        if (!this.hasExploded && this.owner?.game) {
-            this.explode(this.owner.game);
+        if (!this.hasExploded && this.game) {
+            this.explode(this.game);
         }
 
         super.destroy();
@@ -30,7 +30,7 @@ class RocketProjectile extends Projectile {
         if (this.hasExploded) return;
         this.hasExploded = true;
 
-        const targets = [...game.brawlers, ...game.bears];
+        const targets = game.brawlers;
         for (const target of targets) {
             if (!target.isAlive || target.team === this.team) continue;
 
@@ -161,6 +161,7 @@ export class Brock extends Brawler {
                 size: options.size,
                 range: options.range,
                 owner: this,
+                game,
                 team: this.team,
                 color: options.color,
                 knockback: options.knockback,
@@ -171,7 +172,6 @@ export class Brock extends Brawler {
             }
         );
 
-        rocket.owner.game = game;
         game.projectiles.push(rocket);
     }
 }

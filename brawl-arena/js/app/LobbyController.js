@@ -14,8 +14,8 @@ const PLAYER_DEFAULTS = Object.freeze({
 });
 
 const STAT_MAXIMUMS = Object.freeze({
-    health: 6000,
-    attackDamage: 1300,
+    health: 3000,
+    attackDamage: 2000,
     attackRange: 650,
 });
 
@@ -106,7 +106,10 @@ export class LobbyController {
     }
 
     renderBrawlerStats(playerNumber, brawler) {
-        const percentage = stat => Math.min((brawler[stat] / STAT_MAXIMUMS[stat]) * 100, 100);
+        // Damage is shown per full attack (multi-shot bursts add up).
+        const attackTotal = brawler.attackDamage * (brawler.attackProjectiles || 1);
+        const values = { health: brawler.health, attackDamage: attackTotal, attackRange: brawler.attackRange };
+        const percentage = stat => Math.min((values[stat] / STAT_MAXIMUMS[stat]) * 100, 100);
         this.getElement(`player${playerNumber}-stats`).innerHTML = `
             <div class="selected-brawler-header">
                 <div class="selected-brawler-emoji" aria-hidden="true">${brawler.emoji}</div>
@@ -117,7 +120,7 @@ export class LobbyController {
             </div>
             <div class="stats-container-detailed">
                 ${this.createStatRow('체력', 'health', brawler.health, percentage('health'))}
-                ${this.createStatRow('공격', 'damage', brawler.attackDamage, percentage('attackDamage'))}
+                ${this.createStatRow('공격', 'damage', attackTotal, percentage('attackDamage'))}
                 ${this.createStatRow('사거리', 'range', brawler.attackRange, percentage('attackRange'))}
             </div>
         `;
@@ -245,16 +248,16 @@ export class LobbyController {
 
     navigateBrawler(playerNumber, keyCode) {
         const currentIndex = this.brawlerIds.indexOf(this.selection.brawlers[playerNumber]);
-        const gridColumns = 3;
+        // The roster is a single row, so every direction key steps through it.
         const offsets = {
             KeyA: -1,
             ArrowLeft: -1,
+            KeyW: -1,
+            ArrowUp: -1,
             KeyD: 1,
             ArrowRight: 1,
-            KeyW: -gridColumns,
-            ArrowUp: -gridColumns,
-            KeyS: gridColumns,
-            ArrowDown: gridColumns,
+            KeyS: 1,
+            ArrowDown: 1,
         };
         const offset = offsets[keyCode];
         if (!offset) return;

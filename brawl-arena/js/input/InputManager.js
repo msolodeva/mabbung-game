@@ -155,15 +155,6 @@ export class InputManager {
     }
 
     init() {
-        // Hide mobile controls
-        const moveJoystick = document.getElementById('move-joystick');
-        const attackJoystick = document.getElementById('attack-joystick');
-        const superBtn = document.getElementById('super-button');
-
-        if (moveJoystick) moveJoystick.style.display = 'none';
-        if (attackJoystick) attackJoystick.style.display = 'none';
-        if (superBtn) superBtn.style.display = 'none';
-
         // Keyboard events
         document.addEventListener('keydown', this.handleKeyDown);
         document.addEventListener('keyup', this.handleKeyUp);

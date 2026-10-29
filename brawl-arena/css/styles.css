@@ -138,7 +138,7 @@ body {
     display: flex;
     justify-content: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin-bottom: 12px;
 }
 
@@ -147,7 +147,9 @@ body {
     padding: 0;
     color: inherit;
     font: inherit;
-    width: 72px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 72px;
     height: 96px;
     border-radius: 8px;
     cursor: pointer;
@@ -215,37 +217,16 @@ body {
     background: linear-gradient(180deg, #f8c471 0%, #e67e22 100%);
 }
 
+.brawler-card.rico {
+    background: linear-gradient(180deg, #7ff0f4 0%, #1b8f96 100%);
+}
+
+.brawler-card.rex {
+    background: linear-gradient(180deg, #bb8fce 0%, #6c3483 100%);
+}
+
 .brawler-card.spike {
     background: linear-gradient(180deg, #82e0aa 0%, #27ae60 100%);
-}
-
-.brawler-card.elprimo {
-    background: linear-gradient(180deg, #f5b041 0%, #e67e22 100%);
-}
-
-.brawler-card.bull {
-    background: linear-gradient(180deg, #566573 0%, #2c3e50 100%);
-}
-
-.selected-brawler-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 25px;
-    min-height: 100px;
-}
-
-.brawler-portrait {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem;
-    border: 3px solid var(--gold);
 }
 
 .play-button {
@@ -338,108 +319,6 @@ body {
     right: 0;
     height: 200px;
     pointer-events: none;
-}
-
-.joystick-container {
-    position: absolute;
-    bottom: 30px;
-    width: 150px;
-    height: 150px;
-    pointer-events: auto;
-}
-
-.joystick-container.left {
-    left: 30px;
-}
-
-.joystick-container.right {
-    right: 30px;
-}
-
-.joystick-base {
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.joystick-base.attack {
-    background: radial-gradient(circle, rgba(231, 76, 60, 0.3) 0%, rgba(231, 76, 60, 0.1) 100%);
-    border-color: rgba(231, 76, 60, 0.5);
-}
-
-.joystick-thumb {
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
-    border-radius: 50%;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    position: absolute;
-    transition: transform 0.05s ease-out;
-}
-
-.joystick-thumb.attack {
-    background: radial-gradient(circle, #e74c3c 0%, #c0392b 100%);
-}
-
-.super-button {
-    position: absolute;
-    bottom: 190px;
-    right: 50px;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: rgba(100, 100, 100, 0.5);
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    overflow: hidden;
-    pointer-events: auto;
-    transition: all 0.3s ease;
-}
-
-.super-button:not(:disabled) {
-    background: var(--gradient-gold);
-    border-color: var(--gold);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-    animation: superReady 0.5s ease-in-out infinite alternate;
-}
-
-.super-button:disabled {
-    opacity: 0.7;
-}
-
-@keyframes superReady {
-    from {
-        transform: scale(1);
-    }
-
-    to {
-        transform: scale(1.1);
-    }
-}
-
-.super-fill {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 0%;
-    background: var(--gradient-gold);
-    transition: height 0.2s ease;
-}
-
-.super-button span {
-    position: relative;
-    z-index: 1;
-    font-family: 'Lilita One', cursive;
-    font-size: 0.7rem;
-    color: white;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
 }
 
 /* ========================================
@@ -633,19 +512,6 @@ body {
     line-height: 1;
 }
 
-.player-stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-
 .matches-divider {
     font-family: 'Lilita One', cursive;
     font-size: 3rem;
@@ -691,7 +557,6 @@ body {
     }
 
     .brawler-card {
-        width: 60px;
         height: 80px;
     }
 
@@ -706,23 +571,6 @@ body {
 
     .play-button span {
         font-size: 1.5rem;
-    }
-
-    .joystick-container {
-        width: 120px;
-        height: 120px;
-    }
-
-    .joystick-thumb {
-        width: 50px;
-        height: 50px;
-    }
-
-    .super-button {
-        width: 60px;
-        height: 60px;
-        bottom: 160px;
-        right: 40px;
     }
 }
 
@@ -882,18 +730,6 @@ body {
     justify-content: center;
     border-radius: 8px;
     border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-@keyframes emojiPulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.1) rotate(5deg);
-    }
 }
 
 .selected-brawler-name-container {
@@ -1226,45 +1062,6 @@ body {
     font-size: 1rem;
     color: rgba(255, 255, 255, 0.7);
     letter-spacing: 1px;
-}
-
-/* Result Screen Score Summary */
-.score-summary {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.score-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-
-.score-item .score-label {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.score-item .score-value {
-    font-family: 'Lilita One', cursive;
-    font-size: 3rem;
-    color: white;
-    text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
-}
-
-.score-item.blue .score-value {
-    color: var(--blue-team);
-    text-shadow: 0 0 10px rgba(74, 144, 217, 0.5);
-}
-
-.score-item.red .score-value {
-    color: var(--red-team);
-    text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
 }
 
 /* ========================================

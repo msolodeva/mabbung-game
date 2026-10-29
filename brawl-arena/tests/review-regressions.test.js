@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Projectile, HomingMissile } from '../js/entities/Projectile.js';
+import { Projectile } from '../js/entities/Projectile.js';
 import { Colt } from '../js/entities/brawlers/Colt.js';
 import { Vector2 } from '../js/utils/Vector2.js';
 import { Game } from '../js/game/Game.js';
@@ -10,13 +10,13 @@ import { GAME_STATES } from '../js/utils/constants.js';
 function world() {
     return { map: { width: 1000, height: 1000, isPositionInBush: () => false,
         getTileAtPosition: () => null, isPositionSolidForProjectile: () => false,
-        damageWallAtPosition() {} }, brawlers: [], bears: [], spikeFields: [], createEffect() {} };
+        damageWallAtPosition() {} }, brawlers: [], spikeFields: [], createEffect() {} };
 }
 function target(x) {
     return { id: x, team: 'red', isAlive: true, position: new Vector2(x, 100), radius: 25,
         damage: 0, takeDamage(amount) { this.damage += amount; } };
 }
-for (const Type of [Projectile, HomingMissile]) {
+for (const Type of [Projectile]) {
     test(`${Type.name} hits a target crossed during a 100ms frame`, () => {
         const g = world(); const enemy = target(135); g.brawlers.push(enemy);
         const shot = new Type(100, 100, new Vector2(1, 0), { speed: 700, size: 6, range: 500, team: 'blue', damage: 100 });

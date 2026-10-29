@@ -20,6 +20,7 @@ export class Projectile extends Entity {
         this.piercing = config.piercing || false;
         this.knockback = config.knockback || 0;
         this.isSuper = config.isSuper || false;
+        this.game = config.game || null;
 
         this.velocity = this.direction.multiply(this.speed);
         this.distanceTraveled = 0;
@@ -80,36 +81,9 @@ export class Projectile extends Entity {
                 }
             }
         }
-
-        // Check bear collision
-        for (const bear of game.bears) {
-            if (!bear.isAlive) continue;
-            if (bear.team === this.team) continue;
-            // Bears use Entity IDs which are unique
-            if (this.hitTargets.has(bear.id)) continue;
-
-            if (this.collidesWith(bear)) {
-                this.onHit(bear, game);
-                if (!this.piercing) {
-                    this.destroy();
-                    return;
-                }
-            }
-        }
     }
 
     checkHit(brawler) {
-        if (this.projectileType === 'wave') {
-            const toBrawler = brawler.position.subtract(this.position);
-            const forwardDistance = toBrawler.dot(this.direction);
-            const lateralDistance = Math.abs(toBrawler.cross(this.direction));
-            const targetRadius = brawler.radius || 0;
-
-            return forwardDistance >= -targetRadius
-                && forwardDistance <= this.radius + targetRadius
-                && lateralDistance <= (this.width / 2) + targetRadius;
-        }
-
         return this.collidesWith(brawler);
     }
 
@@ -162,33 +136,7 @@ export class Projectile extends Entity {
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        if (this.projectileType === 'wave') {
-            // Enhanced sound wave
-            const arcAngle = Math.PI / 3; // 60 degrees
-
-            // Multiple arcs for "echo" effect
-            for (let i = 0; i < 3; i++) {
-                const offset = i * 10;
-                const alpha = 1 - (i * 0.3);
-
-                ctx.beginPath();
-                ctx.strokeStyle = this.color;
-                ctx.globalAlpha = alpha;
-                ctx.lineWidth = 4 - i;
-                ctx.arc(-offset, 0, this.radius, -arcAngle / 2, arcAngle / 2);
-                ctx.stroke();
-            }
-
-            // Energy Field Fan
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.arc(0, 0, this.radius, -arcAngle / 2, arcAngle / 2);
-            ctx.closePath();
-            ctx.fillStyle = this.color;
-            ctx.globalAlpha = 0.2;
-            ctx.fill();
-
-        } else if (this.owner && this.owner.config.id === 'spike') {
+        if (this.owner && this.owner.config.id === 'spike') {
             // Spike Thorns
             ctx.fillStyle = this.color;
             ctx.beginPath();
@@ -247,8 +195,8 @@ export class ExplosiveProjectile extends Projectile {
 
     explode() {
         // Create spike projectiles in all directions
-        if (this.owner && this.owner.game) {
-            const game = this.owner.game;
+        if (this.game) {
+            const game = this.game;
             const angleStep = (Math.PI * 2) / this.explodeSpikes;
             const sharedHitTargets = new Set();
 
@@ -271,274 +219,6 @@ export class ExplosiveProjectile extends Projectile {
 
                 game.projectiles.push(spike);
             }
-        }
-    }
-}
-
-// ========================================
-// HOMING MISSILE - Nita's Super Projectile
-// ========================================
-// 가장 가까운 적을 자동으로 추적하는 유도 미사일
-export class HomingMissile extends Projectile {
-    constructor(x, y, direction, config) {
-        super(x, y, direction, config);
-        this.projectileType = 'missile';
-
-        // Homing properties
-        this.trackingRange = config.trackingRange || 600;    // 추적 감지 범위
-        this.turnSpeed = config.turnSpeed || 4;              // 방향 전환 속도 (rad/s)
-        this.target = null;
-        this.lifetime = config.lifetime || 3000;             // 최대 수명 (ms)
-        this.elapsedTime = 0;
-
-        // Visual properties
-        this.smokeTrail = [];
-        this.maxSmokeLength = 15;
-        this.glowPulse = 0;
-    }
-
-    update(deltaTime, game) {
-        if (!this.active) return;
-
-        this.currentGame = game;
-
-        // Update lifetime
-        this.elapsedTime += deltaTime * 1000;
-        if (this.elapsedTime >= this.lifetime) {
-            this.destroy();
-            return;
-        }
-
-        // Update glow animation
-        this.glowPulse += deltaTime * 10;
-
-        // Store smoke trail
-        this.smokeTrail.unshift({
-            x: this.position.x,
-            y: this.position.y,
-            age: 0
-        });
-
-        // Age and remove old smoke particles
-        for (let i = this.smokeTrail.length - 1; i >= 0; i--) {
-            this.smokeTrail[i].age += deltaTime;
-            if (this.smokeTrail[i].age > 0.5) {
-                this.smokeTrail.splice(i, 1);
-            }
-        }
-
-        // Find nearest enemy target
-        this.findTarget(game);
-
-        // Adjust direction towards target
-        if (this.target && this.target.isAlive) {
-            const toTarget = this.target.position.subtract(this.position);
-            const targetAngle = Math.atan2(toTarget.y, toTarget.x);
-            const currentAngle = Math.atan2(this.direction.y, this.direction.x);
-
-            // Calculate angle difference
-            let angleDiff = targetAngle - currentAngle;
-
-            // Normalize angle to [-PI, PI]
-            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-            // Apply turn speed limit
-            const maxTurn = this.turnSpeed * deltaTime;
-            const turn = Math.max(-maxTurn, Math.min(maxTurn, angleDiff));
-
-            // Update direction
-            const newAngle = currentAngle + turn;
-            this.direction = new Vector2(Math.cos(newAngle), Math.sin(newAngle));
-        }
-
-        // Update velocity based on direction
-        this.velocity = this.direction.multiply(this.speed);
-
-        super.update(deltaTime, game);
-    }
-
-    destroy() {
-        if (this.active && this.currentGame) this.explodeEffect(this.currentGame);
-        super.destroy();
-    }
-
-    findTarget(game) {
-        let nearestEnemy = null;
-        let nearestDistance = this.trackingRange;
-
-        // Search for enemy brawlers
-        for (const brawler of game.brawlers) {
-            if (!brawler.isAlive) continue;
-            if (brawler.team === this.team) continue;
-
-            const distance = this.position.distanceTo(brawler.position);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestEnemy = brawler;
-            }
-        }
-
-        // Also consider enemy bears
-        for (const bear of game.bears) {
-            if (!bear.isAlive) continue;
-            if (bear.team === this.team) continue;
-
-            const distance = this.position.distanceTo(bear.position);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestEnemy = bear;
-            }
-        }
-
-        this.target = nearestEnemy;
-    }
-
-    explodeEffect(game) {
-        // Create explosion effect at missile position
-        if (game && game.createEffect) {
-            game.createEffect('explosion', this.position.x, this.position.y);
-        }
-    }
-
-    render(ctx, camera) {
-        if (!this.active) return;
-
-        const x = this.position.x;
-        const y = this.position.y;
-        const angle = this.direction.angle();
-
-        // 1. Draw smoke trail
-        for (let i = 0; i < this.smokeTrail.length; i++) {
-            const smoke = this.smokeTrail[i];
-            const alpha = 1 - (smoke.age / 0.5);
-            const size = 6 * (1 - smoke.age / 0.5);
-
-            ctx.beginPath();
-            ctx.fillStyle = `rgba(150, 150, 150, ${alpha * 0.6})`;
-            ctx.arc(smoke.x, smoke.y, size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // 2. Draw flame trail
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-
-        // Flame behind missile
-        const flameLength = 20 + Math.sin(this.glowPulse * 2) * 5;
-        const flameGradient = ctx.createLinearGradient(-flameLength - 15, 0, -15, 0);
-        flameGradient.addColorStop(0, 'rgba(255, 100, 0, 0)');
-        flameGradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.8)');
-        flameGradient.addColorStop(1, 'rgba(255, 200, 50, 1)');
-
-        ctx.beginPath();
-        ctx.moveTo(-15, 0);
-        ctx.lineTo(-flameLength - 15, -5);
-        ctx.lineTo(-flameLength - 20, 0);
-        ctx.lineTo(-flameLength - 15, 5);
-        ctx.closePath();
-        ctx.fillStyle = flameGradient;
-        ctx.fill();
-
-        // 3. Draw missile body
-        // Glow effect
-        const glowSize = 18 + Math.sin(this.glowPulse) * 3;
-        ctx.shadowBlur = glowSize;
-        ctx.shadowColor = '#e74c3c';
-
-        // Missile body (rocket shape)
-        ctx.fillStyle = '#c0392b';
-        ctx.beginPath();
-        ctx.moveTo(15, 0);  // Nose
-        ctx.lineTo(-10, -8);
-        ctx.lineTo(-15, -8);
-        ctx.lineTo(-15, 8);
-        ctx.lineTo(-10, 8);
-        ctx.closePath();
-        ctx.fill();
-
-        // Metallic shine
-        ctx.fillStyle = '#e74c3c';
-        ctx.beginPath();
-        ctx.moveTo(15, 0);
-        ctx.lineTo(-10, -5);
-        ctx.lineTo(-10, 2);
-        ctx.closePath();
-        ctx.fill();
-
-        // Nose tip
-        ctx.fillStyle = '#f5f5f5';
-        ctx.beginPath();
-        ctx.arc(10, 0, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Fins
-        ctx.fillStyle = '#922b21';
-        // Top fin
-        ctx.beginPath();
-        ctx.moveTo(-12, -8);
-        ctx.lineTo(-18, -15);
-        ctx.lineTo(-18, -8);
-        ctx.closePath();
-        ctx.fill();
-        // Bottom fin
-        ctx.beginPath();
-        ctx.moveTo(-12, 8);
-        ctx.lineTo(-18, 15);
-        ctx.lineTo(-18, 8);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.shadowBlur = 0;
-        ctx.restore();
-
-        // 4. Draw tracking indicator if target exists
-        if (this.target && this.target.isAlive) {
-            const toTarget = this.target.position.subtract(this.position);
-            const dist = toTarget.magnitude();
-
-            // Draw faint tracking line
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(231, 76, 60, ${0.2 + Math.sin(this.glowPulse * 3) * 0.1})`;
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 10]);
-            ctx.moveTo(x, y);
-            ctx.lineTo(this.target.position.x, this.target.position.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Draw target reticle
-            const targetX = this.target.position.x;
-            const targetY = this.target.position.y;
-            const reticleSize = 20 + Math.sin(this.glowPulse * 2) * 5;
-
-            ctx.strokeStyle = `rgba(231, 76, 60, ${0.5 + Math.sin(this.glowPulse * 3) * 0.2})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(targetX, targetY, reticleSize, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Corner brackets
-            const bracketSize = 8;
-            ctx.beginPath();
-            // Top-left
-            ctx.moveTo(targetX - reticleSize, targetY - bracketSize);
-            ctx.lineTo(targetX - reticleSize, targetY - reticleSize);
-            ctx.lineTo(targetX - bracketSize, targetY - reticleSize);
-            // Top-right
-            ctx.moveTo(targetX + bracketSize, targetY - reticleSize);
-            ctx.lineTo(targetX + reticleSize, targetY - reticleSize);
-            ctx.lineTo(targetX + reticleSize, targetY - bracketSize);
-            // Bottom-right
-            ctx.moveTo(targetX + reticleSize, targetY + bracketSize);
-            ctx.lineTo(targetX + reticleSize, targetY + reticleSize);
-            ctx.lineTo(targetX + bracketSize, targetY + reticleSize);
-            // Bottom-left
-            ctx.moveTo(targetX - bracketSize, targetY + reticleSize);
-            ctx.lineTo(targetX - reticleSize, targetY + reticleSize);
-            ctx.lineTo(targetX - reticleSize, targetY + bracketSize);
-            ctx.stroke();
         }
     }
 }

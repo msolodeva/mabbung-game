@@ -11,6 +11,7 @@ export class AIController {
     constructor(brawler, game) {
         this.brawler = brawler;
         this.game = game;
+        this.clock = 0; // ms of simulated time; only advances while the game updates
         this.decisionTimer = 0;
         this.nextDecisionInterval = 0;
         this.currentTarget = null;
@@ -47,13 +48,6 @@ export class AIController {
         // Aiming system (조준 시스템)
         this.currentAimAngle = 0;
 
-        // Global game state awareness (전역 게임 상태 인지)
-        this.globalStats = {
-            myTeamScore: 0,
-            enemyTeamScore: 0,
-            timeRemaining: 0
-        };
-
         // Debug mode (set to true to visualize paths)
         this.debugMode = false;
 
@@ -73,35 +67,14 @@ export class AIController {
         return this.game.aiDifficulty || AI_DIFFICULTY.EASY;
     }
 
-    /**
-     * 전역 게임 상태 업데이트
-     * - AI 의사결정에 활용 가능한 전략적 정보 제공
-     */
-    updateGlobalStats() {
-        if (!this.game.gameMode) return;
-
-        const gameMode = this.game.gameMode;
-        const myTeam = this.brawler.team;
-        const enemyTeam = myTeam === TEAMS.BLUE ? TEAMS.RED : TEAMS.BLUE;
-
-        // 팀 스코어 업데이트 (킬 수)
-        this.globalStats.myTeamScore = gameMode.teamScores?.[myTeam] || 0;
-        this.globalStats.enemyTeamScore = gameMode.teamScores?.[enemyTeam] || 0;
-
-        // 남은 매치 시간
-        this.globalStats.timeRemaining = gameMode.matchTimer || 0;
-    }
-
     update(deltaTime) {
         if (!this.brawler.isAlive) {
             this.resetPathfinding();
             return;
         }
 
-        // 전역 게임 상태 갱신
-        this.updateGlobalStats();
-
         const deltaMs = deltaTime * 1000;
+        this.clock += deltaMs;
         const difficulty = this.getDifficulty();
 
         // Stuck detection
@@ -120,7 +93,7 @@ export class AIController {
             this.patrolWaitTimer -= deltaMs;
         }
 
-            // 지능별 의사결정 간격 (무작위성 적용)
+        // 지능별 의사결정 간격 (무작위성 적용)
         if (this.decisionTimer >= this.nextDecisionInterval) {
             this.decisionTimer = 0;
             this.makeDecision();
@@ -347,7 +320,7 @@ export class AIController {
             const reactionJitter = 0.75 + Math.random() * 0.5; // 0.75 ~ 1.25
             this.reactionQueue.push({
                 target: nearestEnemy,
-                timestamp: Date.now() + (difficulty.reactionDelay * reactionJitter)
+                timestamp: this.clock + (difficulty.reactionDelay * reactionJitter)
             });
             return; // 지연 동안 기존 행동 유지
         }
@@ -355,7 +328,7 @@ export class AIController {
         // 지연된 반응 처리
         if (this.reactionQueue.length > 0) {
             const reaction = this.reactionQueue[0];
-            if (Date.now() >= reaction.timestamp) {
+            if (this.clock >= reaction.timestamp) {
                 this.reactionQueue.shift();
                 this.currentTarget = reaction.target.isVisible !== false ? reaction.target : null;
             } else {
@@ -411,7 +384,7 @@ export class AIController {
             const attackRange = this.brawler.attackRange * AI_CONFIG.ATTACK_RANGE_MULTIPLIER;
 
             if (distanceToEnemy <= attackRange) {
-                this.state = 'attack';
+                this.state = this.hasClearShot(nearestEnemy) ? 'attack' : 'chase';
             } else if (Math.random() < this.aggression) {
                 this.state = 'chase';
             } else {
@@ -420,6 +393,31 @@ export class AIController {
         } else {
             this.state = 'patrol';
         }
+    }
+
+    /**
+     * 타겟까지 발사체가 벽에 막히지 않고 도달할 수 있는지 확인
+     * (Dynamike는 곡사 투척이므로 벽 너머 타격 가능)
+     */
+    hasClearShot(target) {
+        if (!target) return false;
+        if (this.brawler.config.id === 'dynamike') return true;
+        if (typeof this.game.map?.isPositionSolidForProjectile !== 'function') return true;
+
+        const from = this.brawler.position;
+        const to = target.position;
+        const distance = from.distanceTo(to);
+        if (distance === 0) return true;
+
+        const stepSize = (this.game.map.tileSize || 50) * 0.4;
+        const steps = Math.ceil(distance / stepSize);
+        for (let i = 1; i < steps; i++) {
+            const point = from.lerp(to, i / steps);
+            if (this.game.map.isPositionSolidForProjectile(point.x, point.y)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -442,7 +440,8 @@ export class AIController {
             'bea': ['spike'],
             'dynamike': ['bea', 'spike'],
             'spike': ['bea'],
-            'rico': ['spike']
+            'rico': ['spike'],
+            'rex': ['brock', 'bea']
         };
 
         const myId = this.brawler.config.id;
@@ -465,6 +464,11 @@ export class AIController {
             // Vulnerability bonus (저체력 적 우선순위) - 30% 이하일 때 +500점
             if (enemy.health < enemy.maxHealth * 0.3) {
                 score += 500;
+            }
+
+            // Line-of-sight bonus (즉시 사격 가능한 적 우선)
+            if (!this.hasClearShot(enemy)) {
+                score -= 250;
             }
 
             if (score > highestScore) {
@@ -531,8 +535,63 @@ export class AIController {
 
         }
 
+        // 가시밭 및 폭탄 착탄 예정 지역 회피
+        this.applyHazardAvoidance();
+
         // 방향 스무딩 적용 (지그재그 움직임 방지)
         this.applyDirectionSmoothing();
+    }
+
+    /**
+     * 적 가시밭(spikeFields) 및 곡사 폭탄(lobbedBomb) 착탄 범위 바깥으로 회피 벡터 계산
+     */
+    getHazardAvoidanceVector() {
+        const pos = this.brawler.position;
+        const brawlerRadius = this.brawler.radius || 25;
+        const margin = AI_CONFIG.HAZARD_AVOIDANCE_MARGIN || 30;
+        let escape = new Vector2(0, 0);
+
+        for (const field of this.game.spikeFields || []) {
+            if (!field.active || field.team === this.brawler.team) continue;
+            const dangerRadius = field.radius + brawlerRadius + margin;
+            const away = pos.subtract(field.position);
+            const dist = away.magnitude();
+            if (dist < dangerRadius) {
+                const dir = dist > 0 ? away.normalize() : (this.findAnyWalkableDirection() || new Vector2(1, 0));
+                const urgency = 1 + (dangerRadius - dist) / Math.max(field.radius, 1);
+                escape.addInPlace(dir.multiply(urgency));
+            }
+        }
+
+        for (const proj of this.game.projectiles || []) {
+            if (!proj.active || proj.team === this.brawler.team) continue;
+            if (proj.projectileType !== 'lobbedBomb' || !proj.targetPosition) continue;
+            const blastRadius = (proj.explosionRadius || 100) + brawlerRadius + margin;
+            const away = pos.subtract(proj.targetPosition);
+            const dist = away.magnitude();
+            if (dist < blastRadius) {
+                const dir = dist > 0 ? away.normalize() : (this.findAnyWalkableDirection() || new Vector2(1, 0));
+                const urgency = 1.5 + (blastRadius - dist) / Math.max(proj.explosionRadius || 100, 1);
+                escape.addInPlace(dir.multiply(urgency));
+            }
+        }
+
+        return escape.magnitude() > 0 ? escape.normalize() : new Vector2(0, 0);
+    }
+
+    applyHazardAvoidance() {
+        const hazardEscape = this.getHazardAvoidanceVector();
+        if (hazardEscape.magnitudeSquared() === 0) return;
+
+        if (this.brawler.moveDirection.magnitude() > 0.1) {
+            this.brawler.moveDirection = this.brawler.moveDirection
+                .multiply(0.25)
+                .add(hazardEscape.multiply(0.75))
+                .normalize();
+        } else {
+            this.brawler.moveDirection = hazardEscape;
+        }
+        this.avoidWallsEnhanced();
     }
 
     /**
@@ -633,8 +692,9 @@ export class AIController {
 
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
+        const clearShot = this.hasClearShot(this.currentTarget);
 
-        if (distance <= this.brawler.attackRange * 0.95) {
+        if (distance <= this.brawler.attackRange * 0.95 && clearShot) {
             this.brawler.moveDirection = this.chooseCombatMovement(toTarget, distance);
             this.avoidWallsEnhanced();
         } else {
@@ -642,7 +702,7 @@ export class AIController {
         }
 
         // Try to attack while chasing
-        if (distance <= this.brawler.attackRange && this.brawler.canAttack()) {
+        if (distance <= this.brawler.attackRange && this.brawler.canAttack() && clearShot) {
             this.brawler.attack(toTarget.normalize(), this.game);
         }
     }
@@ -678,10 +738,7 @@ export class AIController {
         // Flow Field를 사용한 내비게이션 (즉시 조회, 경로 계산 불필요)
         if (useFlowField && this.flowField) {
             // Generate cache key based on target tile
-            const tileSize = this.game.map.tileSize;
-            const targetTileX = Math.floor(targetPos.x / tileSize);
-            const targetTileY = Math.floor(targetPos.y / tileSize);
-            const fieldKey = `dynamic_${targetTileX}_${targetTileY}`;
+            const fieldKey = this.flowField.destinationKey(targetPos.x, targetPos.y);
 
             // Get pre-computed direction from flow field
             const direction = this.flowField.getDirection(
@@ -798,6 +855,13 @@ export class AIController {
             return;
         }
 
+        // 벽에 사선이 막히면 벽에 총알을 낭비하지 않고 추격하여 우회
+        if (!this.hasClearShot(this.currentTarget)) {
+            this.state = 'chase';
+            this.moveToTarget(this.currentTarget.position);
+            return;
+        }
+
         const toTarget = this.currentTarget.position.subtract(this.brawler.position);
         const distance = toTarget.magnitude();
         const difficulty = this.getDifficulty();
@@ -828,7 +892,7 @@ export class AIController {
             const baseInaccuracy = (Math.random() - 0.5) * difficulty.aimInaccuracy;
 
             // 조준 떨림 (시간 기반 사인파)
-            const wobble = Math.sin(Date.now() / 200) * difficulty.aimWobble;
+            const wobble = Math.sin(this.clock / 200) * difficulty.aimWobble;
 
             // 거리 페널티 (멀수록 부정확)
             const distanceFactor = Math.min(distance / this.brawler.attackRange, 1.5);
@@ -840,7 +904,7 @@ export class AIController {
         }
 
         // Strafe movement with human-like variation
-        const now = Date.now();
+        const now = this.clock;
         const timeSinceLastChange = now - this.lastStrafeChange;
         const strafeChangeInterval = 2000 + Math.random() * 1500; // 2000-3500ms
 
@@ -916,12 +980,30 @@ export class AIController {
             return;
         }
 
+        const canHitEnemy = nearestEnemy && this.hasClearShot(nearestEnemy);
+
         // Brawler specific Super logic
         switch (this.brawler.config.id) {
             case 'brock':
             case 'colt':
-                // Damage Supers: Use when enemy is in attack range
+                // Damage Supers: Use when enemy is in attack range with clear line of sight
+                if (canHitEnemy && distToEnemy <= this.brawler.attackRange * 1.3) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
+
+            case 'rico':
+                // Ricochet barrage: bounces make mid-range enemies reachable
                 if (nearestEnemy && distToEnemy <= this.brawler.attackRange * 1.3) {
+                    const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
+                    this.brawler.useSuper(toEnemy, this.game);
+                }
+                break;
+
+            case 'rex':
+                // Piercing burst: fire only when the target is inside super range and unobstructed
+                if (canHitEnemy && distToEnemy <= this.brawler.config.superRange * 0.9) {
                     const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
                     this.brawler.useSuper(toEnemy, this.game);
                 }
@@ -929,7 +1011,7 @@ export class AIController {
 
             case 'bea':
                 // Use the bee fan to push approaching enemies away
-                if (nearestEnemy && distToEnemy <= this.brawler.config.superRange) {
+                if (canHitEnemy && distToEnemy <= this.brawler.config.superRange) {
                     const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
                     this.brawler.useSuper(toEnemy, this.game);
                 }
@@ -945,7 +1027,7 @@ export class AIController {
 
             case 'spike':
                 // Area Control Super: Trap enemies
-                if (nearestEnemy && distToEnemy <= this.brawler.attackRange) {
+                if (canHitEnemy && distToEnemy <= this.brawler.attackRange) {
                     const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
                     this.brawler.useSuper(toEnemy, this.game);
                 }
@@ -953,7 +1035,7 @@ export class AIController {
 
             default:
                 // Generic logic: Use if enemy is close
-                if (nearestEnemy && distToEnemy < this.brawler.attackRange) {
+                if (canHitEnemy && distToEnemy < this.brawler.attackRange) {
                     const toEnemy = nearestEnemy.position.subtract(this.brawler.position).normalize();
                     this.brawler.useSuper(toEnemy, this.game);
                 }
@@ -978,12 +1060,10 @@ export class AIController {
             this.moveToTarget(spawnPos);
         }
 
-        // Shoot at enemies while retreating (Kiting)
-        if (nearestEnemy && this.brawler.canAttack()) {
-            if (distToEnemy <= this.brawler.attackRange * 1.1) {
-                const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
-                this.brawler.attack(toEnemy.normalize(), this.game);
-            }
+        // 근접 추격 중인 적에게만 자위 사격 (안전 거리에서는 사격을 멈춰 비전투 체력 회복 유도)
+        if (nearestEnemy && distToEnemy < 250 && this.brawler.canAttack() && this.hasClearShot(nearestEnemy)) {
+            const toEnemy = nearestEnemy.position.subtract(this.brawler.position);
+            this.brawler.attack(toEnemy.normalize(), this.game);
         }
 
         const healthPercent = this.brawler.health / this.brawler.maxHealth;
@@ -993,29 +1073,6 @@ export class AIController {
         // 3. 기본 상황: 체력 75% 이상이거나 기지 도착 시 patrol로 복귀
         if (healthPercent > 0.75 || distToSpawn < 150) {
             this.state = 'patrol';
-        }
-    }
-
-    avoidWalls() {
-        // Check for nearby walls and adjust direction
-        const checkDistance = 50;
-        const directions = [
-            new Vector2(1, 0),
-            new Vector2(-1, 0),
-            new Vector2(0, 1),
-            new Vector2(0, -1),
-        ];
-
-        for (const dir of directions) {
-            const checkPos = this.brawler.position.add(dir.multiply(checkDistance));
-            if (this.game.map.isPositionSolid(checkPos.x, checkPos.y)) {
-                // Wall nearby, adjust movement
-                this.brawler.moveDirection.addInPlace(dir.multiply(-0.5));
-            }
-        }
-
-        if (this.brawler.moveDirection.magnitude() > 0) {
-            this.brawler.moveDirection.normalizeInPlace();
         }
     }
 

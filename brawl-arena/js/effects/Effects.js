@@ -3,12 +3,13 @@
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
+import { EFFECT_CONFIG } from '../utils/constants.js';
 
 export class Effect {
     constructor(type, x, y, options = {}) {
         this.type = type;
         this.position = new Vector2(x, y);
-        this.lifetime = options.lifetime || 500;
+        this.lifetime = options.lifetime || (type === 'damageText' ? EFFECT_CONFIG.DAMAGE_TEXT_LIFETIME : 500);
         this.timer = 0;
         this.active = true;
         this.options = options;
@@ -33,14 +34,8 @@ export class Effect {
             case 'heal':
                 this.renderHeal(ctx, screenX, screenY, progress);
                 break;
-            case 'healWave':
-                this.renderHealWave(ctx, screenX, screenY, progress);
-                break;
             case 'superBlast':
                 this.renderSuperBlast(ctx, screenX, screenY, progress);
-                break;
-            case 'summon':
-                this.renderSummon(ctx, screenX, screenY, progress);
                 break;
             case 'spikeField':
                 this.renderSpikeField(ctx, screenX, screenY, progress);
@@ -48,7 +43,37 @@ export class Effect {
             case 'explosion':
                 this.renderExplosion(ctx, screenX, screenY, progress);
                 break;
+            case 'damageText':
+                this.renderDamageText(ctx, screenX, screenY, progress);
+                break;
         }
+    }
+
+    renderDamageText(ctx, x, y, progress) {
+        const amount = Math.round(this.options.amount || 0);
+        if (amount <= 0) return;
+
+        const isHeavy = amount >= EFFECT_CONFIG.HEAVY_HIT_THRESHOLD || Boolean(this.options.isSuper);
+        const yOffset = -progress * 42;
+        const alpha = progress < 0.7 ? 1 : Math.max(0, 1 - (progress - 0.7) / 0.3);
+        const popScale = progress < 0.18
+            ? 0.85 + (progress / 0.18) * 0.35
+            : 1.2 - Math.min(progress - 0.18, 0.3) * 0.65;
+
+        ctx.save();
+        ctx.translate(x, y + yOffset);
+        ctx.scale(popScale, popScale);
+        ctx.globalAlpha = alpha;
+        ctx.font = `bold ${isHeavy ? 24 : 18}px "Lilita One", Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.lineWidth = isHeavy ? 5 : 4;
+        const label = isHeavy ? `-${amount}!` : `-${amount}`;
+        ctx.strokeText(label, 0, 0);
+        ctx.fillStyle = isHeavy ? '#ffd700' : '#fff3b0';
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
     }
 
     renderHit(ctx, x, y, progress) {
@@ -108,18 +133,6 @@ export class Effect {
         ctx.fill();
     }
 
-    renderHealWave(ctx, x, y, progress) {
-        const radius = this.options.radius || 200;
-        const currentRadius = radius * progress;
-        const alpha = 1 - progress;
-
-        ctx.strokeStyle = `rgba(46, 204, 113, ${alpha})`;
-        ctx.lineWidth = 5 - progress * 4;
-        ctx.beginPath();
-        ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-
     renderSuperBlast(ctx, x, y, progress) {
         const size = 30 + progress * 50;
         const alpha = 1 - progress;
@@ -146,67 +159,6 @@ export class Effect {
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    renderSummon(ctx, x, y, progress) {
-        const size = 50;
-        const alpha = 1 - progress;
-        const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-
-        // 1. Magic Circle (Spinning)
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(progress * Math.PI); // Spin
-
-        ctx.strokeStyle = `rgba(231, 76, 60, ${alpha})`;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        const circleSize = size * (0.5 + easeOut * 0.5);
-        ctx.arc(0, 0, circleSize, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Inner polygon
-        const sides = 5;
-        ctx.beginPath();
-        for (let i = 0; i <= sides; i++) {
-            const ang = (i / sides) * Math.PI * 2;
-            const r = circleSize * 0.7;
-            if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
-            else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
-        }
-        ctx.closePath();
-        ctx.stroke();
-        ctx.restore();
-
-        // 2. Rising Pillar of Light
-        if (progress < 0.6) {
-            const pillarHeight = 150 * (1 - progress); // Shrinks down
-            const pillarWidth = size * 0.8 * (1 - progress);
-
-            const grad = ctx.createLinearGradient(x, y, x, y - pillarHeight);
-            grad.addColorStop(0, `rgba(231, 76, 60, ${alpha * 0.8})`);
-            grad.addColorStop(1, 'rgba(231, 76, 60, 0)');
-
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.ellipse(x, y, pillarWidth, pillarWidth * 0.3, 0, 0, Math.PI * 2); // Base
-            ctx.rect(x - pillarWidth, y - pillarHeight, pillarWidth * 2, pillarHeight);
-            ctx.fill();
-        }
-
-        // 3. Upward Particles
-        const pCount = 8;
-        for (let i = 0; i < pCount; i++) {
-            const pProg = (progress + i / pCount) % 1;
-            const pY = y - pProg * 100;
-            const pX = x + Math.sin(pProg * 10 + i) * 20;
-            const pAlpha = 1 - pProg;
-
-            ctx.fillStyle = `rgba(255, 200, 200, ${pAlpha})`;
-            ctx.beginPath();
-            ctx.arc(pX, pY, 3, 0, Math.PI * 2);
             ctx.fill();
         }
     }

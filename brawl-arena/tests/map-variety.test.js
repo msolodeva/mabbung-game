@@ -9,7 +9,7 @@ test('map roster is rebuilt around exactly five curated arenas', () => {
     assert.equal(Object.keys(MAPS).length, 5);
     assert.deepEqual(
         Object.keys(MAPS),
-        ['open', 'maze', 'river', 'bush', 'fortress']
+        ['open', 'maze', 'river', 'crossfire', 'fortress']
     );
 });
 

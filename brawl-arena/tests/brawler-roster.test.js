@@ -84,6 +84,7 @@ test('brawlers use the tightened attack cadence while preserving their relative 
             DYNAMIKE: 850,
             SPIKE: 730,
             RICO: 700,
+            REX: 1000,
         },
     );
 

@@ -3,7 +3,7 @@
 // ========================================
 
 import { Vector2 } from '../utils/Vector2.js';
-import { TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY } from '../utils/constants.js';
+import { TEAMS, GAME_STATES, BRAWLERS, AI_DIFFICULTY, EFFECT_CONFIG } from '../utils/constants.js';
 import { GameMap } from '../map/Map.js';
 import { DEFAULT_MAP } from '../map/mapData.js';
 import { InputManager } from '../input/InputManager.js';
@@ -60,7 +60,6 @@ export class Game {
         // Game entities
         this.brawlers = [];
         this.projectiles = [];
-        this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];
 
@@ -110,6 +109,7 @@ export class Game {
 
         // Pre-generate flow fields for common destinations
         this.flowField.pregenerate();
+        this.map.onTilesChanged = () => this.handleTerrainChanged();
 
         this.player1 = this.createPlayer(this.player1BrawlerId, TEAMS.BLUE, 1);
         this.brawlers.push(this.player1);
@@ -134,6 +134,14 @@ export class Game {
             this.createTeamBot(TEAMS.RED);
             this.createTeamBot(TEAMS.RED);
         }
+    }
+
+    /**
+     * 벽이 파괴되면 AI 내비게이션 캐시를 무효화
+     */
+    handleTerrainChanged() {
+        this.flowField.clearCache();
+        for (const ai of this.aiControllers) ai.pathfinder.clearCache();
     }
 
     createPlayer(brawlerId, team, playerNumber) {
@@ -284,19 +292,23 @@ export class Game {
         }
         this.projectiles = this.projectiles.filter(p => p.active);
 
-        // Update bears
-        for (const bear of this.bears) {
-            bear.update(deltaTime, this);
-        }
-        this.bears = this.bears.filter(b => b.active);
-
         // Update spike fields
         this.spikeFields = this.spikeFields.filter(f => f.active);
 
-        // Check brawler deaths
+        // Emit floating damage popups and check brawler deaths
         for (const brawler of this.brawlers) {
+            if (brawler.pendingDamagePopups?.length) {
+                for (const popup of brawler.pendingDamagePopups) {
+                    this.createEffect('damageText', popup.x, popup.y, popup);
+                }
+                brawler.pendingDamagePopups.length = 0;
+            }
             if (brawler.justDied) {
                 this.audioManager?.play('death');
+                this.renderSystem?.triggerShake?.(
+                    EFFECT_CONFIG.SHAKE_DEATH.intensity,
+                    EFFECT_CONFIG.SHAKE_DEATH.duration
+                );
                 this.gameMode.onBrawlerDeath(brawler);
                 brawler.justDied = false;
             }
@@ -307,8 +319,9 @@ export class Game {
         // Update game mode
         this.gameMode.update(deltaTime);
 
-        // Update effects
+        // Update effects and camera shake
         this.effectsManager.update(deltaTime);
+        this.renderSystem?.updateShake?.(deltaTime);
     }
 
     updateHumanPlayer(player, playerNumber) {
@@ -355,6 +368,22 @@ export class Game {
         if (type === 'hit' || type === 'explosion' || type === 'heal') {
             this.audioManager?.play(type);
         }
+        if (type === 'explosion') {
+            this.renderSystem?.triggerShake?.(
+                EFFECT_CONFIG.SHAKE_EXPLOSION.intensity,
+                EFFECT_CONFIG.SHAKE_EXPLOSION.duration
+            );
+        } else if (type === 'superBlast' || type === 'spikeField') {
+            this.renderSystem?.triggerShake?.(
+                EFFECT_CONFIG.SHAKE_SUPER.intensity,
+                EFFECT_CONFIG.SHAKE_SUPER.duration
+            );
+        } else if (type === 'damageText' && (options?.amount || 0) >= EFFECT_CONFIG.HEAVY_HIT_THRESHOLD) {
+            this.renderSystem?.triggerShake?.(
+                EFFECT_CONFIG.SHAKE_HEAVY_HIT.intensity,
+                EFFECT_CONFIG.SHAKE_HEAVY_HIT.duration
+            );
+        }
     }
 
     endGame(outcome) {
@@ -374,7 +403,6 @@ export class Game {
         this.stop();
         this.brawlers = [];
         this.projectiles = [];
-        this.bears = [];
         this.spikeFields = [];
         this.aiControllers = [];
         this.inputManager.cleanup();

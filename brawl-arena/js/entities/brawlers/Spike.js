@@ -25,13 +25,13 @@ export class Spike extends Brawler {
                 size: 15,
                 range: this.config.attackRange,
                 owner: this,
+                game,
                 team: this.team,
                 color: '#27ae60',
                 explodeSpikes: this.config.explodeSpikes,
                 explodeSpikeDamage: this.config.explodeSpikeDamage,
             }
         );
-        projectile.owner.game = game;
         game.projectiles.push(projectile);
 
         game.audioManager?.play('shoot', this.config.id);

@@ -21,6 +21,9 @@ export class GameMap {
         // Destructible wall health
         this.destructibleHealth = {};
         this.initDestructibles();
+
+        // Notified when terrain changes so navigation caches can be rebuilt.
+        this.onTilesChanged = null;
     }
 
     /**
@@ -76,11 +79,6 @@ export class GameMap {
         return this.theme[key] || fallback;
     }
 
-    hasAdjacentTileType(col, row, tileType) {
-        const mask = this.getNeighborMask(col, row, neighbor => neighbor === tileType);
-        return mask.top || mask.right || mask.bottom || mask.left;
-    }
-
     getNeighborMask(col, row, predicate) {
         return {
             top: predicate(this.getTile(col, row - 1)),
@@ -132,6 +130,7 @@ export class GameMap {
         // Break regular walls if damage is high enough (Super ability)
         if (tile === TILE_TYPES.WALL && damage >= 4000) {
             this.tiles[row][col] = TILE_TYPES.GROUND;
+            this.onTilesChanged?.();
             return true;
         }
 
@@ -140,6 +139,7 @@ export class GameMap {
             if (this.destructibleHealth[key] <= 0) {
                 this.tiles[row][col] = TILE_TYPES.GROUND;
                 delete this.destructibleHealth[key];
+                this.onTilesChanged?.();
                 return true;
             }
         }

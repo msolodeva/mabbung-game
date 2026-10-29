@@ -159,9 +159,8 @@ export class Pathfinder {
             if (current.x === adjustedEnd.x && current.y === adjustedEnd.y) {
                 // Reconstruct path
                 const path = this.reconstructPath(cameFrom, current);
-                const smoothedPath = this.smoothPath(path);
-                this.pathCache.set(cacheKey, { path: smoothedPath, time: Date.now() });
-                return smoothedPath;
+                this.pathCache.set(cacheKey, { path, time: Date.now() });
+                return path;
             }
 
             closedSet.add(currentKey);
@@ -185,79 +184,6 @@ export class Pathfinder {
 
         // No path found
         return [];
-    }
-
-    // Optimize path by removing unnecessary nodes
-    smoothPath(path) {
-        if (path.length <= 2) return path;
-
-        const smoothedPath = [path[0]];
-        let currentIdx = 0;
-
-        while (currentIdx < path.length - 1) {
-            let nextIdx = currentIdx + 1;
-
-            // Look ahead as far as possible
-            for (let i = path.length - 1; i > currentIdx + 1; i--) {
-                if (this.lineOfSight(path[currentIdx], path[i])) {
-                    nextIdx = i;
-                    break;
-                }
-            }
-
-            smoothedPath.push(path[nextIdx]);
-            currentIdx = nextIdx;
-        }
-
-        return smoothedPath;
-    }
-
-    // Check if there is a clear line of sight between two points
-    // Takes wall collision and brawler radius into account
-    lineOfSight(start, end) {
-        const x0 = start.x;
-        const y0 = start.y;
-        const x1 = end.x;
-        const y1 = end.y;
-
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = (x0 < x1) ? 1 : -1;
-        const sy = (y0 < y1) ? 1 : -1;
-        let err = dx - dy;
-
-        let x = x0;
-        let y = y0;
-
-        // Check every tile along the line
-        while (true) {
-            if (!this.isWalkable(x, y)) return false;
-
-            // Also check adjacent tiles for clearance (simple radius check)
-            // If moving diagonally, check both adjacent cardinal tiles
-            if (x !== x0 || y !== y0) {
-                // Expanded check for "fat" line of sight to prevent clipping corners
-                // We simply check safely around the current tile
-                if (!this.isWalkable(x + 1, y) && x < this.map.cols - 1) return false;
-                if (!this.isWalkable(x - 1, y) && x > 0) return false;
-                if (!this.isWalkable(x, y + 1) && y < this.map.rows - 1) return false;
-                if (!this.isWalkable(x, y - 1) && y > 0) return false;
-            }
-
-            if (x === x1 && y === y1) break;
-
-            const e2 = 2 * err;
-            if (e2 > -dy) {
-                err -= dy;
-                x += sx;
-            }
-            if (e2 < dx) {
-                err += dx;
-                y += sy;
-            }
-        }
-
-        return true;
     }
 
     findNearestWalkable(x, y) {

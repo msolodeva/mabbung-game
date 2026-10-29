@@ -8,7 +8,7 @@ function setup() {
     const bea = new Bea('blue', 100, 100);
     const target = new Bea('red', 240, 100);
     const game = {
-        projectiles: [], brawlers: [bea, target], bears: [], createEffect() {},
+        projectiles: [], brawlers: [bea, target], createEffect() {},
         map: { isPositionSolidForProjectile: () => false, damageWallAtPosition() {} },
     };
     return { bea, target, game };

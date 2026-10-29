@@ -125,21 +125,21 @@ const THEMES = {
         shadow: 'rgba(10, 35, 60, 0.22)',
         decorationStyle: 'canals',
     }),
-    bush: buildTheme({
-        ground: '#6a7a38',
-        groundDark: '#59672f',
-        detail: '#a7c75b',
-        wall: '#705648',
-        wallTop: '#977563',
-        wallEdge: '#d6b59c',
-        bush: '#244f1f',
-        bushDark: '#173314',
-        bushGlow: '#4f8a3d',
-        water: '#4c6d4e',
-        waterShallow: '#87b084',
-        accent: '#d7f27a',
-        shadow: 'rgba(15, 35, 10, 0.24)',
-        decorationStyle: 'garden',
+    crossfire: buildTheme({
+        ground: '#58606b',
+        groundDark: '#4a515b',
+        detail: '#8794a3',
+        wall: '#2f3640',
+        wallTop: '#4d5967',
+        wallEdge: '#9fb0c2',
+        bush: '#2f6b4f',
+        bushDark: '#1f4a36',
+        bushGlow: '#5fb98a',
+        water: '#2f6f8f',
+        waterShallow: '#79c0d9',
+        accent: '#ff9f5a',
+        shadow: 'rgba(15, 22, 30, 0.3)',
+        decorationStyle: 'slabs',
     }),
     fortress: buildTheme({
         ground: '#82735d',
@@ -273,7 +273,7 @@ function createRiverMap() {
     };
 }
 
-function createBushMap() {
+function createCrossfireMap() {
     const tiles = createEmptyArena();
 
     addSpawnRows(
@@ -282,37 +282,39 @@ function createBushMap() {
         [[4, 28], [20, 28], [35, 28]]
     );
 
-    paintRect(tiles, 2, 4, 11, 10, B);
-    paintRect(tiles, 28, 4, 37, 10, B);
-    paintRect(tiles, 2, 20, 11, 26, B);
-    paintRect(tiles, 28, 20, 37, 26, B);
-    clearRect(tiles, 5, 6, 8, 8);
-    clearRect(tiles, 31, 6, 34, 8);
-    clearRect(tiles, 5, 22, 8, 24);
-    clearRect(tiles, 31, 22, 34, 24);
-    paintRect(tiles, 15, 11, 24, 19, B);
-    clearRect(tiles, 17, 13, 22, 17);
-    paintRect(tiles, 13, 14, 14, 16, D);
-    paintRect(tiles, 25, 14, 26, 16, D);
-    paintRect(tiles, 17, 10, 22, 11, W);
-    paintRect(tiles, 17, 19, 22, 20, W);
-    paintRect(tiles, 12, 5, 14, 8, D);
-    paintRect(tiles, 25, 5, 27, 8, D);
-    paintRect(tiles, 12, 22, 14, 25, D);
-    paintRect(tiles, 25, 22, 27, 25, D);
-    // Break large hiding areas with readable scouting lanes.
-    clearRect(tiles, 2, 9, 11, 10);
-    clearRect(tiles, 28, 9, 37, 10);
-    clearRect(tiles, 18, 10, 21, 13);
-    clearRect(tiles, 13, 15, 17, 15);
-    clearRect(tiles, 22, 15, 26, 15);
-    clearRect(tiles, 18, 14, 21, 16);
+    // Flank ponds: bullets cross water, so they make sniping lanes but block walking.
+    paintRect(tiles, 7, 9, 11, 12, WA);
+    paintRect(tiles, 28, 9, 32, 12, WA);
+    // Destructible cover on the pond edges lets flankers open or close sightlines.
+    paintRect(tiles, 7, 13, 8, 14, D);
+    paintRect(tiles, 31, 13, 32, 14, D);
+    // Walls frame the central ambush pocket while leaving all four sides open.
+    paintRect(tiles, 15, 11, 16, 12, W);
+    paintRect(tiles, 23, 11, 24, 12, W);
+    paintRect(tiles, 15, 15, 16, 15, W);
+    paintRect(tiles, 23, 15, 24, 15, W);
+    // A bush pocket on the midline rewards control of the middle.
+    paintRect(tiles, 18, 14, 21, 15, B);
+    // Lane bushes let teams hide a flank approach before the pond bridges.
+    paintRect(tiles, 13, 5, 14, 8, B);
+    paintRect(tiles, 25, 5, 26, 8, B);
+    paintRect(tiles, 3, 9, 5, 12, B);
+    paintRect(tiles, 34, 9, 36, 12, B);
+    // Destructible shields guard each spawn exit.
+    paintRect(tiles, 9, 5, 10, 6, D);
+    paintRect(tiles, 29, 5, 30, 6, D);
+    paintRect(tiles, 18, 6, 21, 6, D);
+    clearRect(tiles, 19, 6, 20, 6);
+    // Keep the center and its approaches usable for every route.
+    clearRect(tiles, 17, 9, 22, 13);
+    clearRect(tiles, 12, 14, 17, 14);
+    clearRect(tiles, 22, 14, 27, 14);
 
     return {
-        id: 'bush',
-        name: 'Thorn Garden',
-        description: '정찰 통로로 나뉜 풀숲과 네 방향 중앙 진입로. 풀숲을 확인하며 접근하고 열린 광장에서 교전을 펼치세요.',
-        theme: THEMES.bush,
+        id: 'crossfire',
+        name: 'Crossfire Basin',
+        description: '물웅덩이 너머로 시선이 열린 측면과 중앙의 풀숲 매복 지대. 측면에서 견제하고 중앙을 장악해 교차 사격을 만드세요.',
+        theme: THEMES.crossfire,
         tiles: mirrorTeamHalves(tiles),
     };
 }
@@ -364,14 +366,14 @@ function createFortressMap() {
 const MAP_OPEN = createOpenMap();
 const MAP_MAZE = createMazeMap();
 const MAP_RIVER = createRiverMap();
-const MAP_BUSH = createBushMap();
+const MAP_CROSSFIRE = createCrossfireMap();
 const MAP_FORTRESS = createFortressMap();
 
 export const MAPS = {
     [MAP_OPEN.id]: MAP_OPEN,
     [MAP_MAZE.id]: MAP_MAZE,
     [MAP_RIVER.id]: MAP_RIVER,
-    [MAP_BUSH.id]: MAP_BUSH,
+    [MAP_CROSSFIRE.id]: MAP_CROSSFIRE,
     [MAP_FORTRESS.id]: MAP_FORTRESS,
 };
 

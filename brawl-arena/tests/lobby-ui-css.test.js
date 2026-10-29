@@ -36,3 +36,10 @@ test('lobby keeps brawler stats useful while simplifying AI selection', () => {
     assert.equal(html.includes('blue-difficulty-desc'), false);
     assert.equal(html.includes('red-difficulty-desc'), false);
 });
+
+test('brawler selection grid keeps every card on a single row', () => {
+    const css = readFileSync(new URL('../css/styles.css', import.meta.url), 'utf8');
+    const gridRule = css.match(/\.brawler-grid\s*\{[^}]+\}/)[0];
+
+    assert.match(gridRule, /flex-wrap:\s*nowrap\s*;/);
+});

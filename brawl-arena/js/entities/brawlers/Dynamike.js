@@ -38,7 +38,7 @@ class LobbedBomb extends Projectile {
     explode(game) {
         if (!this.active) return;
 
-        const targets = [...game.brawlers, ...game.bears];
+        const targets = game.brawlers;
         for (const target of targets) {
             if (!target.isAlive || target.team === this.team) continue;
 
@@ -162,7 +162,7 @@ export class Dynamike extends Brawler {
         let range = maxRange;
         // Keyboard aiming selects a direction. Adjust distance only, leaving
         // aim and the delayed explosion dodgeable, including behind cover.
-        for (const enemy of [...game.brawlers, ...game.bears]) {
+        for (const enemy of game.brawlers) {
             if (enemy.isVisible === false || !enemy.isAlive || enemy.team === this.team) continue;
             const offset = enemy.position.subtract(this.position);
             const forward = offset.dot(direction);

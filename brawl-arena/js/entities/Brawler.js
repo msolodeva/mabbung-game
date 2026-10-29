@@ -4,7 +4,7 @@
 
 import { Entity } from './Entity.js';
 import { Vector2 } from '../utils/Vector2.js';
-import { COLORS, TEAMS, VISIBILITY_CONFIG } from '../utils/constants.js';
+import { COLORS, GAME_CONFIG, TEAMS, VISIBILITY_CONFIG } from '../utils/constants.js';
 
 /**
  * 브롤러 기본 클래스 - 플레이어블 캐릭터
@@ -57,10 +57,11 @@ export class Brawler extends Entity {
         this.isVisible = true;
         this.revealRemaining = 0;
         this.facingAngle = 0;
-        this.isAttacking = false;
-
         this.slowRemaining = 0;
         this.slowMultiplier = 1;
+        this.spawnShieldRemaining = 0;
+        this.outOfCombatTimer = 0;
+        this.pendingDamagePopups = [];
 
         // Movement
         this.moveDirection = new Vector2(0, 0);
@@ -91,8 +92,19 @@ export class Brawler extends Entity {
             return;
         }
 
-        this.slowRemaining = Math.max(0, this.slowRemaining - deltaTime * 1000);
-        this.revealRemaining = Math.max(0, this.revealRemaining - deltaTime * 1000);
+        const clampedDelta = Math.max(0, deltaTime);
+        this.slowRemaining = Math.max(0, this.slowRemaining - clampedDelta * 1000);
+        this.revealRemaining = Math.max(0, this.revealRemaining - clampedDelta * 1000);
+        this.spawnShieldRemaining = Math.max(0, this.spawnShieldRemaining - clampedDelta * 1000);
+
+        // Out-of-combat health regeneration
+        this.outOfCombatTimer += clampedDelta * 1000;
+        if (this.health < this.maxHealth && this.outOfCombatTimer >= GAME_CONFIG.REGEN_DELAY) {
+            this.health = Math.min(
+                this.maxHealth,
+                this.health + this.maxHealth * GAME_CONFIG.REGEN_RATE * clampedDelta
+            );
+        }
 
         // Movement
         if (this.moveDirection.magnitude() > 0) {
@@ -188,7 +200,7 @@ export class Brawler extends Entity {
     }
 
     applySlow(multiplier, duration) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.spawnShieldRemaining > 0) return;
         // Repeated stings refresh duration; they never multiply the slowdown.
         this.slowMultiplier = this.slowRemaining > 0
             ? Math.min(this.slowMultiplier, multiplier) : multiplier;
@@ -321,19 +333,16 @@ export class Brawler extends Entity {
         if (attackDirection.magnitudeSquared() === 0) return false;
 
         this.reveal();
+        this.spawnShieldRemaining = 0;
+        this.outOfCombatTimer = 0;
         this.ammo--;
         this.attackCooldown = this.attackSpeed;
         this.aimDirection = attackDirection;
         this.facingAngle = attackDirection.angle();
-        this.isAttacking = true;
         this.recoilOffset = 8; // Visual kickback distance
 
         // Create projectiles (override in subclass)
         this.createAttackProjectiles(attackDirection, game);
-
-        setTimeout(() => {
-            this.isAttacking = false;
-        }, 100);
 
         return true;
     }
@@ -356,6 +365,8 @@ export class Brawler extends Entity {
     useSuper(direction, game) {
         if (!this.isAlive || !this.superReady || direction.magnitudeSquared() === 0) return false;
         this.reveal();
+        this.spawnShieldRemaining = 0;
+        this.outOfCombatTimer = 0;
 
         this.superCharge = 0;
         this.superReady = false;
@@ -379,13 +390,22 @@ export class Brawler extends Entity {
     /**
      * 데미지 받기
      * @param {number} amount - 데미지 양
-     * @param {Brawler|Bear|null} attacker - 공격자 (슈퍼 게이지 충전용)
+     * @param {Brawler|null} attacker - 공격자 (슈퍼 게이지 충전용)
      * @param {Object|null} source - 데미지 원인 (Projectile 등)
      */
     takeDamage(amount, attacker, source = null) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.spawnShieldRemaining > 0) return;
 
-        if (amount > 0) this.reveal();
+        if (amount > 0) {
+            this.reveal();
+            this.outOfCombatTimer = 0;
+            this.pendingDamagePopups.push({
+                amount: Math.round(amount),
+                isSuper: Boolean(source?.isSuper),
+                x: this.position.x + (Math.random() - 0.5) * 16,
+                y: this.position.y - this.radius - 10,
+            });
+        }
         this.health -= amount;
         this.damageFlashTimer = 100;
 
@@ -400,9 +420,6 @@ export class Brawler extends Entity {
 
             if (attacker.type === 'brawler') {
                 attacker.addSuperCharge(chargeAmount);
-            } else if (attacker.type === 'bear' && attacker.owner) {
-                // 곰 공격은 주인 궁극기 충전 (일반 공격 취급)
-                attacker.owner.addSuperCharge(1);
             }
         }
 
@@ -418,15 +435,10 @@ export class Brawler extends Entity {
      * @param {number} force - Knockback force/distance
      */
     applyKnockback(direction, force) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.spawnShieldRemaining > 0) return;
         // Convert instant knockback to velocity (spread over ~0.15 seconds)
         const knockbackSpeed = force / 0.15;
         this.knockbackVelocity = direction.normalize().multiply(knockbackSpeed);
-    }
-
-    heal(amount) {
-        if (!this.isAlive) return;
-        this.health = Math.min(this.health + amount, this.maxHealth);
     }
 
     addSuperCharge(amount) {
@@ -441,9 +453,11 @@ export class Brawler extends Entity {
     die() {
         this.slowRemaining = 0;
         this.slowMultiplier = 1;
+        this.spawnShieldRemaining = 0;
+        this.outOfCombatTimer = 0;
         this.isAlive = false;
         this.justDied = true;
-        this.respawnTimer = 3000;
+        this.respawnTimer = GAME_CONFIG.RESPAWN_TIME;
         this.health = 0;
 
     }
@@ -451,6 +465,8 @@ export class Brawler extends Entity {
     respawn(game) {
         this.slowRemaining = 0;
         this.slowMultiplier = 1;
+        this.spawnShieldRemaining = GAME_CONFIG.SPAWN_SHIELD_DURATION;
+        this.outOfCombatTimer = 0;
         this.isAlive = true;
         this.health = this.maxHealth;
         this.ammo = this.ammoMax;
@@ -474,6 +490,18 @@ export class Brawler extends Entity {
 
         const x = this.position.x;
         const y = this.position.y;
+
+        if (this.spawnShieldRemaining > 0 && this.isAlive && (this.isVisible || isPlayerTeam)) {
+            ctx.save();
+            ctx.strokeStyle = '#79f6ee';
+            ctx.fillStyle = 'rgba(121, 246, 238, 0.18)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, this.radius + 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
 
         if (this.slowRemaining > 0 && this.isAlive && (this.isVisible || isPlayerTeam)) {
             ctx.save();
@@ -551,10 +579,6 @@ export class Brawler extends Entity {
             ctx.restore();
             return;
         }
-
-        // 2.5 Render Hands (Before body so they can be behind if needed, but usually on sides)
-        // We render hands relative to the body transform usually, but let's do it here
-        // this.renderHands(ctx, x, y + bobOffset, this.radius, this.facingAngle, time);
 
         // 3. Directional Pointer (Premium Look) - Rounded for cuteness
         ctx.save();
@@ -702,40 +726,6 @@ export class Brawler extends Entity {
             ctx.fill();
             ctx.restore();
         }
-    }
-
-    renderHands(ctx, x, y, radius, angle, time) {
-        const handRadius = radius * 0.3;
-        const handDist = radius * 1.1;
-        const handBob = Math.sin(time * 2) * 3;
-
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-
-        ctx.fillStyle = this.color;
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-
-        // Left Hand
-        ctx.save();
-        ctx.translate(handDist, -radius * 0.8 + handBob);
-        ctx.beginPath();
-        ctx.arc(0, 0, handRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-
-        // Right Hand
-        ctx.save();
-        ctx.translate(handDist, radius * 0.8 - handBob);
-        ctx.beginPath();
-        ctx.arc(0, 0, handRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-
-        ctx.restore();
     }
 
     renderFace(ctx, x, y, radius, aimDir, time) {

@@ -25,7 +25,7 @@ function createProjectileGame(spike, target) {
         projectiles: [],
         spikeFields: [],
         brawlers: [spike, target],
-        bears: [],
+       
         map: {
             isPositionSolidForProjectile: () => false,
             damageWallAtPosition: () => false,

@@ -15,6 +15,7 @@ export const SOUND_RECIPES = {
     'shoot:dynamike': [tone('triangle', 280, 620, 0.16, 0.3), noise(0.13, 0.25, 0.5)],
     'shoot:spike': [tone('sine', 750, 180, 0.12, 0.4), noise(0.07, 0.22, 0.7)],
     'shoot:rico': [tone('square', 720, 420, 0.09, 0.13), tone('sine', 1080, 640, 0.12, 0.12)],
+    'shoot:rex': [tone('sawtooth', 900, 120, 0.2, 0.3), noise(0.1, 0.4, 0.9), tone('sine', 140, 50, 0.22, 0.4)],
     super: [tone('triangle', 180, 1100, 0.2, 0.3), noise(0.22, 0.32, 0.3, 0.14),
         tone('sine', 160, 45, 0.35, 0.45, 0.18), ...chime([660, 880, 1320]).map(l => ({ ...l, delay: l.delay + 0.18 }))],
     hit: [noise(0.04, 0.32, 0.65), tone('sine', 330, 90, 0.09, 0.38)],

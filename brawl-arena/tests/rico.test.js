@@ -9,7 +9,7 @@ import { Game } from '../js/game/Game.js';
 
 function setup(solid = (x, y) => x >= 200 || x < 0 || y < 0 || y >= 300) {
     const owner = new Rico('blue', 100, 100);
-    const game = { brawlers: [owner], bears: [], projectiles: [], scheduledActions: [], createEffect() {},
+    const game = { brawlers: [owner], projectiles: [], scheduledActions: [], createEffect() {},
         map: { isPositionSolidForProjectile: solid, damageWallAtPosition() { throw Error('walls must remain intact'); } },
         scheduleAction: Game.prototype.scheduleAction, updateScheduledActions: Game.prototype.updateScheduledActions };
     return { owner, game };
